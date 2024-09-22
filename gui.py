@@ -18,6 +18,10 @@ import os
 import pyvips
 from tkinter import filedialog as tkFileDialog
 import json
+import time
+last_scroll_time = None
+textboxpos = "N"
+textlength = 33 #based on thumbnailsize in prefs.json
 
 def luminance(hexin):
     color = tuple(int(hexin.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
@@ -95,8 +99,9 @@ class GUIManager(tk.Tk):
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
         # Frame for the left hand side that holds the setup and also the destination buttons.
-        self.leftui = tk.Frame(self.toppane)
+        self.leftui = tk.Frame(self.toppane, width=364)
         #self.leftui.grid(row=0, column=0, sticky="NESW")
+        self.leftui.grid_propagate(False) #to turn off auto scaling.
         self.leftui.columnconfigure(0, weight=1)
         self.toppane.add(self.leftui, weight=1)
         #Add a checkbox to check for sorting preference.
@@ -115,10 +120,11 @@ Right-click on Thumbnails to show a zoomable full view. You can also **rename** 
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Thank you for using this program!""")
-        self.panel.grid(row=1, column=0, columnspan=200,
+        self.panel.grid(row=3, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
-
+        
         self.columnconfigure(0, weight=1)
+
         self.buttonframe = tk.Frame(master=self.leftui)
         self.buttonframe.grid(
             column=0, row=1, sticky="NSEW")
@@ -235,11 +241,16 @@ Thank you for using this program!""")
             text += "Image has Duplicate Filename!\n"
         text += "Leftclick to select this for assignment. Rightclick to open full view"
         return text
+    
 
     def makegridsquare(self, parent, imageobj, setguidata):
-        frame = tk.Frame(parent, width=self.thumbnailsize +
-                         14, height=self.thumbnailsize+24)
-        frame.obj = imageobj
+        frame = tk.Frame(parent, borderwidth=1, relief="ridge", width=self.thumbnailsize + 14, height=self.thumbnailsize+24)
+        frame.obj = imageobj #this is so checkbutton can see stuff.
+        truncated_filename = self.truncate_text(frame, imageobj, textlength)
+        truncated_name_var = tk.StringVar(frame, value=truncated_filename)
+        frame.obj2 = truncated_name_var #this is so checkbutton can see stuff.
+        
+        
         try:
             if setguidata:
                 if not os.path.exists(imageobj.thumbnail):
@@ -253,19 +264,27 @@ Thank you for using this program!""")
             else:
                 img = imageobj.guidata['img']
 
-            canvas = tk.Canvas(frame, width=self.thumbnailsize,
-                               height=self.thumbnailsize)
+            canvas = tk.Canvas(frame, width=self.thumbnailsize-1, 
+                               height=self.thumbnailsize) #-1 so its centered perfectly <3
             tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj))
+
             ToolTip(canvas,msg=tooltiptext.get,delay=1)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
-            check = Checkbutton(
-                frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
+            
+            # Create a frame for the Checkbutton to control its height
+            check_frame = tk.Frame(frame, height=24)  # Set a fixed height (e.g., 30 pixels)
+            check_frame.grid(column=0, row=1, sticky="NSEW")  # Place the frame in the grid
+            check_frame.grid_propagate(False)
+            
+            check = tk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, width=textlength)
+            check.grid(sticky="NSEW")
+            
             canvas.grid(column=0, row=0, sticky="NSEW")
-            check.grid(column=0, row=1, sticky="N")
+            check.grid(column=0, row=1, sticky=textboxpos)
             frame.rowconfigure(0, weight=4)
             frame.rowconfigure(1, weight=1)
-            frame.config(height=self.thumbnailsize+12)
+            frame.config(height=self.thumbnailsize+12) #might not be needed? unclear what does
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
                     {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True,"tooltip":tooltiptext})
@@ -295,6 +314,17 @@ Thank you for using this program!""")
         except Exception as e:
             logging.error(e)
         return frame
+    
+    #max_length must be over 3+extension or negative indexes happen.
+    def truncate_text(self, frame, imageobj, max_length):
+        """Truncate the text to fit within the specified max_length."""
+        filename = imageobj.name.get()
+        base_name, ext = os.path.splitext(filename)
+        if len(filename) > max_length:
+            # Subtract 3 for the ellipsis and ext for ext.
+            base_name = base_name[:max_length - (3+len(ext))] + ".." + ext
+            return base_name
+        return base_name
 
     def displaygrid(self, imagelist, range):
         for i in range:
@@ -309,39 +339,39 @@ Thank you for using this program!""")
                 x.configure(wraplength=(self.buttons[0].winfo_width()-1))
     
     def displayimage(self, imageobj, a):
-        path = imageobj.path
-        if hasattr(self, 'imagewindow'):
-            self.imagewindow.destroy()
+        path = imageobj.path #path
         
-        self.imagewindow = tk.Toplevel()
-        imagewindow = self.imagewindow
-        imagewindow.rowconfigure(1, weight=1)
-        imagewindow.columnconfigure(0, weight=1)
-        imagewindow.wm_title("Image: " + path)
-        imagewindow.geometry(self.imagewindowgeometry)
-        imageframe = CanvasImage(imagewindow, path)
-        # takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
-        imageframe.rescale(min(imagewindow.winfo_width(
-        )/imageframe.imwidth, imagewindow.winfo_height()/imageframe.imheight))
-        imageframe.grid(column=0, row=1)
-        imagewindow.bind(
-            "<Button-3>", partial(bindhandler, imagewindow, "destroy"))
-        renameframe = tk.Frame(imagewindow)
-        renameframe.columnconfigure(1, weight=1)
-        namelabel = tk.Label(renameframe, text="Image Name:")
-        namelabel.grid(column=0, row=0, sticky="W")
-        nameentry = tk.Entry(
-            renameframe, textvariable=imageobj.name, takefocus=False)
-        nameentry.grid(row=0, column=1, sticky="EW")
+        #Close old window
+        if hasattr(self, 'second_window'):
+            self.second_window.destroy()
+        
+        #Create secondary window for image viewing
+        self.second_window = tk.Toplevel()
+        second_window = self.second_window  #This is basically an alias to write less
+        second_window.rowconfigure(0, weight=1)
+        second_window.columnconfigure(0, weight=1)
+        second_window.title("Image: " + path)
+        second_window.geometry(self.imagewindowgeometry)
+        second_window.bind("<Button-3>", partial(bindhandler, second_window, "destroy"))
+        second_window.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
+        second_window.obj = imageobj
+        #Window->Frame->Canvas->canvas.create_image
+        
+        #Avoids using update_idletasks()
+        geometry = self.imagewindowgeometry.split('+')[0]
 
-        renameframe.grid(column=0, row=0, sticky="EW")
-        imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
-        imagewindow.obj = imageobj
+        Image_frame = CanvasImage(self.second_window, path, geometry)
+        Image_frame.grid(sticky='nswe') #Initialize Frame grid statement in canvasimage, Add to main window grid
+
+        #Image_frame.canvas.update_idletasks()
+        Image_frame.rescale(min(second_window.winfo_width()/Image_frame.imwidth, second_window.winfo_height()/Image_frame.imheight))
+        #print(f"{second_window.winfo_width()}:{Image_frame.imwidth}:{second_window.winfo_height()}:{Image_frame.imheight}")
+        Image_frame.center_image()
 
     def saveimagewindowgeo(self):
-        self.imagewindowgeometry = self.imagewindow.winfo_geometry()
-        self.checkdupename(self.imagewindow.obj)
-        self.imagewindow.destroy()
+        self.imagewindowgeometry = self.second_window.winfo_geometry()
+        self.checkdupename(self.second_window.obj)
+        self.second_window.destroy()
 
     def filedialogselect(self, target, type):
         if type == "d":
@@ -429,7 +459,9 @@ Thank you for using this program!""")
         self.hideonassign = hideonassign
         valcmd = self.register(self.isnumber)
         squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, validate="key", validatecommand=(valcmd, "%P"), takefocus=False)
+            optionsframe, textvariable=self.squaresperpage, takefocus=False)
+        if self.squaresperpage.get() < 0: #this wont let you save -1
+            self.squaresperpage.set(1)
         ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         for n in range(0, itern):
             squaresperpageentry.unbind(hotkeys[n])
@@ -548,13 +580,30 @@ Thank you for using this program!""")
             imageobj.guidata["frame"].configure(highlightthickness=0)
             self.fileManager.existingnames.add(imageobj.name.get())
         imageobj.guidata['tooltip'].set(self.tooltiptext(imageobj))
+        
+
+
+def throttled_yview(widget, *args):
+    """Throttle scroll events for both MouseWheel and Scrollbar slider"""
+    global last_scroll_time
+
+    now = time.time()
+
+    if last_scroll_time is None or (now - last_scroll_time) > 0.025:  # 100ms throttle
+        last_scroll_time = now
+        last_scroll_time = now
+        widget.yview(*args)
+
+# Throttled scrollbar callback
+def throttled_scrollbar(*args):
+    throttled_yview(args[0], 'yview', *args[1:])
 
 def bindhandler(*args):
     widget = args[0]
     command = args[1]
-    if command == "invoke":
+    if command == "scroll":
+        widget.yview_scroll(-1*floor(args[2].delta/120), "units")
+    elif command == "invoke":
         widget.invoke()
     elif command == "destroy":
         widget.destroy()
-    elif command == "scroll":
-        widget.yview_scroll(-1*floor(args[2].delta/120), "units")
