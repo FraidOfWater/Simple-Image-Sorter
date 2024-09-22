@@ -105,6 +105,8 @@ class SortImages:
                 self.gui.ddpEntry.insert(0, jprefs["despath"])
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
+                if "imagewindowgeometry" in jprefs:
+                    self.gui.imagewindowgeometry = jprefs["imagewindowgeometry"]
                 if "geometry" in jprefs:
                     self.gui.geometry(jprefs["geometry"])
                 if "lastsession" in jprefs:
