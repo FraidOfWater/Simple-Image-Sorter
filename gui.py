@@ -22,6 +22,10 @@ import time
 last_scroll_time = None
 textboxpos = "N"
 textlength = 33 #based on thumbnailsize in prefs.json
+space_to_border = 1 # 0,1,24
+space_to_image_x = 5 #4,5,6 4 = no border 5 = slight 6= wide
+space_to_image_y = 30 #
+#Handles gui stuff, the main window essentially. Saves prefs.
 
 def luminance(hexin):
     color = tuple(int(hexin.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
@@ -168,15 +172,18 @@ Thank you for using this program!""")
         # Start the grid setup
         imagegridframe = tk.Frame(self.toppane)
         imagegridframe.grid(row=0, column=1, sticky="NSEW")
-        self.imagegrid = tk.Text(
-            imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background='#a9a9a9')
-        vbar = tk.Scrollbar(imagegridframe, orient='vertical',
-                            command=self.imagegrid.yview)
+        # Replacing Text widget with Canvas for image grid
+        self.imagegrid = tk.Canvas(imagegridframe, borderwidth=0, highlightthickness=0, background=grid_bg)
+
+        vbar = tk.Scrollbar(imagegridframe, orient='vertical',command=lambda *args: throttled_yview(self.imagegrid, *args))
         vbar.grid(row=0, column=1, sticky='ns')
         self.imagegrid.configure(yscrollcommand=vbar.set)
         self.imagegrid.grid(row=0, column=0, sticky="NSEW")
         imagegridframe.rowconfigure(0, weight=1)
         imagegridframe.columnconfigure(0, weight=1)
+        
+        # Placeholder for image display logic
+        self.imagegrid.configure(scrollregion=self.imagegrid.bbox("all"))  # Dynamic scroll region
 
         self.toppane.add(imagegridframe, weight=3)
         self.toppane.grid(row=0, column=0, sticky="NSEW")
@@ -363,8 +370,9 @@ Thank you for using this program!""")
         Image_frame = CanvasImage(self.second_window, path, geometry)
         Image_frame.grid(sticky='nswe') #Initialize Frame grid statement in canvasimage, Add to main window grid
 
+        #why would the author do this, after or before .grid.
         #Image_frame.canvas.update_idletasks()
-        Image_frame.rescale(min(second_window.winfo_width()/Image_frame.imwidth, second_window.winfo_height()/Image_frame.imheight))
+        Image_frame.rescale(min(second_window.winfo_width()/Image_frame.imwidth, second_window.winfo_height()/Image_frame.imheight)) #Scales to the fucking window WOO!
         #print(f"{second_window.winfo_width()}:{Image_frame.imwidth}:{second_window.winfo_height()}:{Image_frame.imheight}")
         Image_frame.center_image()
 
@@ -569,6 +577,49 @@ Thank you for using this program!""")
             self.displaygrid(self.fileManager.imagelist, ran)
         else:
             self.addpagebutton.configure(text="No More Images!",background="#DD3333")
+    # Modify the displaygrid method to place items with create_window and save their window IDs
+    def displaygrid(self, imagelist, range):
+        for i in range:
+            gridsquare = self.makegridsquare(self.imagegrid, imagelist[i], True)
+            self.gridsquarelist.append(gridsquare)
+
+            # Create the window for the grid square on the canvas and store the window ID
+            gridsquare.canvas_window = self.imagegrid.create_window(
+                0, 0, window=gridsquare, anchor='nw'
+            )
+
+        # Recalculate the layout whenever the window is resized or content is loaded
+        self.imagegrid.bind('<Configure>', self.update_grid_layout)
+        #self.imagegrid.bind('<MouseWheel>', self.lazy_load_images)
+
+        # Initial layout
+        self.update_grid_layout()
+    
+    # Update the grid layout based on the window size
+    def update_grid_layout(self, event=None):
+        """ Dynamically adjusts the layout of the grid squares based on the window size. """
+        canvas_width = self.imagegrid.winfo_width()  # Get the current canvas width
+        thumbnail_size = self.thumbnailsize
+
+        # Calculate how many columns fit in the current window width
+        columns = max(1, canvas_width // thumbnail_size)
+
+        # Reposition the grid squares
+        for index, gridsquare in enumerate(self.gridsquarelist):
+            row = index // columns
+            col = index % columns
+
+            # Calculate the position of the grid square in the canvas
+            x = col * (thumbnail_size+space_to_image_x) + space_to_border #here to get space between the border or (th_sz+24) to get spacs between all pics.
+            y = row * (thumbnail_size + space_to_image_y) #how close the picture are
+
+            # Move the grid square to its new position
+            self.imagegrid.coords(gridsquare.canvas_window, x, y)
+
+        # Update the scrollable region to fit all the grid squares
+        num_rows = (len(self.gridsquarelist) + columns - 1) // columns
+        scroll_region_height = num_rows * thumbnail_size
+        self.imagegrid.configure(scrollregion=(0, 0, canvas_width, scroll_region_height))
 
     def checkdupename(self, imageobj):
         if imageobj.name.get() in self.fileManager.existingnames:
