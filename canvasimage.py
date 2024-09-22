@@ -38,6 +38,7 @@ class CanvasImage:
 		self.canvas.bind('<Button-4>',   self.__wheel)  # zoom for Linux, wheel scroll up
 		# Handle keystrokes in idle mode, because program slows down on a weak computers,
 		# when too many key stroke events in the same time
+		self.canvas.focus_set()
 		self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.__keystroke, event))
 		# Decide if this image huge or not
 		self.__huge = False  # huge or not
