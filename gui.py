@@ -20,11 +20,21 @@ from tkinter import filedialog as tkFileDialog
 import json
 import time
 last_scroll_time = None
+
+entry_bg = "grey" #tk.entry #label
+frame_bg = "#a9a9a9" #tk.frame
+image_bg = "grey" #for image #tk.image?
+buttoncolour = "grey" #buttons #tk.button and checkbutton
+
 textboxpos = "N"
 textlength = 33 #based on thumbnailsize in prefs.json
-space_to_border = 1 # 0,1,24
-space_to_image_x = 5 #4,5,6 4 = no border 5 = slight 6= wide
-space_to_image_y = 30 #
+space_to_border = 1 #0 = no border. (Adjust the distance of images from the leftui)
+space_to_image_x = 5 #4 = no border. (Adjust the distance to images top and bottom.)
+space_to_image_y = 29 #28 = no border. (Adjust the distance to images top and bottom.)
+#alternative to setting these manually, you can set 0 border, and adjust tk.frame relief and borderwidth.
+#Like so: frame = tk.Frame(parent, borderwidth=2, relief = 'ridge', width=self.thumbnailsize + 14, height=self.thumbnailsize+24)
+
+grid_bg = "#a9a9a9" #"#a9a9a9" #for the grid #tk.grid
 #Handles gui stuff, the main window essentially. Saves prefs.
 
 def luminance(hexin):
@@ -103,7 +113,7 @@ class GUIManager(tk.Tk):
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
         # Frame for the left hand side that holds the setup and also the destination buttons.
-        self.leftui = tk.Frame(self.toppane, width=364)
+        self.leftui = tk.Frame(self.toppane, width=363)
         #self.leftui.grid(row=0, column=0, sticky="NESW")
         self.leftui.grid_propagate(False) #to turn off auto scaling.
         self.leftui.columnconfigure(0, weight=1)
@@ -251,7 +261,7 @@ Thank you for using this program!""")
     
 
     def makegridsquare(self, parent, imageobj, setguidata):
-        frame = tk.Frame(parent, borderwidth=1, relief="ridge", width=self.thumbnailsize + 14, height=self.thumbnailsize+24)
+        frame = tk.Frame(parent, borderwidth=0, width=self.thumbnailsize + 14, height=self.thumbnailsize+24, padx = 0, pady = 0)
         frame.obj = imageobj #this is so checkbutton can see stuff.
         truncated_filename = self.truncate_text(frame, imageobj, textlength)
         truncated_name_var = tk.StringVar(frame, value=truncated_filename)
@@ -271,13 +281,14 @@ Thank you for using this program!""")
             else:
                 img = imageobj.guidata['img']
 
-            canvas = tk.Canvas(frame, width=self.thumbnailsize-1, 
-                               height=self.thumbnailsize) #-1 so its centered perfectly <3
+            canvas = tk.Canvas(frame, width=self.thumbnailsize, 
+                               height=self.thumbnailsize) #canvas adjustment maybe
             tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj))
 
             ToolTip(canvas,msg=tooltiptext.get,delay=1)
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
+            
             
             # Create a frame for the Checkbutton to control its height
             check_frame = tk.Frame(frame, height=24)  # Set a fixed height (e.g., 30 pixels)
@@ -289,6 +300,7 @@ Thank you for using this program!""")
             
             canvas.grid(column=0, row=0, sticky="NSEW")
             check.grid(column=0, row=1, sticky=textboxpos)
+            
             frame.rowconfigure(0, weight=4)
             frame.rowconfigure(1, weight=1)
             frame.config(height=self.thumbnailsize+12) #might not be needed? unclear what does
@@ -577,6 +589,7 @@ Thank you for using this program!""")
             self.displaygrid(self.fileManager.imagelist, ran)
         else:
             self.addpagebutton.configure(text="No More Images!",background="#DD3333")
+
     # Modify the displaygrid method to place items with create_window and save their window IDs
     def displaygrid(self, imagelist, range):
         for i in range:
