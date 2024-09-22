@@ -304,7 +304,7 @@ class SortImages:
             imagefile.thumbnail = thumbpath
         else:
             try:
-                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
+                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize+4)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
             except Exception as e:
