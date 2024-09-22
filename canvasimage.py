@@ -304,3 +304,23 @@ class CanvasImage:
 		#print(f"Rescaled")
 		self.redraw_figures()
 		self.__show_image()
+  
+	def center_image(self):
+		""" Center the image on the canvas """
+		canvas_width = self.canvas.winfo_width()
+		canvas_height = self.canvas.winfo_height()
+  
+		# Calculate scaled image dimensions
+		scaled_image_width = self.imwidth * self.imscale
+		scaled_image_height = self.imheight * self.imscale
+  
+		# Calculate offsets to center the image
+		x_offset = (canvas_width - scaled_image_width) // 2
+		y_offset = (canvas_height - scaled_image_height) // 2
+  
+		# Update the position of the image container
+		self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
+
+		#print(f"Centered")
+  
+		self.__show_image()
