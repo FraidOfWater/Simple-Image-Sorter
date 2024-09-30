@@ -1,3 +1,4 @@
 pyvips
 tkinter-tooltip
 pillow
+pyinstaller
