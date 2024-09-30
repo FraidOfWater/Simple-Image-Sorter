@@ -1,13 +1,28 @@
-# todo:
-# Filename dupicate scanning to prevent collisions
-# Check if filename already exists on move.
-# implement undo
+
 import os
-from sys import exit
+
+""" #comment when building
+import ctypes
+try: #presumably for building only?
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
+    dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
+    dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
+    dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
+except FileNotFoundError:
+    print("The file was not found.")
+    
+ctypes.CDLL(dll_path1)
+ctypes.CDLL(dll_path2)
+ctypes.CDLL(dll_path3)
+ctypes.CDLL(dll_path4)
+"""
+    
+
+import sys
 from shutil import move as shmove
 import tkinter as tk
 from tkinter.messagebox import askokcancel
-from math import floor
 import json
 import random
 from math import floor, sqrt
@@ -29,6 +44,7 @@ class Imagefile:
         self.path = path
         self.checked = tk.BooleanVar(value=False)
         self.moved = False
+        self.assigned = False
 
     def move(self) -> str:
         destpath = self.dest
@@ -70,21 +86,30 @@ class SortImages:
     thumbnailsize = 256
 
     def __init__(self) -> None:
-        self.hasunmoved=False
+        
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
         self.gui = GUIManager(self)
-        # note, just load the preferences then pass it to the guimanager for processing there
+        
+        # Determine the correct directory for prefs.json
+        if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+            script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
+            prefs_path = os.path.join(script_dir, "prefs.json")
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            prefs_path = os.path.join(script_dir, "prefs.json") 
+            
+        #script_dir = os.path.dirname(os.path.abspath(__file__))
+        #prefs_path = os.path.join(script_dir, "prefs.json")
+        self.threads = os.cpu_count()
         if(os.path.exists("data") and os.path.isdir("data")):
             pass
         else:
             os.mkdir("data")
         hotkeys = ""
-        # todo: replace this with some actual prefs manager that isn't a shittone of ifs
-        self.threads = 5
         try:
-            with open("prefs.json", "r") as prefsfile:
+            with open(prefs_path, "r") as prefsfile:
                 jdata = prefsfile.read()
                 jprefs = json.loads(jdata)
                 if 'hotkeys' in jprefs:
@@ -99,7 +124,7 @@ class SortImages:
                 if "hidemoved" in jprefs:
                     self.gui.hidemovedvar.set(jprefs["hidemoved"])
                 if "sortbydate" in jprefs:
-                   self.gui.sortbydatevar.set(jprefs["sortbydate"])
+                    self.gui.sortbydatevar.set(jprefs["sortbydate"])
                 self.exclude = jprefs["exclude"]
                 self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
                 self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
@@ -123,21 +148,31 @@ class SortImages:
         self.gui.mainloop()
 
     def moveall(self):
-        self.hasunmoved = False
         loglist = []
-        for x in self.imagelist:
-            out = x.move()
-            x.dest = ""
+        temp1 = list(self.gui.assigned_squarelist)
+        for x in temp1:
+            temp = []
+            image_obj = x.obj
+            temp.append(image_obj) #store imageobj
+            self.gui.assigned_squarelist.remove(x)
+            self.gui.moved_squarelist.append(x)
+            for obj in temp:
+                out = obj.move()
+                obj.dest = ""
+                obj.assigned = False
+                obj.moved = True
+                
             if isinstance(out, str):
                 loglist.append(out)
-
+        self.gui.refresh_rendered_list()
+        self.gui.refresh_destinations()
         try:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
         except:
             logging.error("Failed to write filelog.txt")
-        self.gui.hidemoved()
+        
 
     def walk(self, src):
         duplicates = self.duplicatenames
@@ -145,7 +180,7 @@ class SortImages:
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
-                ext = name.split(".")[len(name.split("."))-1].lower()
+                ext = os.path.splitext(name)[1][1:].lower()
                 if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
                     imgfile = Imagefile(name, os.path.join(root, name))
                     if name in existing:
@@ -158,7 +193,6 @@ class SortImages:
         #Default sorting is based on name. This sorts by date modified.
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
-
         return self.imagelist
             
                 
@@ -173,11 +207,28 @@ class SortImages:
             else:
                 existing.add(item.name)
         return duplicates
+    
+    #This tells the setDestination method the current list being viewed.
+    #Picture selection checkboxes aren't cleared when switching views
+    #Assigning will only happen to selected in the current view, or in the focused destination window.
+    def get_current_list(self):
+        if self.gui.show_unassigned.get():
+            unassign = self.gui.unassigned_squarelist
+            return unassign
+        
+        elif self.gui.show_assigned.get():
+            assign = self.gui.assigned_squarelist
+            return assign
+        
+        elif self.gui.show_moved.get():
+            moved = self.gui.moved_squarelist
+            return moved
         
     def setDestination(self, *args):
-        self.hasunmoved = True
-        marked = []
         dest = args[0]
+        marked = []
+        current_list = []
+        current_list = self.get_current_list()                
         try:
             wid = args[1].widget
         except AttributeError:
@@ -185,15 +236,57 @@ class SortImages:
         if isinstance(wid, tk.Entry):
             pass
         else:
-            for x in self.imagelist:
-                if x.checked.get():
-                    marked.append(x)
+            for x in current_list[:]:
+                image_obj = x.obj
+                if image_obj.checked.get():
+                    marked.append(image_obj)
             for obj in marked:
                 obj.setdest(dest)
                 obj.guidata["frame"]['background'] = dest['color']
                 obj.guidata["canvas"]['background'] = dest['color']
                 obj.checked.set(False)
-            self.gui.hideassignedsquare(marked)
+                
+                if self.gui.show_unassigned.get(): #Unassigned list to Assigned list, Assigned True
+                    obj.assigned = True
+                    for square in current_list:
+                        if square.obj.assigned and square not in self.gui.assigned_squarelist:
+                            self.gui.unassigned_squarelist.remove(square)
+                            self.gui.assigned_squarelist.append(square)
+                
+                #elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
+                #    print("test")
+                #    obj.assigned = True
+                #    for square in current_list:
+                #        if square.obj.assigned and square in self.gui.assigned_squarelist:
+                #            self.gui.assigned_squarelist.remove(square)
+                #            self.gui.assigned_squarelist.append(square)
+                            
+                elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
+                    obj.assigned = True
+                    obj.moved = True
+                    for square in current_list:
+                        if square.obj.assigned and square not in self.gui.assigned_squarelist:
+                            self.gui.moved_squarelist.remove(square)
+                            self.gui.assigned_squarelist.append(square)
+            
+                            
+
+        marked = []
+        for x in self.gui.active_dest_squarelist:
+            image_obj = x.obj
+            if image_obj.checked.get():
+                marked.append(image_obj)
+                
+        for obj in marked:
+            obj.setdest(dest)
+            obj.guidata["frame"]['background'] = dest['color']
+            obj.guidata["canvas"]['background'] = dest['color']
+            obj.checked.set(False)
+            
+
+        #Updates main and destination windows.
+        self.gui.refresh_rendered_list()
+        self.gui.refresh_destinations()
 
     def savesession(self,asksavelocation):
         if asksavelocation:
@@ -246,17 +339,15 @@ class SortImages:
             self.thumbnailsize=savedata['thumbnailsize']
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
-            sublist = self.imagelist[0:listmax]
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
             gui.guisetup(self.destinations)
-            gui.hidemoved()
-            gui.hideassignedsquare(sublist)
         else:
             logging.error("No Last Session!")
 
     def validate(self, gui):
         samepath = (gui.sdpEntry.get() == gui.ddpEntry.get())
-        if((os.path.isdir(gui.sdpEntry.get())) and (os.path.isdir(gui.ddpEntry.get())) and not samepath):
+        print(f"{gui.sdpEntry.get()}{gui.ddpEntry.get()}")
+        if ((os.path.isdir(gui.sdpEntry.get())) and (os.path.isdir(gui.ddpEntry.get())) and not samepath):
             self.sdp = gui.sdpEntry.get()
             self.ddp = gui.ddpEntry.get()
             logging.info("main class setup")
@@ -312,7 +403,8 @@ class SortImages:
 
     def generatethumbnails(self, images):
         logging.info("md5 hashing %s files", len(images))
-        with concurrent.ThreadPoolExecutor(max_workers=self.threads) as executor:
+        max_workers = self.threads
+        with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
 
@@ -320,6 +412,7 @@ class SortImages:
         if askokcancel("Confirm", "Really clear your selection?"):
             for x in self.imagelist:
                 x.checked.set(False)
+                
 
 
 # Run Program
