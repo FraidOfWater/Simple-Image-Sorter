@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Advanced zoom for images of various types from small to huge up to several GB
+import os
 import math
 import warnings
 import tkinter as tk
@@ -301,7 +302,7 @@ class CanvasImage:
 		self.imscale=scale
 
 		self.canvas.scale('all', self.canvas.winfo_width(), 0, scale, scale)  # rescale all objects
-		#print(f"Rescaled")
+		print(f"Rescaled")
 		self.redraw_figures()
 		self.__show_image()
   
@@ -321,6 +322,36 @@ class CanvasImage:
 		# Update the position of the image container
 		self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
 
-		#print(f"Centered")
+		print(f"Centered")
   
 		self.__show_image()
+			
+
+def main():
+	""" Main function to run the application """
+	root = tk.Tk() 				#Create main window
+	root.title("Image Viewer")	#Rename main window
+	root.rowconfigure(0, weight=1)		#Expanding to content
+	root.columnconfigure(0, weight=1)	#Expanding to content
+	geometry = "800x600" #dummy
+	root.geometry(geometry)  # Set initial window size (dummy, should be done from sortimages_multiview from prefs.json)
+	#Files
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	image_path = os.path.join(script_dir, "test2.gif")
+ 
+	#Window->Frame->Canvas->canvas.create_image
+	#Initialize Frame Add to main window grid
+
+	__imframe = CanvasImage(root, image_path, geometry)
+	__imframe.grid(sticky='nswe')
+
+	__imframe.rescale(min(root.winfo_width()/__imframe.imwidth, root.winfo_height()/__imframe.imheight))
+	__imframe.center_image()
+	#__imframe.auto_scroll()
+	#print(f"{root.winfo_width()}:{__imframe.imwidth}:{root.winfo_height()}:{__imframe.imheight}")
+
+ 
+	root.mainloop() #Start the main window loop
+
+if __name__ == "__main__":
+	main()
