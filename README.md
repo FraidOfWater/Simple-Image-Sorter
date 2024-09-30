@@ -3,7 +3,7 @@ Original author: Legendsmith
 
 Sorts images into destination files. Written in python.
 
-This is a WIP fork.
+This is a WIP fork. You can modify and use *my* portions of the code freely.
 - Ability to sort by modified date. (Toggleable)
 - Better destination window view
 - Better lists to show views (Show unassigned, Show assigned, Show moved)
