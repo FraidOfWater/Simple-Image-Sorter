@@ -1,30 +1,53 @@
 # Simple-Image-Sorter
-Sorts images into destination files. Written in python. I got really sick of organising my character art and meme folders by hand.
+Original author: Legendsmith
+
+Sorts images into destination files. Written in python.
+
+This is a WIP fork.
+- Ability to sort by modified date. (Toggleable)
+- Better destination window view
+- Better lists to show views (Show unassigned, Show assigned, Show moved)
+- Better imageviewer window. (Scales and centers seamlessly now) (Removed the scrollbars that made it weird)
+- Unlocked imageviewer panning (can pan/zoom without having the cursors on the image.)
+- Fixed the add page button being annoying. (Now less "validation!")
+- Text truncation so long names don't overflow the gridbox.
+- Code to run using only python
+- Some "performance" tweaks (though I don't know if my implementation overall is more or less costly)
+- Building puts all binaries inside _internal folder now, easy to build.
+- Prefs.json is automatically created now in the same directory as .exe if not already there.
+- Small UI tweaks and fixes
+- Changed some names to reflect more the function, but made more some that don't make sense!
+- WIP (dark mode?)
+- WIP (image renaming) (I hacked this together knowing nothing of python, soo some features were sadly lost in the process)
+- WIP (dynamic hotkey setting?)
 
 ## USE
-- Make sure all your files that you want to sort are in some kind of directory/folder already, they can be in folders within that folder, the program will scan them all
--- (There is an 'exclusions' function where you can list folder names to ignore.
-- Within a new or existing folder, create your new organisational structure, _for example:_
+1. Select source directory filled with images to sort (Will scan recursively -> scans all folders inside your folder)
+2. Select destination directory to sort to
+3. Press ready!
+
+-- Designate images by clicking on them, then assign them to destinations with the corresponding destination button. When you're ready, click "move all" to move everything at once.
+-- Within a new or existing folder, create your new organisational structure, _for example:_
+
 ```
-Pictures
+Pictures (Destination folder)
 ├ Family
 ├ Holiday
 ├ Wedding
 ├ My stuff
 ├ Misc
 ```
-- Select your new root folder ("Pictures", in the above example) as the ``'destination'``, and the folder that contains all the existing pictures you want to sort as the ``source``. Note these *cannot* be the same folder. They must be different structures.
-- Press Ready!
-Designate images by clicking on them, then assign them to destinations with the corresponding destination button. When you're ready, click "move all" to move everything at once.
 
-By default the program will only load a portion of the images in the folder for performance reasons. Press the "Add Files" button to make it load another chunk. You can configure how many it adds and loads at once in the program.  
-- Right-click on Destination Buttons to show which images are assigned to them. (Does not show those that have already been moved)  
-- Right-click on Thumbnails to show a zoomable full view. You can also **rename** images from this view.  
-- You can configure the size of thumbnails in prefs.json. Default is 256px.
+-- (There is an 'exclusions' function where you can list folder names to ignore.
+-- Source and destination folders must *cannot* be the same folder.
+
+
+For performance, only a set amount is loaded at first. Press the "Add Files" button to make it load another chunk. You can configure how many it adds and loads at once in the program.
+- Right-click on Destination Buttons to show which images are assigned to them.
+- Right-click on Thumbnails to show a zoomable full view. You can also **rename** (work in progress in this version) images from this view.
+- You can configure the size of thumbnails in prefs.json. Default is 256px. (work in progress in this version)
 - The program will save your session automatically on exit with the name of source and destination folders, this WILL overwrite.
 - You can save your session manually too with a filename, and load it later to resume where you last left off.
-- You can customize hotkeys by opening `prefs.json` and editing the hotkeys entry. There is no GUI editor or hotkeys at this time.
-
-There are hotkeys and buttons for the folders to sort into, which are essentially your categories, and you can customise hotkeys (though you'll need to restart the program). Hotkeys can be customized in prefs.json
+- You can customize hotkeys by opening `prefs.json` and editing the hotkeys entry. There is no GUI editor or hotkeys at this time. (work in progress in this version?)
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
