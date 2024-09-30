@@ -20,6 +20,7 @@ This is a WIP fork. You can modify and use *MY* portions of the code freely. Che
 - WIP (dark mode?)
 - WIP (image renaming) (I hacked this together knowing nothing of python, soo some features were sadly lost in the process)
 - WIP (dynamic hotkey setting?)
+- WIP (more colour to indicate somehing is moved or assigned.)
 
 ## USE
 1. Select source directory filled with images to sort (Will scan recursively -> scans all folders inside your folder)
