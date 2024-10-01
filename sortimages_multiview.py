@@ -1,7 +1,7 @@
 
 import os
 
-""" #comment when building
+#""" #comment when building
 import ctypes
 try: #presumably for building only?
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +16,7 @@ ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
-"""
+#"""
     
 
 import sys
@@ -172,6 +172,7 @@ class SortImages:
                     logfile.writelines(loglist)
         except:
             logging.error("Failed to write filelog.txt")
+        self.gui.update_grid_layout()
         
 
     def walk(self, src):
@@ -282,11 +283,13 @@ class SortImages:
             obj.guidata["frame"]['background'] = dest['color']
             obj.guidata["canvas"]['background'] = dest['color']
             obj.checked.set(False)
-            
+        
 
         #Updates main and destination windows.
+        
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
+        self.gui.update_grid_layout()
 
     def savesession(self,asksavelocation):
         if asksavelocation:
