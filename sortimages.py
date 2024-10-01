@@ -24,6 +24,17 @@ import math
 import warnings
 from tkinter import ttk
 from PIL import Image, ImageTk
+geometry = "800x600"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+prefs_path = os.path.join(script_dir, "prefs.json")
+try:
+	with open("prefs.json","r") as prefsfile:
+		jdata=prefsfile.read()
+		jprefs=json.loads(jdata)
+		if "geometry" in jprefs:
+			geometry = jprefs["geometry"]
+except Exception as e:
+    pass   
 
 class AutoScrollbar(ttk.Scrollbar):
 	""" A scrollbar that hides itself if it's not needed. Works only for grid geometry manager """
@@ -58,9 +69,10 @@ class CanvasImage:
 		vbar.grid(row=0, column=1, sticky='ns')
 		# Create canvas and bind it with scrollbars. Public for outer classes
 		self.canvas = tk.Canvas(self.__imframe, highlightthickness=0,
-								xscrollcommand=hbar.set, yscrollcommand=vbar.set)
+								xscrollcommand=hbar.set, yscrollcommand=vbar.set, width = 1000, height = 1000) #width=558 height=1048 # no limit for on the 0 0.
 		self.canvas.grid(row=0, column=0, sticky='nswe')
 		self.canvas.update()  # wait till canvas is created
+		self.canvas.configure(width=tkroot.winfo_width(), height=guiframe.winfo_height())
 		hbar.configure(command=self.__scroll_x)  # bind scrollbars to the canvas
 		vbar.configure(command=self.__scroll_y)
 		# Bind events to the Canvas
@@ -152,8 +164,8 @@ class CanvasImage:
 		""" Put CanvasImage widget on the parent widget """
 		self.__imframe.grid(**kw)  # place CanvasImage widget on the grid
 		self.__imframe.grid(sticky='nswe')  # make frame container sticky
-		self.__imframe.rowconfigure(0, weight=1)  # make canvas expandable
-		self.__imframe.columnconfigure(0, weight=1)
+		self.__imframe.rowconfigure(0, weight=0)  # make canvas expandable ####weight to 0 for no schock
+		self.__imframe.columnconfigure(0, weight=0)
 
 	def pack(self, **kw):
 		""" Exception: cannot use pack with this widget """
@@ -243,7 +255,7 @@ class CanvasImage:
 		""" Zoom with mouse wheel """
 		x = self.canvas.canvasx(event.x)  # get coordinates of the event on the canvas
 		y = self.canvas.canvasy(event.y)
-		if self.outside(x, y): return  # zoom only inside image area
+		#if self.outside(x, y): return  # zoom only inside image area
 		scale = 1.0
 		# Respond to Linux (event.num) or Windows (event.delta) wheel event
 		if event.num == 5 or event.delta == -120:  # scroll down, smaller
@@ -313,6 +325,27 @@ class CanvasImage:
 		self.canvas.scale('all', self.canvas.winfo_width(), 0, scale, scale)  # rescale all objects
 		self.redraw_figures()
 		self.__show_image()
+  
+	def center_image(self):
+		""" Center the image on the canvas """
+		canvas_width = self.canvas.winfo_width()
+		canvas_height = self.canvas.winfo_height()
+  
+		# Calculate scaled image dimensions
+		scaled_image_width = self.imwidth * self.imscale
+		scaled_image_height = self.imheight * self.imscale
+  
+		# Calculate offsets to center the image
+		#x_offset = (canvas_width - scaled_image_width) // 2 #x_offset = 0 for centering on y. both 0 for the corner
+		x_offset = 0
+		y_offset = (canvas_height - scaled_image_height) // 2
+  
+		# Update the position of the image container
+		self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
+
+		#print(f"Centered")
+  
+		self.__show_image()
 
 
 tkroot = tk.Tk()
@@ -320,8 +353,8 @@ toppane = tk.Frame(tkroot)
 style = ttk.Style()
 style.theme_use('classic')
 destinations = []
-tkroot.geometry(str(tkroot.winfo_screenwidth())+"x"+str(tkroot.winfo_screenheight()-120))
-tkroot.geometry("+0+60")
+
+tkroot.geometry(geometry)
 buttons = []
 imagelist= deque()
 imgiterator = 0
@@ -549,8 +582,9 @@ def displayimage():
 	imageframe = CanvasImage(toppane,imagelist[imgiterator]['path'])
 	# takes the smaller scale (since that will be the limiting factor) and rescales the image to that so it fits the frame.
 	if rescalemode.get():
-		print(rescalemode.get())
-		imageframe.rescale(min((toppane.winfo_width()-guiframe.winfo_width())/imageframe.imwidth,tkroot.winfo_height()/imageframe.imheight))
+		#print(rescalemode.get())
+		imageframe.rescale(min((tkroot.winfo_width()-guiframe.winfo_width())/imageframe.imwidth, tkroot.winfo_height()/imageframe.imheight)) #550
+		imageframe.center_image()
 	imageframe.grid(column=1,row=0,sticky="NSEW",rowspan=200)
 
 def folderselect(_type):
@@ -565,11 +599,15 @@ def folderselect(_type):
 def saveonexit():
 	global sdp
 	global ddp
-	if os.path.exists(sdpEntry.get()):
-		sdp = sdpEntry.get()
-	if os.path.exists(ddpEntry.get()):
-		ddp = ddpEntry.get()
-	save={"srcpath":sdp, "despath":ddp,"exclude":exclude, "hotkeys":hotkeys}
+	global geometry
+ 
+	save={
+     "srcpath":sdp, 
+     "despath":ddp,
+     "exclude":exclude, 
+     "hotkeys":hotkeys,
+     "geometry":geometry
+     }
 	try:
 		with open("prefs.json", "w+") as savef:
 			json.dump(save,savef)
@@ -605,6 +643,7 @@ excludebutton.grid(row=0,column=2)
 
 def excludesave(text,toplevelwin):
 	global exclude
+	global geometry
 	text= text.get('1.0', tk.END).splitlines()
 	exclude=[]
 	for line in text:
@@ -616,11 +655,13 @@ def excludesave(text,toplevelwin):
 	except:
 		pass
 #INITIATE
+script_dir = os.path.dirname(os.path.abspath(__file__))
+prefs_path = os.path.join(script_dir, "prefs.json")
 try:
 	with open("prefs.json","r") as prefsfile:
 		jdata=prefsfile.read()
 		jprefs=json.loads(jdata)
-		print(jprefs)
+		#print(jprefs)
 		sdpEntry.delete(0,len(sdpEntry.get()))
 		ddpEntry.delete(0,len(ddpEntry.get()))
 		sdpEntry.insert(0,jprefs["srcpath"])
@@ -628,8 +669,11 @@ try:
 		if 'hotkeys' in jprefs:
 			hotkeys = jprefs["hotkeys"]
 		exclude=jprefs["exclude"]
+		if "geometry" in jprefs:
+			geometry = jprefs["geometry"]
 	if hotkeys=="":
 		hotkeys="123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
+	
 except Exception:
 	pass
 #textout.config(state=tk.DISABLED)
@@ -644,6 +688,10 @@ except Exception:
 tkroot.winfo_toplevel().title("Simple Image Sorter v1.8.2")
 
 def closeprogram():
+	global sdp
+	global ddp
+	sdp = sdpEntry.get() if os.path.exists(sdpEntry.get()) else ""
+	ddp = ddpEntry.get() if os.path.exists(ddpEntry.get()) else ""
 	saveonexit()
 	tkroot.destroy()
 	exit(0)
@@ -661,9 +709,11 @@ def back():
 
 
 def buttonResizeOnWindowResize(b=""):
+	global geometry
 	if len(buttons)>0:
 		for x in buttons:
 			x.configure(wraplength=buttons[0].winfo_width()-1)
+	geometry = tkroot.geometry()
 tkroot.bind("<Configure>", buttonResizeOnWindowResize)
 buttonResizeOnWindowResize("a")
 tkroot.mainloop()
