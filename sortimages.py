@@ -327,6 +327,10 @@ class CanvasImage:
 		self.__show_image()
   
 	def center_image(self):
+		global center_mode_y
+		global center_mode_xy
+		global center_mode_x
+		global center_mode_none
 		""" Center the image on the canvas """
 		canvas_width = self.canvas.winfo_width()
 		canvas_height = self.canvas.winfo_height()
@@ -336,9 +340,21 @@ class CanvasImage:
 		scaled_image_height = self.imheight * self.imscale
   
 		# Calculate offsets to center the image
-		#x_offset = (canvas_width - scaled_image_width) // 2 #x_offset = 0 for centering on y. both 0 for the corner
-		x_offset = 0
-		y_offset = (canvas_height - scaled_image_height) // 2
+		print(f"x: {center_mode_x} and y: {center_mode_y} and xy: {center_mode_xy} corner {center_mode_none}")
+  
+		if center_mode_none: #Corner
+			x_offset = 0
+			y_offset = 0
+		elif center_mode_y: #Corner but center y
+			x_offset = 0
+			y_offset = (canvas_height - scaled_image_height) // 2
+		elif center_mode_xy: #True center
+			x_offset = (canvas_width - scaled_image_width) // 2
+			y_offset = (canvas_height - scaled_image_height) // 2
+		else: #Top center x wise
+			x_offset = (canvas_width - scaled_image_width) // 2
+			y_offset = 0
+		
   
 		# Update the position of the image container
 		self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
@@ -474,8 +490,55 @@ You can use arrow keys or click and drag to pan the image. Mouse Wheel Zooms the
 Thanks you for using this program!""")
 panel.grid(row=12,column=0,columnspan=200, sticky="NSEW")
 rescalemode=tk.BooleanVar(value=True)
-rescalecheckbox = ttk.Checkbutton(guiframe,text="Auto-Zoom Images",variable=rescalemode,onvalue=True,offvalue=False)
+rescalecheckbox = ttk.Checkbutton(guiframe,text="Auto-Zoom Images",variable=rescalemode, command=lambda: displayimage(),onvalue=True,offvalue=False)
 rescalecheckbox.grid(row=3,column=0,sticky="E")
+center_mode_y = False
+center_mode_x = False
+center_mode_xy = False
+center_mode_none = True
+def on_option_selected(self, *args):
+    global center_mode_y
+    global center_mode_xy
+    global center_mode_x
+    global center_mode_none
+    selected_option = variable.get()
+    if selected_option == "Corner":
+        print("1")
+        center_mode_x = False
+        center_mode_y = False
+        center_mode_xy = False
+        center_mode_none = True
+    elif selected_option == "y-Center":
+        print("2")
+        center_mode_x = False
+        center_mode_y = True
+        center_mode_xy = False
+        center_mode_none = False
+    elif selected_option == "xy-Center":
+        print("3")
+        center_mode_x = False
+        center_mode_y = False
+        center_mode_xy = True
+        center_mode_none = False
+    elif selected_option == "x-Center":
+        print("4")
+        center_mode_x = True
+        center_mode_y = False
+        center_mode_xy = False
+        center_mode_none = False
+    displayimage()
+
+#Initialization for view-button
+variable = tk.StringVar()
+variable.set("Corner")  # Set the default option
+variable.trace_add("write", on_option_selected)
+
+options = ["Corner", "y-Center", "xy-Center", "x-Center"]
+option_menu = tk.OptionMenu(guiframe, variable, *options)
+option_menu.grid(row = 3, column = 2, sticky = "NSEW")
+option_menu.config(width = 11)
+
+
 
 tkroot.columnconfigure(0, weight=1)
 buttonframe = tk.Frame(guiframe)
@@ -584,7 +647,10 @@ def displayimage():
 	if rescalemode.get():
 		#print(rescalemode.get())
 		imageframe.rescale(min((tkroot.winfo_width()-guiframe.winfo_width())/imageframe.imwidth, tkroot.winfo_height()/imageframe.imheight)) #550
-		imageframe.center_image()
+		
+	else:
+		pass
+	imageframe.center_image()
 	imageframe.grid(column=1,row=0,sticky="NSEW",rowspan=200)
 
 def folderselect(_type):
