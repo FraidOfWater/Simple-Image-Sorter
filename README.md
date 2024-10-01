@@ -24,6 +24,7 @@ This is a WIP fork. You can modify and use *MY* portions of the code freely. Che
 
   For singleview:
   - Centering button.
+  - Now remembers last location and size of the window.
 
 ## USE
 1. Select source directory filled with images to sort (Will scan recursively -> scans all folders inside your folder)
