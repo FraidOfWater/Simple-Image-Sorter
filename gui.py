@@ -1,5 +1,6 @@
 import os
 import time
+import sys
 import json
 import pyvips
 import tkinter as tk
@@ -58,6 +59,16 @@ def randomColor():
         color += hexletters[floor(random.random()*16)]
     return color
 
+if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+    script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
+    prefs_path = os.path.join(script_dir, "prefs.json")
+else:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    prefs_path = os.path.join(script_dir, "prefs.json") 
+            
+#script_dir = os.path.dirname(os.path.abspath(__file__))
+#prefs_path = os.path.join(script_dir, "prefs.json")
+
 def saveprefs(manager, gui):
     
     sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
@@ -81,7 +92,7 @@ def saveprefs(manager, gui):
         }
     
     try: #Try to save the preference to prefs.json
-        with open("prefs.json", "w+") as savef:
+        with open(prefs_path, "w+") as savef:
             json.dump(save, savef,indent=4, sort_keys=True)
             logging.debug(save)
     except Exception as e:
@@ -266,11 +277,18 @@ class GUIManager(tk.Tk):
     def closeprogram(self):
         if len(self.assigned_squarelist) != 0:
             if askokcancel("Designated but Un-Moved files, really quit?","You have destination designated, but unmoved files. (Simply cancel and Move All if you want)"):
+                try:
+                    self.saveimagewindowgeo()
+                except Exception as e:
+                    pass
                 saveprefs(self.fileManager, self)
                 self.destroy()
                 exit(0)
         else:
-
+            try:
+                self.saveimagewindowgeo()
+            except Exception as e:
+                pass
             saveprefs(self.fileManager, self)
             self.destroy()
             exit(0)
@@ -401,7 +419,9 @@ class GUIManager(tk.Tk):
         path = imageobj.path
         
         if hasattr(self, 'second_window'):
-            self.second_window.destroy()
+            if self.second_window.winfo_exists():  # Ensure the window still exists
+                self.saveimagewindowgeo()  # Save the window geometry
+            #self.second_window.destroy()  # Then destroy the window
         
         self.second_window = tk.Toplevel()
         second_window = self.second_window
