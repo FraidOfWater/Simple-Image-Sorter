@@ -9,6 +9,7 @@ This is a WIP fork. You can modify and use *MY* portions of the code freely. Che
 - Better lists to show views (Show unassigned, Show assigned, Show moved)
 - Better imageviewer window. (Scales and centers seamlessly now) (Removed the scrollbars that made it weird)
 - Unlocked imageviewer panning (can pan/zoom without having the cursors on the image.)
+- Less buttons
 - Fixed the add page button being annoying. (Now less "validation!")
 - Text truncation so long names don't overflow the gridbox.
 - Code to run using only python
