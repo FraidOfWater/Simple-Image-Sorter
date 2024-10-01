@@ -22,6 +22,9 @@ This is a WIP fork. You can modify and use *MY* portions of the code freely. Che
 - WIP (dynamic hotkey setting?)
 - WIP (more colour to indicate somehing is moved or assigned.)
 
+  For singleview:
+  - Centering button.
+
 ## USE
 1. Select source directory filled with images to sort (Will scan recursively -> scans all folders inside your folder)
 2. Select destination directory to sort to
