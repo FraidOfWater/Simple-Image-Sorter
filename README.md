@@ -4,24 +4,20 @@ Original author: Legendsmith
 Sorts images into destination files. Written in python.
 
 This is a WIP fork. You can modify and use *MY* portions of the code freely. Check wiki on how to build or run without building.
-- Ability to sort by modified date. (Toggleable)
-- Better destination window view
+- Ability to sort by date modified. (Toggleable)
+- Better view for destination views
 - Better lists to show views (Show unassigned, Show assigned, Show moved)
 - Better imageviewer window. (Scales and centers seamlessly now) (Removed the scrollbars that made it weird)
 - Unlocked imageviewer panning (can pan/zoom without having the cursors on the image.)
 - Less buttons
 - Fixed the add page button being annoying. (Now less "validation!")
 - Text truncation so long names don't overflow the gridbox.
-- Code to run using only python
-- Some "performance" tweaks (though I don't know if my implementation overall is more or less costly)
-- Building puts all binaries inside _internal folder now, easy to build.
-- Prefs.json is automatically created now in the same directory as .exe if not already there.
-- Small UI tweaks and fixes
-- Changed some names to reflect more the function, but made more some that don't make sense!
-- WIP (dark mode?)
-- WIP (image renaming) (I hacked this together knowing nothing of python, soo some features were sadly lost in the process)
-- WIP (dynamic hotkey setting?)
-- WIP (more colour to indicate somehing is moved or assigned.)
+- Can run without building.
+- Building now easier.
+- Preference saving now better.
+
+- Image renaming broken.
+
 
   For singleview:
   - Centering button.
