@@ -2,3 +2,19 @@ pyvips
 tkinter-tooltip
 pillow
 pyinstaller
+
+#You need the .dll's from the compiled version for building.
+
+#Install python and pip.
+
+#Install with pip:
+
+#pyvips tkinter-tooltip pillow pyinstaller
+
+#Needed Files (for building): libglib-2.0, libgobject-2.0, libvips-42 and libvips-cpp-42 must be copied from a working copy compiled by the og author or me. These should be located in the same directory as the build.bat file. (You can only find it from multiview version)
+
+#The singleview is much easier to build, you don't need the dll's for it.
+
+#Working build can be found in the dist folder. If you don't want the terminal window, you can switch it off when building by editin the .spec file. Just find "console=True" and set to False. (I haven't actually tested this XD)
+
+#If you edit any source files, you must delete build and dist folders, otherwise you will build from outdated files.
