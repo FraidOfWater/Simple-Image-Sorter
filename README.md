@@ -3,7 +3,7 @@ Original author: Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter
 
 Sorts images into destination files. Written in python.
 
-This is a WIP fork. You can modify and use *MY* portions of the code freely. Check wiki on how to build or run without building.
+This is a WIP fork. You can do whatever you want with "My" portions of the code. Most is Legendsmith's. Check wiki on how to build, or run without building.
 - Ability to sort by date modified. (Toggleable)
 - Better view for destination views
 - Better lists to show views (Show unassigned, Show assigned, Show moved)
