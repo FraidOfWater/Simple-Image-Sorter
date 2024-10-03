@@ -1,5 +1,5 @@
 # Simple-Image-Sorter
-Original author: Legendsmith
+Original author: Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter
 
 Sorts images into destination files. Written in python.
 
