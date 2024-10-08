@@ -1,4 +1,3 @@
-
 import os
 
 """ #comment when building
@@ -32,11 +31,12 @@ import logging
 from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
+import shutil
+from PIL import Image, ImageTk
 
 class Imagefile:
     path = ""
     dest = ""
-    dupename=False
 
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
@@ -45,7 +45,15 @@ class Imagefile:
         self.checked = tk.BooleanVar(value=False)
         self.moved = False
         self.assigned = False
-
+        self.isanimated = False
+        self.isvisible = False
+        self.frames = []
+        self.index = 0
+        self.delay = 29
+        self.truncated = self.name.get()[:10]
+        self.isanimating = False
+        self.isrunning = False
+                        
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
@@ -103,11 +111,8 @@ class SortImages:
         #script_dir = os.path.dirname(os.path.abspath(__file__))
         #prefs_path = os.path.join(script_dir, "prefs.json")
         self.threads = os.cpu_count()
-        if(os.path.exists("data") and os.path.isdir("data")):
-            pass
-        else:
-            os.mkdir("data")
         hotkeys = ""
+
         try:
             with open(prefs_path, "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -140,12 +145,42 @@ class SortImages:
                     self.gui.sessionpathvar.set(jprefs['lastsession'])
                 if "autosavesession" in jprefs:
                     self.autosave = jprefs['autosave']
+                if "toppane_width" in jprefs:
+                    self.gui.toppane_width = jprefs['toppane_width']
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
             logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
             logging.error(e)
+        self.gui.leftui.configure(width=self.gui.toppane_width)
+
+        self.data_dir = os.path.join(script_dir, "data")
+        if(os.path.exists(self.data_dir) and os.path.isdir(self.data_dir)):
+            temp = os.listdir(self.data_dir)
+            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', 'webp', '.bmp', '.tiff', '.pcx', 'psd'))]
+            if image_files:
+                first_image_path = os.path.join(self.data_dir, image_files[0])
+                try:
+                    image = pyvips.Image.new_from_file(first_image_path)
+                    width = image.width
+                    height = image.height
+                    
+                    if max(width, height) != self.thumbnailsize:
+                        shutil.rmtree(self.data_dir)
+                        print(f"Removing data folder, thumbnailsize changed")
+                        os.mkdir(self.data_dir)
+                        print(f"Re-created data folder.")
+                except Exception as e:
+                    print(f"Coudln't load first image in data folder")
+                    pass
+            else:
+                print(f"Data folder is empty")
+                pass
+            pass
+        else:
+            os.mkdir(self.data_dir)
         self.gui.mainloop()
+        
 
     def moveall(self):
         loglist = []
@@ -183,9 +218,10 @@ class SortImages:
                 ext = os.path.splitext(name)[1][1:].lower()
                 if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
                     imgfile = Imagefile(name, os.path.join(root, name))
+                    if ext == "gif" or ext == "webp":
+                        imgfile.isanimated = True
                     if name in existing:
                         duplicates.append(imgfile)
-                        imgfile.dupename=True
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
@@ -194,19 +230,6 @@ class SortImages:
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
         return self.imagelist
-            
-                
-    def checkdupefilenames(self, imagelist):
-        duplicates: list[Imagefile] = []
-        existing: set[str] = set()
-
-        for item in imagelist:
-            if item.name.get() in existing:
-                duplicates.append(item)
-                item.dupename=True
-            else:
-                existing.add(item.name)
-        return duplicates
     
     #This tells the setDestination method the current list being viewed.
     #Picture selection checkboxes aren't cleared when switching views
@@ -252,6 +275,10 @@ class SortImages:
                         if square.obj.assigned and square not in self.gui.assigned_squarelist:
                             self.gui.unassigned_squarelist.remove(square)
                             self.gui.assigned_squarelist.append(square)
+                            try:
+                                self.gui.running.remove(square)
+                            except Exception as e:
+                                pass
                 
                 #elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
                 #    print("test")
@@ -268,6 +295,10 @@ class SortImages:
                         if square.obj.assigned and square not in self.gui.assigned_squarelist:
                             self.gui.moved_squarelist.remove(square)
                             self.gui.assigned_squarelist.append(square)
+                            try:
+                                self.gui.running.remove(square)
+                            except Exception as e:
+                                pass
             
                             
 
@@ -282,9 +313,10 @@ class SortImages:
             obj.guidata["frame"]['background'] = dest['color']
             obj.guidata["canvas"]['background'] = dest['color']
             obj.checked.set(False)
-            
+        
 
         #Updates main and destination windows.
+        
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
 
@@ -308,7 +340,6 @@ class SortImages:
                     "checked": obj.checked.get(),
                     "moved": obj.moved,
                     "thumbnail": thumb,
-                    "dupename":obj.dupename
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
@@ -333,7 +364,6 @@ class SortImages:
                     n.checked.set(o['checked'])
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
-                    n.dupename=o['dupename']
                     n.dest=o['dest']
                     self.imagelist.append(n)
             self.thumbnailsize=savedata['thumbnailsize']
@@ -390,12 +420,12 @@ class SortImages:
         hash = md5()
         hash.update(im.write_to_memory())
         imagefile.setid(hash.hexdigest())
-        thumbpath = os.path.join("data", imagefile.id+os.extsep+"jpg")
+        thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
         if os.path.exists(thumbpath):
             imagefile.thumbnail = thumbpath
         else:
             try:
-                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize+4)
+                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
             except Exception as e:
