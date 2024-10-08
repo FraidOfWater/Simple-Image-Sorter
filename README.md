@@ -53,3 +53,5 @@ For performance, only a set amount is loaded at first. Press the "Add Files" but
 - You can customize hotkeys by opening `prefs.json` and editing the hotkeys entry. There is no GUI editor or hotkeys at this time. (work in progress in this version?)
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
+
+The journey is night complete. Just have to solve a few performance problems with the animation support.
