@@ -10,15 +10,54 @@ from autoscrollbar import AutoScrollbar
 
 class CanvasImage:
 	""" Display and zoom image """
-	def __init__(self, master, path, imagewindowgeometry):
+	def __init__(self, master, path, imagewindowgeometry, background_colour):
 		""" Initialize the ImageFrame """
-  
+		self.background_colour = background_colour
 		self.imscale = 1.0  # scale for the canvas image zoom, public for outer classes
 		self.__delta = 1.15  # zoom magnitude
 		self.__filter = Image.Resampling.LANCZOS  # could be: NEAREST, BILINEAR, BICUBIC and ANTIALIAS
 		self.__previous_state = 0  # previous state of the keyboard
 		self.path = path  # path to the image, should be public for outer classes
+
+				#relating to animation
+		self.is_animated = False
+		self.frames = []
+		self.original_frames = []
+		self.index = 0
+		self.delay = 100
   
+		#Check if gif or not
+		try:
+			self.image = Image.open(path)
+			print("Image open.")
+			
+			if self.image.format in ['GIF', 'WEBP']:
+				print(f"The image is in {self.image.format} format.")
+				self.is_animated = True
+			else:
+				print(f"The image is in {self.image.format} format, which is not WEBP or GIF.")
+		except FileNotFoundError:
+			print(f"File not found: {path}")
+			return
+		except Exception as e:
+			print(f"An error occurred: {e}")
+			return
+
+		#Load frames if animated
+		if self.is_animated:
+			try:
+				for i in range(self.image.n_frames):
+					self.image.seek(i)  # Move to the ith frame
+					frame = ImageTk.PhotoImage(self.image.copy())
+					self.frames.append(frame)
+					self.original_frames.append(self.image.copy())
+					self.delay = self.image.info.get('duration', 100)
+					print(f"{self.delay}")
+					print("Load frames.")
+			except Exception as e:
+				print(f"Error loading frames: {e}")
+				return
+   
   		# Create ImageFrame in master widget
 		self.__imframe = ttk.Frame(master)  # This is the ttk.frame for the main window.
   
@@ -33,9 +72,13 @@ class CanvasImage:
 		geometry_width, geometry_height = imagewindowgeometry.split('x',1)
   
 		# Set canvas dimensions to remove scrollbars
-		self.canvas = tk.Canvas(self.__imframe, highlightthickness=0, xscrollcommand=hbar.set, yscrollcommand=vbar.set, width=geometry_width, height = geometry_height)
+		self.canvas = tk.Canvas(self.__imframe, bg=self.background_colour, highlightthickness=0, xscrollcommand=hbar.set, yscrollcommand=vbar.set, width=geometry_width, height = geometry_height)
 		self.canvas.grid(row=0, column=0, sticky='nswe') #Bind to __imframe grid.(not set? set here?)
 		self.canvas.update()  # wait till canvas is created
+  
+		if self.frames:
+			self.image_id = self.canvas.create_image(0, 0, anchor='nw', image=self.frames[0])
+			self.canvas.after(self.delay, self.animate_image)
   
 		# bind scrollbars to the canvas
 		hbar.configure(command=self.__scroll_x)  
@@ -91,9 +134,14 @@ class CanvasImage:
 		# Put image into container rectangle and use it to set proper coordinates to the image
 		self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
 
-		self.__show_image()  # show image on the canvas
+		#self.__show_image()  # show image on the canvas
 		self.__image.close()
-
+  
+	def animate_image(self):
+		self.index = (self.index + 1) % len(self.frames)
+		self.canvas.itemconfig(self.image_id, image=self.frames[self.index])  # Update the image
+		self.canvas.after(self.delay, self.animate_image)
+		
 	def smaller(self):
 		""" Resize image proportionally and return smaller image """
 		w1, h1 = float(self.imwidth), float(self.imheight)
@@ -161,52 +209,57 @@ class CanvasImage:
 		self.__show_image()  # redraw the image
 
 	def __show_image(self):
-		""" Show image on the Canvas. Implements correct image zoom almost like in Google Maps """
-		box_image = self.canvas.coords(self.container)  # get image area
-		box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
-					  self.canvas.canvasy(0),
-					  self.canvas.canvasx(self.canvas.winfo_width()),
-					  self.canvas.canvasy(self.canvas.winfo_height()))
-		box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
-		# Get scroll region box
-		box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
-					  max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
-		# Horizontal part of the image is in the visible area
-		if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
-			box_scroll[0]  = box_img_int[0]
-			box_scroll[2]  = box_img_int[2]
-		# Vertical part of the image is in the visible area
-		if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
-			box_scroll[1]  = box_img_int[1]
-			box_scroll[3]  = box_img_int[3]
-		# Convert scroll region to tuple and to integer
-		self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
-		x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
-		y1 = max(box_canvas[1] - box_image[1], 0)
-		x2 = min(box_canvas[2], box_image[2]) - box_image[0]
-		y2 = min(box_canvas[3], box_image[3]) - box_image[1]
-		
-		if int(x2 - x1) > 0 and int(y2 - y1) > 0:  # show image if it in the visible area
-			if self.__huge and self.__curr_img < 0:  # show huge image
-				h = int((y2 - y1) / self.imscale)  # height of the tile band
-				self.__tile[1][3] = h  # set the tile band height
-				self.__tile[2] = self.__offset + self.imwidth * int(y1 / self.imscale) * 3
-				self.__image.close()
-				self.__image = Image.open(self.path)  # reopen / reset image
-				self.__image.size = (self.imwidth, h)  # set size of the tile band
-				self.__image.tile = [self.__tile]
-				image = self.__image.crop((int(x1 / self.imscale), 0, int(x2 / self.imscale), h))
-			else:  # show normal image
-				image = self.__pyramid[max(0, self.__curr_img)].crop(  # crop current img from pyramid
-									(int(x1 / self.__scale), int(y1 / self.__scale),
-									 int(x2 / self.__scale), int(y2 / self.__scale)))
+		if self.is_animated:
+			pass
+		else:
+			print(f"afuckup")
+			""" Show image on the Canvas. Implements correct image zoom almost like in Google Maps """
+			box_image = self.canvas.coords(self.container)  # get image area
+			box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
+						  self.canvas.canvasy(0),
+						  self.canvas.canvasx(self.canvas.winfo_width()),
+						  self.canvas.canvasy(self.canvas.winfo_height()))
+			box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
+			# Get scroll region box
+			box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
+						  max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
+			# Horizontal part of the image is in the visible area
+			if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
+				box_scroll[0]  = box_img_int[0]
+				box_scroll[2]  = box_img_int[2]
+			# Vertical part of the image is in the visible area
+			if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
+				box_scroll[1]  = box_img_int[1]
+				box_scroll[3]  = box_img_int[3]
+			# Convert scroll region to tuple and to integer
+			self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
+			x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
+			y1 = max(box_canvas[1] - box_image[1], 0)
+			x2 = min(box_canvas[2], box_image[2]) - box_image[0]
+			y2 = min(box_canvas[3], box_image[3]) - box_image[1]
 			
-			imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
-			imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-											   max(box_canvas[1], box_img_int[1]),
-											anchor='nw', image=imagetk)
-			self.canvas.lower(imageid)  # set image into background
-			self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
+			if int(x2 - x1) > 0 and int(y2 - y1) > 0:  # show image if it in the visible area
+				if self.__huge and self.__curr_img < 0:  # show huge image
+					h = int((y2 - y1) / self.imscale)  # height of the tile band
+					self.__tile[1][3] = h  # set the tile band height
+					self.__tile[2] = self.__offset + self.imwidth * int(y1 / self.imscale) * 3
+					self.__image.close()
+					self.__image = Image.open(self.path)  # reopen / reset image
+					self.__image.size = (self.imwidth, h)  # set size of the tile band
+					self.__image.tile = [self.__tile]
+					image = self.__image.crop((int(x1 / self.imscale), 0, int(x2 / self.imscale), h))
+				else:  # show normal image
+					image = self.__pyramid[max(0, self.__curr_img)].crop(  # crop current img from pyramid
+										(int(x1 / self.__scale), int(y1 / self.__scale),
+										 int(x2 / self.__scale), int(y2 / self.__scale)))
+				
+				imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
+				imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+												   max(box_canvas[1], box_img_int[1]),
+												anchor='nw', image=imagetk)
+				self.canvas.lower(imageid)  # set image into background
+				self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
+   
 
 	def __move_from(self, event):
 		""" Remember previous coordinates for scrolling with the mouse """
@@ -247,8 +300,8 @@ class CanvasImage:
    
 		# Take appropriate image from the pyramid
 		k = self.imscale * self.__ratio  # temporary coefficient
-		self.__curr_img = min((-1) * int(math.log(k, self.__reduction)), len(self.__pyramid) - 1)
-		self.__scale = k * math.pow(self.__reduction, max(0, self.__curr_img))
+		self.__curr_img = min((-1) * int(math.log(k, self.__reduction)), len(self.__pyramid) - 1) #presumably changes the displayed image. Yes. We need pyramid to change the iterated frames.
+		self.__scale = k * math.pow(self.__reduction, max(0, self.__curr_img)) #positioning dont change
   
 		self.canvas.scale('all', x, y, scale, scale)  # rescale all objects
   
@@ -303,8 +356,8 @@ class CanvasImage:
 
 		self.canvas.scale('all', self.canvas.winfo_width(), 0, scale, scale)  # rescale all objects
 		print(f"Rescaled")
-		self.redraw_figures()
-		self.__show_image()
+		#self.redraw_figures()
+		#self.__show_image()
   
 	def center_image(self):
 		""" Center the image on the canvas """
@@ -334,15 +387,15 @@ def main():
 	root.rowconfigure(0, weight=1)		#Expanding to content
 	root.columnconfigure(0, weight=1)	#Expanding to content
 	geometry = "800x600" #dummy
-	root.geometry(geometry)  # Set initial window size (dummy, should be done from sortimages_multiview from prefs.json)
+	root.geometry("800x600+2000+100")  # Set initial window size (dummy, should be done from sortimages_multiview from prefs.json)
 	#Files
 	script_dir = os.path.dirname(os.path.abspath(__file__))
-	image_path = os.path.join(script_dir, "test2.gif")
+	image_path = os.path.join(script_dir, "test3.png")
  
 	#Window->Frame->Canvas->canvas.create_image
 	#Initialize Frame Add to main window grid
 
-	__imframe = CanvasImage(root, image_path, geometry)
+	__imframe = CanvasImage(root, image_path, geometry, 'black')
 	__imframe.grid(sticky='nswe')
 
 	__imframe.rescale(min(root.winfo_width()/__imframe.imwidth, root.winfo_height()/__imframe.imheight))
