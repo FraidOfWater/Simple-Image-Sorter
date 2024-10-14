@@ -35,8 +35,6 @@ class CanvasImage:
         # Lists, attributes and other flags.
         self.frames = []            # Stores loaded frames for .Gif, .Webp
         self.original_frames = []   # Could be used for zooming logic
-        
-
         self.default_delay = tk.BooleanVar()    # Frame refresh time. Unique for each frame, or use singular, default reported by image?
         self.default_delay.set(True)            # Fallback to default_delay. This is linked to the button in GUI: default_delay_button.
         self.animated = False
@@ -53,8 +51,7 @@ class CanvasImage:
         """Opening the image"""
         try:
             self.image = Image.open(path) #redundant
-            #print("Image open.")
-                
+
         except FileNotFoundError:
             print(f"File not found: {path}")
             return
@@ -113,6 +110,7 @@ class CanvasImage:
             
             w, h = self.__pyramid[-1].size
             self.pyramid_thread = threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
+        
         self.canvas.update()  # Wait until the canvas has finished creating.
         self.canvas_height = self.canvas.winfo_height()
         self.canvas_width = self.canvas.winfo_width()
@@ -138,12 +136,12 @@ class CanvasImage:
             else:
                 new_height = int(new_width / aspect_ratio)
             
-            new_size = (new_width, new_height)
-            self.new_size = new_size
+            self.new_size = (new_width, new_height)
             if self.image.format in ['GIF', 'WEBP']:
                 self.animated = True
-                self.load_frames_thread = threading.Thread(target=lambda: self.load_frames(new_size), daemon=True).start()
+                self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
                 self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
+                #self.pyramid_thread = threading.Thread(target=self.lazy_gif_pyramid, daemon=True).start()
                
         except Exception as e:
             #print("Can't access imageinfo.")
@@ -175,7 +173,18 @@ class CanvasImage:
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.__keystroke, event))
         #self.center_image()
         self.__image.close()
-    
+    """
+    def lazy_gif_pyramid(self):
+        self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]    
+        w, h = self.__pyramid[-1].size
+        if self.closing:
+            self.pyramid = [Image.open(self.path)]
+            while w > 512 and h > 512 and self.closing:  # top pyramid image is around 512 pixels in size
+                w /= self.__reduction  # divide on reduction degree
+                h /= self.__reduction  # divide on reduction degree
+                self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter)) #logic here so we can avert resize function?
+            self.__pyramid = self.pyramid
+    """
     def lazy_pyramid(self,w,h):
         if self.closing:
             self.pyramid = [Image.open(self.path)]
@@ -190,82 +199,31 @@ class CanvasImage:
                     self.__pyramid = self.pyramid
                     self.__show_image() # For replacing second picture
             self.__pyramid = self.pyramid
-
-            
-
     
-    def load_frames(self, new_size): #bigframes will remember its frames when all loaded, or depending on testing
+    def load_frames(self): 
         try:
             #Happy ending, all frames found, return.
             if not self.closing:
                 self.close_window()
                 return
-                
-            if self.obj.bigframes and len(self.obj.bigframes) == self.obj.framecount:
-                print(f"All frames found: {len(self.obj.bigframes)}/{self.obj.framecount} Delay: {self.obj.delay}")
-                for i in self.obj.bigframes:
-                    if self.closing:
-                        self.frames.append(i)
-                        #print(f"{len(self.frames)}/{self.obj.framecount} Delay: {self.obj.delay}")
-                    else:
-                        self.close_window()
-                        return
-                self.lazy_loading = False
-                self.timeit()
-                return
-            
-            #Other case where it wasn't all the frames and we need to load a few more.
-            elif self.obj.bigframes:
-                """List the amount of frames found out of total"""
-                print(f"Partial frames found: {len(self.obj.bigframes)}/{self.obj.framecount}")
-                
-                """ Append cached frames to frames list"""
-                for i in self.obj.bigframes:
-                    if self.closing:
-                        self.frames.append(i)
-                        print(f"Partial frames appended to frames: {len(self.frames)}/{self.obj.framecount}")
-                        
-                    else:
-                        self.close_window()
-                        return
-                    print(f"All partial frames appended")
-
-                """ Load all missing frames"""
-                for i in range(len(self.frames), self.obj.framecount):
-                    if self.closing:
-                        frame = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
-                        self.frames.append(frame)
-                        #print(f"{len(self.frames)}/{self.obj.framecount} Delay: {self.obj.delay}")
-
-                        #frame = ImageTk.PhotoImage(self.image.copy()) # normal
-                        #self.original_frames.append(self.image.copy())
-
-                        #ab = self.obj.frametimes[i]
-                        #print(f"{ab}")
-                        #time.sleep(1)
-                    else:
-                        self.close_window()
-                        return
-                self.lazy_loading = False
-                self.timeit()
-                return
-            
-            elif not self.frames:
-                print(f"No existing frames found, starting to load {self.obj.framecount}:")
+            if not self.frames:
+                #print(f"No existing frames found, starting to load {self.obj.framecount}:")
                 #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
                 # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
                 #centering of frames and rescaling?
-                frame = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
+                frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+                #frame = ImageTk.PhotoImage(self.image.resize(self.new_size, Image.Resampling.LANCZOS))
                 canvas_width = self.canvas_width
                 canvas_height = self.canvas_height
                 frame_width = frame.width()
                 frame_height = frame.height()
                 x_offset = (canvas_width - frame_width) // 2
                 y_offset = (canvas_height - frame_height) // 2
-                #self.imageid = self.canvas.create_image(0, 0, anchor='nw', image=frame)
-                self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
+                
 
+                self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
                 self.frames.append(frame)
+                
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
                 print(f"{self.obj.truncated}")
@@ -277,33 +235,44 @@ class CanvasImage:
                 for i in range(1, self.obj.framecount):
                     if self.closing:
                         self.image.seek(i)
-                        frame = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
+                        print(f"{len(self.frames)}/{self.obj.framecount} Delay: {self.obj.frametimes[i]}")
+                        frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
                         self.frames.append(frame)
-
-                        """Print statement to print current frame created and delay."""
-                        #print(f"{len(self.frames)}/{self.obj.framecount} Delay: {self.obj.frametimes[i]}")
-
-                        #frame = ImageTk.PhotoImage(self.image.copy()) # normal #experimental see if faster
-                        #self.original_frames.append(self.image.copy()) # experimental
-
-                        """We don't need to load so fast""" #Experimental
-                        #ab = self.obj.frametimes[i]
-                        #print(f"{ab}")
-                        #time.sleep(1)
-
                     else: # If the closing flag is raised, we try to close and disregard loading.
                         self.close_window()
                         return
 
+                        
+
+                    
                 """All frames have been loaded"""
                 self.lazy_loading = False # Lower the lazy_loading flag so animate can take over.
                 self.timeit()             # Tell time it took to load all.
                 return
+            #resize
+            
+          #  else:
+               # w,h = self.new_size
+               # w *= self.imscale * self.__ratio
+                #h *= self.imscale * self.__ratio
+                #self.new_size = (int(w),int(h))
+               # threading.Thread(target=self.runa()).start()
                 
+                    
+                    #time.sleep(self.obj.delay)
+                #return
+            
         except Exception as e:
             if hasattr(self, 'frames'): # This wont let the error display if the window is being closed.
                 print(f"Error loading frames: {e}")
-        
+
+    #def runa(self):
+    #    for i in range(self.obj.framecount):
+    #                self.image.seek(i)
+    ##                zoomed_frame = self.image.resize(self.new_size, self.__filter)
+    #                frame = ImageTk.PhotoImage(zoomed_frame)
+    #                self.frames[i] = frame
+    #                self.canvas.itemconfig(self.imageid, image=frame)
     def close_window(self):
         try:
             #print("shut down wee woo")
@@ -332,35 +301,8 @@ class CanvasImage:
             print("Buffering") #Ideally 0 buffering, update somethng so frames is initialzied quaranteed.
             self.canvas.after(self.obj.delay, self.lazy_load)
             return
-        
-        elif self.first: #If there are frames initialize the first picture # this seems to be done by the loader so its faster?
-            #basically it depends on if the thread is slow to initialize or if the main thread... I think the main thread could be faster, although...
-            self.first = False
-            canvas_width = self.canvas_width
-            canvas_height = self.canvas_height
-            frame_width = self.frames[0].width()
-            frame_height = self.frames[0].height()
-            x_offset = (canvas_width - frame_width) // 2
-            y_offset = (canvas_height - frame_height) // 2
-            self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=self.frames[self.lazy_index])
 
-            lazy_load_time = time.time()
-            elapsed_time = lazy_load_time - self.creation_time
-            del lazy_load_time
-            print(f"First frame of gif: {elapsed_time}")
-            #imageid = self.imageid
-            #self.canvas.lower(imageid)
-
-            if self.default_delay.get():
-                #print(f"Lazy frame to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.delay}")
-                self.canvas.after(self.obj.delay, self.run_multiple)
-                return
-            else:
-                #print(f"Lazy frame to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
-                self.canvas.after(self.obj.frametimes[self.lazy_index], self.run_multiple)
-                return
-
-        elif self.lazy_index != self.obj.framecount: 
+        elif self.lazy_index != self.obj.framecount:
             #Checks if more frames than index is trying and less than max allowed.
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
 
@@ -381,11 +323,14 @@ class CanvasImage:
     def animate_image(self):
         self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
         if self.default_delay.get():
-            #print(f"Animate image to canvas {self.lazy_index+1}/{self.image.n_frames} with {self.obj.delay}")
+            #print(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.delay}")
             self.canvas.after(self.obj.delay, self.run_multiple2)
+
         else:
-            #print(f"Animate image to canvas {self.lazy_index+1}/{self.image.n_frames} with {self.obj.frametimes[self.lazy_index]}")
+            #print(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
             self.canvas.after(self.obj.frametimes[self.lazy_index], self.run_multiple2)
+
+        
 
     def run_multiple(self): #make it handle going over.
         self.lazy_index += 1
@@ -464,47 +409,6 @@ class CanvasImage:
     def __show_image(self):
         if self.image.format in ['GIF', 'WEBP']: #Let another function handle if animated
             if self.frames:
-                """
-                box_image = self.canvas.coords(self.container)  # get image area
-                box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
-                          self.canvas.canvasy(0),
-                          self.canvas.canvasx(self.canvas_width),
-                          self.canvas.canvasy(self.canvas_height))
-                box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
-                # Get scroll region box
-                box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
-                          max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
-                # Horizontal part of the image is in the visible area
-                if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
-                    box_scroll[0]  = box_img_int[0]
-                    box_scroll[2]  = box_img_int[2]
-                # Vertical part of the image is in the visible area
-                if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
-                    box_scroll[1]  = box_img_int[1]
-                    box_scroll[3]  = box_img_int[3]
-                # Convert scroll region to tuple and to integer
-                self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
-                x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
-                y1 = max(box_canvas[1] - box_image[1], 0)
-                x2 = min(box_canvas[2], box_image[2]) - box_image[0]
-                y2 = min(box_canvas[3], box_image[3]) - box_image[1]
-
-                #imagetk = ImageTk.PhotoImage(self.frames[0].resize((int(x2 - x1), int(y2 - y1)), self.__filter))
-                imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-                                                   max(box_canvas[1], box_img_int[1]),
-                                                anchor='nw', image=self.frames[0])
-
-                """
-                #canvas_width = self.canvas_width
-                #canvas_height = self.canvas_height
-                #frame_width = self.frames[0].width()
-                #frame_height = self.frames[0].height()
-                #x_offset = (canvas_width - frame_width) // 2
-                #y_offset = (canvas_height - frame_height) // 2
-                #self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=self.frames[0])
-                #imageid = self.imageid
-                #self.canvas.lower(imageid)  # set image into background
-                #self.canvas.after(self.obj.delay, self.animate_image)
                 pass
         else:
             
@@ -560,14 +464,14 @@ class CanvasImage:
 
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
-                        imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                    max(box_canvas[1], box_img_int[1]),
                                                 anchor='nw', image=imagetk)
                         end_time = time.time()
                         elapsed_time = end_time - self.creation_time
                         del end_time
                         print(f"F:  {elapsed_time}")
-                        self.canvas.lower(imageid)  # set image into background
+                        self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection    
                         
 
@@ -575,7 +479,7 @@ class CanvasImage:
                         self.replace_await = False
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
-                        imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                    max(box_canvas[1], box_img_int[1]),
                                                 anchor='nw', image=imagetk)
                         
@@ -584,7 +488,7 @@ class CanvasImage:
                         del self.creation_time
                         del end_time
                         print(f"R:  {elapsed_time}")
-                        self.canvas.lower(imageid)  # set image into background
+                        self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
 
                     else:
@@ -593,11 +497,11 @@ class CanvasImage:
                                          int(x2 / self.__scale), int(y2 / self.__scale)))
                                         
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
-                        imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                    max(box_canvas[1], box_img_int[1]),
                                                 anchor='nw', image=imagetk)
                         
-                        self.canvas.lower(imageid)  # set image into background
+                        self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
 
                 
@@ -626,7 +530,7 @@ class CanvasImage:
         """ Zoom with mouse wheel """
         x = self.canvas.canvasx(event.x)  # get coordinates of the event on the canvas
         y = self.canvas.canvasy(event.y)
-        print(f"{x}, {y} , {event.x}, {event.y}")
+        #print(f"{x}, {y} , {event.x}, {event.y}")
   
         #re-enable this if you dont want scrolling outside the image
         #if self.outside(x, y): return  # zoom only inside image area
@@ -646,13 +550,24 @@ class CanvasImage:
         k = self.imscale * self.__ratio  # temporary coefficient
         self.__curr_img = min((-1) * int(math.log(k, self.__reduction)), len(self.__pyramid) - 1) #presumably changes the displayed image. Yes. We need pyramid to change the iterated frames.
         self.__scale = k * math.pow(self.__reduction, max(0, self.__curr_img)) #positioning dont change
+        #if self.animated:
+            #self.rescale_gif_frames(scale)
         self.canvas.scale('all', x, y, scale, scale)  # rescale all objects
   
         # Redraw some figures before showing image on the screen
         self.redraw_figures()    # method for child classes
         self.__show_image()
         #print(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
+        #self.image = Image.open(self.path)
+        #self.load_frames()
+        #or just copy the logic for normal images, centerin rescaling, then just update the imageid, duh?
 
+    def rescale_gif_frames(self, scale):
+        if self.animated:
+            new_size = (int(self.new_size[0] * scale), int(self.new_size[1] * scale))
+            for i in range(self.obj.framecount):
+                self.frames[i] = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
+            self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])  # Update the current frame on canvas
     
     def manual_wheel(self):
         x = self.canvas_width #make these dissappear, just set once.
