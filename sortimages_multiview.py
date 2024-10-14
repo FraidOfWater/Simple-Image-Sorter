@@ -1,6 +1,7 @@
 import os
-
-""" #comment when building
+#Zooming for gif and webp? should we use pyramid?
+#add sleep to canvasimage loader
+#""" #comment when building
 import ctypes
 try: #presumably for building only?
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +16,7 @@ ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
-"""
+#"""
     
 
 import sys
@@ -33,11 +34,12 @@ import pyvips
 from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
+import threading
 
 class Imagefile:
     path = ""
     dest = ""
-
+    
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
         self.name.set(name)
@@ -47,12 +49,14 @@ class Imagefile:
         self.assigned = False
         self.isanimated = False
         self.isvisible = False
+        self.lazy_loading = True
         self.frames = []
-        self.index = 0
-        self.delay = 29
-        self.truncated = self.name.get()[:10]
-        self.isanimating = False
-        self.isrunning = False
+        self.bigframes = []
+        self.frametimes = []
+        self.framecount = 0
+        self.delay = 100 #Default delay
+        self.id = None
+        self.truncated = self.name.get()[:50]
                         
     def move(self) -> str:
         destpath = self.dest
@@ -88,11 +92,11 @@ class Imagefile:
 
 
 class SortImages:
+
     imagelist = []
     destinations = []
     exclude = []
     thumbnailsize = 256
-
     def __init__(self) -> None:
         
         self.existingnames = set()
@@ -147,6 +151,33 @@ class SortImages:
                     self.autosave = jprefs['autosave']
                 if "toppane_width" in jprefs:
                     self.gui.toppane_width = jprefs['toppane_width']
+                if "destinationwindow" in jprefs:
+                    self.gui.save = jprefs['destinationwindow']
+                if "background_colour" in jprefs:
+                    self.gui.background_colour = jprefs['background_colour']
+                if "button_colour" in jprefs:
+                    self.gui.button_colour = jprefs['button_colour']
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs['text_colour']
+                if "canvas_colour" in jprefs:
+                    self.gui.canvas_colour = jprefs['canvas_colour']
+                if "active_background_colour" in jprefs:
+                    self.gui.active_background_colour = jprefs['active_background_colour']
+                if "active_foreground_colour" in jprefs:
+                    self.gui.active_foreground_colour = jprefs['active_foreground_colour']
+                if "selectcolour" in jprefs:
+                    self.gui.selectcolour = jprefs['selectcolour']
+                if "divider_colour" in jprefs:
+                    self.gui.divider_colour = jprefs['divider_colour']
+                if "textlength" in jprefs:
+                    self.gui.textlength = jprefs['textlength']
+                if "gridsquare_padx" in jprefs:
+                    self.gui.gridsquare_padx = jprefs['gridsquare_padx']
+                if "gridsquare_pady" in jprefs:
+                    self.gui.gridsquare_pady = jprefs['gridsquare_pady']
+                if "checkbox_height" in jprefs:
+                    self.gui.checkbox_height = jprefs['checkbox_height']
+                    
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
@@ -162,6 +193,7 @@ class SortImages:
                 first_image_path = os.path.join(self.data_dir, image_files[0])
                 try:
                     image = pyvips.Image.new_from_file(first_image_path)
+                    
                     width = image.width
                     height = image.height
                     
@@ -208,16 +240,19 @@ class SortImages:
         except:
             logging.error("Failed to write filelog.txt")
         
-
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
+        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd"}
+        animation_support = {"gif", "webp"}
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
                 ext = os.path.splitext(name)[1][1:].lower()
-                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
-                    imgfile = Imagefile(name, os.path.join(root, name))
+                if ext in supported_formats:
+                    full_path = f"{root}/{name}"
+                    #full_path = os.path.join(root, name) #long time initializing
+                    imgfile = Imagefile(name, full_path)
                     if ext == "gif" or ext == "webp":
                         imgfile.isanimated = True
                     if name in existing:
@@ -256,8 +291,10 @@ class SortImages:
             wid = args[1].widget
         except AttributeError:
             wid = args[1]["widget"]
+
         if isinstance(wid, tk.Entry):
             pass
+        
         else:
             for x in current_list[:]:
                 image_obj = x.obj
@@ -277,6 +314,7 @@ class SortImages:
                             self.gui.assigned_squarelist.append(square)
                             try:
                                 self.gui.running.remove(square)
+                                self.gui.track_animated.remove(square)
                             except Exception as e:
                                 pass
                 
@@ -297,18 +335,19 @@ class SortImages:
                             self.gui.assigned_squarelist.append(square)
                             try:
                                 self.gui.running.remove(square)
+                                self.gui.track_animated.remove(square)
                             except Exception as e:
                                 pass
             
                             
 
         marked = []
-        for x in self.gui.active_dest_squarelist:
+        for x in self.gui.dest_squarelist:
             image_obj = x.obj
             if image_obj.checked.get():
                 marked.append(image_obj)
                 
-        for obj in marked:
+        for obj in marked: #make a border around assigned?
             obj.setdest(dest)
             obj.guidata["frame"]['background'] = dest['color']
             obj.guidata["canvas"]['background'] = dest['color']
@@ -340,12 +379,17 @@ class SortImages:
                     "checked": obj.checked.get(),
                     "moved": obj.moved,
                     "thumbnail": thumb,
+                    "isanimated": obj.isanimated, #flag that the image is indeed animated. This is normally done by walk, but for session it must be saved here.
+                    "frametimes":obj.frametimes,
+                    
+
+
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
-
+    
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
@@ -365,7 +409,11 @@ class SortImages:
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
                     n.dest=o['dest']
+                    n.isanimated=o['isanimated']
+                    n.frametimes=o['frametimes']
+
                     self.imagelist.append(n)
+            
             self.thumbnailsize=savedata['thumbnailsize']
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
@@ -375,33 +423,39 @@ class SortImages:
             logging.error("No Last Session!")
 
     def validate(self, gui):
-        samepath = (gui.sdpEntry.get() == gui.ddpEntry.get())
-        print(f"{gui.sdpEntry.get()}{gui.ddpEntry.get()}")
-        if ((os.path.isdir(gui.sdpEntry.get())) and (os.path.isdir(gui.ddpEntry.get())) and not samepath):
-            self.sdp = gui.sdpEntry.get()
-            self.ddp = gui.ddpEntry.get()
-            logging.info("main class setup")
+
+        self.sdp = gui.sdpEntry.get()
+        self.ddp = gui.ddpEntry.get()
+        samepath = (self.sdp == self.ddp)
+
+        print(f"{gui.sdpEntry.get()}, {self.ddp}")
+        if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
+
+            
+            #logging.info("main class setup")
             self.setup(self.ddp)
-            logging.info("GUI setup")
+            #logging.info("GUI setup")
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
-            logging.info("displaying first image grid")
+            #logging.info("displaying first image grid")
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
-            self.generatethumbnails(sublist)
+            self.generatethumbnails(sublist) #so the problem is that this doesnt check the existing stuff!
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
-        elif gui.sdpEntry.get() == gui.ddpEntry.get():
-            gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
-            gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
-            gui.sdpEntry.insert(0, "PATHS CANNOT BE SAME")
-            gui.ddpEntry.insert(0, "PATHS CANNOT BE SAME")
+
+        elif samepath:
+            self.sdp.delete(0, tk.END)
+            self.ddp.delete(0, tk.END)
+            self.sdp.insert(0, "PATHS CANNOT BE SAME")
+            self.ddp.insert(0, "PATHS CANNOT BE SAME")
         else:
-            gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
-            gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
-            gui.sdpEntry.insert(0, "ERROR INVALID PATH")
-            gui.ddpEntry.insert(0, "ERROR INVALID PATH")
+            self.sdp.delete(0, tk.END)
+            self.ddp.delete(0, tk.END)
+            self.sdp.insert(0, "ERROR INVALID PATH")
+            self.ddp.insert(0, "ERROR INVALID PATH")
+
 
     def setup(self, dest):
         # scan the destination
@@ -414,37 +468,71 @@ class SortImages:
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
                     self.destinationsraw.append(entry.path)
-
     def makethumb(self, imagefile):
-        im = pyvips.Image.new_from_file(imagefile.path,)
-        hash = md5()
-        hash.update(im.write_to_memory())
-        imagefile.setid(hash.hexdigest())
-        thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
-        if os.path.exists(thumbpath):
-            imagefile.thumbnail = thumbpath
-        else:
+            file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
+            file_stats = os.stat(imagefile.path)
+            file_size = file_stats.st_size
+            mod_time = file_stats.st_mtime
+            
+            id = file_name1 + " " +str(file_size)+ " " + str(mod_time)
+
+            hash = md5()
+            hash.update(id.encode('utf-8'))
+            imagefile.setid(hash.hexdigest())
+
+            thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
+            if(os.path.exists(thumbpath)):
+                imagefile.thumbnail = thumbpath
+                return            
+            
             try:
+                print("created a new file")
                 im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
             except Exception as e:
                 logging.error("Error:: %s", e)
-
+    
     def generatethumbnails(self, images):
-        logging.info("md5 hashing %s files", len(images))
-        max_workers = self.threads
+        #logging.info("md5 hashing %s files", len(images))
+        max_workers = max(1,self.threads)
         with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
-        logging.info("Finished making thumbnails")
+        #logging.info("Finished making thumbnails")
 
     def clear(self, *args):
         if askokcancel("Confirm", "Really clear your selection?"):
             for x in self.imagelist:
                 x.checked.set(False)
-                
+    
+    def load_frames(self, gridsquare):
+        try:            
+            with Image.open(gridsquare.obj.path) as img:
+                existing_frametimes = True
+                if gridsquare.obj.frametimes:
+                    existing_frametimes = False
+                with pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential') as image:
+                    image = pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential')
+                    gridsquare.obj.framecount = image.get('n-pages')
+                gridsquare.obj.delay = img.info.get('duration', 20)
 
-
+                #print(f"test {gridsquare.obj.framecount}")
+                for i in range(gridsquare.obj.framecount):
+                    img.seek(i)  # Move to the ith frame
+                    frame = img.copy()
+                    if existing_frametimes: # Retrieve frametimes
+                        #print(f"added")
+                        gridsquare.obj.frametimes.append(frame.info.get('duration',gridsquare.obj.delay))
+                    frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
+                    tk_image = ImageTk.PhotoImage(frame)
+                    gridsquare.obj.frames.append(tk_image)
+            
+                gridsquare.obj.lazy_loading = False
+                print(f"All frames loaded for: {gridsquare.obj.truncated}, Frames: {len(gridsquare.obj.frames)}, Default duration: {gridsquare.obj.delay}")
+        except Exception as e: #fallback to static.
+            print(f"Fallback to static, cant load frames: {e}")
+            gridsquare.obj.isanimated = False
+            
 # Run Program
 if __name__ == '__main__':
     format = "%(asctime)s: %(message)s"
