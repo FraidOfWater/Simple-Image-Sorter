@@ -21,22 +21,6 @@ from functools import partial
 import threading
 last_scroll_time = None
 
-button_colour = 'black'
-background_colour = 'black'
-text_colour = 'white'
-
-canvas_colour = 'black'
-active_background_colour = 'white'
-active_foreground_colour = 'black'
-divider_colour = 'grey'
-
-textboxpos = "N"
-textlength = 33 
-
-gridsquare_padx = 5
-gridsquare_pady = 5
-checkbox_height = 24
-
 def luminance(hexin):
     color = tuple(int(hexin.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
     r = color[0]
@@ -79,26 +63,64 @@ def saveprefs(manager, gui):
     ddp = gui.ddpEntry.get() if os.path.exists(gui.ddpEntry.get()) else ""
 
     save = {
+        
+        #paths
+        "exclude": manager.exclude,
         "srcpath": sdp, 
-        "despath": ddp, 
-        "exclude": manager.exclude, 
-        "hotkeys": gui.hotkeys, 
+        "despath": ddp,
+        "lastsession": gui.sessionpathvar.get(),
+
+        #User settings
         "thumbnailsize": gui.thumbnailsize, 
-        "threads": manager.threads, 
-        "hideonassign": gui.hideonassignvar.get(), 
-        "hidemoved": gui.hidemovedvar.get(), 
-        "sortbydate": gui.sortbydatevar.get(), 
+        "textlength":gui.textlength,
         "squaresperpage": gui.squaresperpage.get(), 
+        "sortbydate": gui.sortbydatevar.get(),
+        "default_delay": gui.default_delay.get(),
+
+        #Customization
+        "checkbox_height":gui.checkbox_height,
+        "gridsquare_padx":gui.gridsquare_padx,
+        "gridsquare_pady":gui.gridsquare_pady,
+
+        #Window positions
         "geometry": gui.winfo_geometry(),
         "imagewindowgeometry": gui.imagewindowgeometry, 
-        "lastsession": gui.sessionpathvar.get(),
+        "destinationwindow":gui.save,
+        "toppane_width":gui.leftui.winfo_width(),
+        
+        #Window colours
+        "canvas_colour":gui.canvas_colour,
+        "selectcolour":gui.selectcolour,
+
+        "background_colour":gui.background_colour,
+        "active_background_colour":gui.active_background_colour,
+        "active_foreground_colour":gui.active_foreground_colour,
+
+        "text_colour":gui.text_colour,
+        
+        "button_colour":gui.button_colour,
+        "divider_colour":gui.divider_colour,
+
+        "interactive_buttons":gui.interactive_buttons,
+
+        "text_box_thickness":gui.text_box_thickness,
+        "image_border_thickness":gui.image_border_thickness,
+        "text_box_selection_colour":gui.text_box_selection_colour,
+        "image_border_selection_colour":gui.image_border_selection_colour,
+        "text_box_colour":gui.text_box_colour,
+        "image_border_colour":gui.image_border_colour,
+        #Misc
+        "hotkeys": gui.hotkeys,
+        "threads": manager.threads, 
         "autosave":manager.autosave,
-        "toppane_width":gui.leftui.winfo_width()
+        "hideonassign": gui.hideonassignvar.get(), 
+        "hidemoved": gui.hidemovedvar.get(),
+
         }
     
     try: #Try to save the preference to prefs.json
         with open(prefs_path, "w+") as savef:
-            json.dump(save, savef,indent=4, sort_keys=True)
+            json.dump(save, savef,indent=4, sort_keys=False)
             logging.debug(save)
     except Exception as e:
         logging.warning(("Failed to save prefs:", e))
@@ -112,10 +134,99 @@ def saveprefs(manager, gui):
 
 class GUIManager(tk.Tk):
     thumbnailsize = 256
-
+    
     def __init__(self, fileManager) -> None:
         super().__init__()
+        self.button_colour = 'black'
+        self.background_colour = 'black'
+        self.text_colour = 'white'
+
+        self.canvas_colour = 'black'
+        self.active_background_colour = 'white'
+        self.active_foreground_colour = 'black'
+        self.selectcolour = 'grey'
+        self.divider_colour = 'grey'
+
+
+        self.textlength = 38 # Maximum length allowed for filenames. #must use square or canvas to limit text length.
+
+        self.gridsquare_padx = 2
+        self.gridsquare_pady = 2
+        self.checkbox_height = 24
+
+        self.interactive_buttons = False # Color change on hover
+
+        self.text_box_thickness = 2
+        self.image_border_thickness = 2
         
+        self.text_box_selection_colour  = "grey"
+        self.image_border_selection_colour  = "grey"
+
+        self.text_box_colour = "white"
+        self.image_border_colour = "white"
+        
+        self.default_delay = tk.BooleanVar()    # Whether to use global delay from a gif or a per frame delay.
+        self.default_delay.set(True)
+
+        if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+            script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
+            prefs_path = os.path.join(script_dir, "prefs.json")
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            prefs_path = os.path.join(script_dir, "prefs.json") 
+
+        #script_dir = os.path.dirname(os.path.abspath(__file__))
+        #prefs_path = os.path.join(script_dir, "prefs.json")
+        try:
+            with open(prefs_path, "r") as prefsfile:
+                jdata = prefsfile.read()
+                jprefs = json.loads(jdata)
+
+                if "background_colour" in jprefs:
+                    self.background_colour = jprefs['background_colour']
+                if "button_colour" in jprefs:
+                    self.button_colour = jprefs['button_colour']
+                if "text_colour" in jprefs:
+                    self.text_colour = jprefs['text_colour']
+                if "canvas_colour" in jprefs:
+                    self.canvas_colour = jprefs['canvas_colour']
+                if "active_background_colour" in jprefs:
+                    self.active_background_colour = jprefs['active_background_colour']
+                if "active_foreground_colour" in jprefs:
+                    self.active_foreground_colour = jprefs['active_foreground_colour']
+                if "selectcolour" in jprefs:
+                    self.selectcolour = jprefs['selectcolour']
+                if "divider_colour" in jprefs:
+                    self.divider_colour = jprefs['divider_colour']
+                if "textlength" in jprefs:
+                    self.textlength = jprefs['textlength']
+                if "gridsquare_padx" in jprefs:
+                    self.gridsquare_padx = jprefs['gridsquare_padx']
+                if "gridsquare_pady" in jprefs:
+                    self.gridsquare_pady = jprefs['gridsquare_pady']
+                if "checkbox_height" in jprefs:
+                    self.checkbox_height = jprefs['checkbox_height']
+                if "interactive_buttons" in jprefs:
+                    self.interactive_buttons = jprefs['interactive_buttons']
+                if "text_box_thickness" in jprefs:
+                    self.text_box_thickness = jprefs['text_box_thickness']
+                if "image_border_thickness" in jprefs:
+                    self.image_border_thickness = jprefs['image_border_thickness']
+                if "text_box_selection_colour" in jprefs:
+                    self.text_box_selection_colour = jprefs['text_box_selection_colour']
+                if "image_border_selection_colour" in jprefs:
+                    self.image_border_selection_colour = jprefs['image_border_selection_colour']
+                if "text_box_colour" in jprefs:
+                    self.text_box_colour = jprefs['text_box_colour']
+                if "image_border_colour" in jprefs:
+                    self.image_border_colour = jprefs['image_border_colour']
+                if "default_delay" in jprefs:
+                    self.default_delay.set(jprefs['default_delay'])
+
+        except Exception as e:
+            logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
+            logging.error(e)
+
         #Initialization for view-button values
         self.show_unassigned = tk.BooleanVar()
         self.show_unassigned.set(True)
@@ -137,15 +248,10 @@ class GUIManager(tk.Tk):
         self.assigned_squarelist = []
         self.moved_squarelist = []    
         self.running = []
+        self.track_animated = []
+        self.dest_squarelist = []
         
-        #Focused destination window information
-        self.active_dest_squarelist = []
-        self.dest_active_window = None
-        self.active_dest_path = None
-        self.active_dest_grid = None
-        
-        #Destination window list
-        self.destination_windows = []
+        self.save = 0
         
         #Old (Hideonassing on off implementation?) (That's just "show all" I guess.)
         self.hideonassignvar = tk.BooleanVar()
@@ -157,6 +263,7 @@ class GUIManager(tk.Tk):
         self.sessionpathvar = tk.StringVar()
         self.imagewindowgeometry = str(int(self.winfo_screenwidth(
         )*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60"
+        self.destination_window_geometry = 0
         
         # store the reference to the file manager class.
         self.fileManager = fileManager
@@ -173,7 +280,8 @@ class GUIManager(tk.Tk):
         self.toppane = Panedwindow(self, orient="horizontal")
         
         # Frame for the left hand side that holds the setup and also the destination buttons.
-        self.leftui = tk.Frame(self.toppane, width=self.toppane_width, bg=background_colour)
+        self.leftui = tk.Frame(self.toppane, width=self.toppane_width, bg=self.background_colour)
+        
         #self.leftui.grid(row=0, column=0, sticky="NESW")
         self.toppane.grid_propagate(False)
         self.leftui.grid_propagate(False) #to turn off auto scaling.
@@ -184,47 +292,50 @@ class GUIManager(tk.Tk):
         
         #Add a checkbox to check for sorting preference.
         style = ttk.Style()
-        style.configure("darkmode.TCheckbutton", background="black", foreground="white", highlightthickness = 0)
+        style.configure("darkmode.TCheckbutton", background=self.background_colour, foreground=self.text_colour, highlightthickness = 0)
         self.sortbydatecheck = ttk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar,style="darkmode.TCheckbutton")
         self.sortbydatecheck.grid(row=2, column=0, sticky="w", padx=25)
         
-        self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="Text",bg=background_colour,fg=text_colour)
+        self.panel = tk.Label(self.leftui, wraplength=300, justify="left", text="Text",bg=self.background_colour,fg=self.text_colour)
         self.panel.grid(row=3, column=0, columnspan=200,
                         rowspan=200, sticky="NSEW")
         self.columnconfigure(0, weight=1)
 
-        self.buttonframe = tk.Frame(master=self.leftui,bg=background_colour)
+        self.buttonframe = tk.Frame(master=self.leftui,bg=self.background_colour)
         self.buttonframe.grid(
             column=0, row=1, sticky="NSEW")
         self.buttonframe.columnconfigure(0, weight=1)
         
-        self.entryframe = tk.Frame(master=self.leftui,bg=background_colour)
+        
+        
+        self.entryframe = tk.Frame(master=self.leftui,bg=self.background_colour)
         self.entryframe.columnconfigure(1, weight=1)
         
+        
         self.sdpEntry = tk.Entry(
-            self.entryframe, takefocus=False, background=background_colour, foreground=text_colour)  # scandirpathEntry
+            self.entryframe, takefocus=False, background=self.background_colour, foreground=self.text_colour)  # scandirpathEntry
         self.ddpEntry = tk.Entry(
-            self.entryframe, takefocus=False, background=background_colour, foreground=text_colour)  # dest dir path entry
+            self.entryframe, takefocus=False, background=self.background_colour, foreground=self.text_colour)  # dest dir path entry
 
         self.sdplabel = tk.Button(
-            self.entryframe, text="Source Folder:", command=partial(self.filedialogselect, self.sdpEntry, "d"), bg=background_colour, fg=text_colour)
+            self.entryframe, text="Source Folder:", command=partial(self.filedialogselect, self.sdpEntry, "d"), bg=self.button_colour, fg=self.text_colour)
         
         self.ddplabel = tk.Button(
-            self.entryframe, text="Destination Folder:", command=partial(self.filedialogselect, self.ddpEntry, "d"),bg=background_colour, fg=text_colour)
+            self.entryframe, text="Destination Folder:", command=partial(self.filedialogselect, self.ddpEntry, "d"),bg=self.button_colour, fg=self.text_colour)
         
         self.activebutton = tk.Button(
-            self.entryframe, text="New Session", command=partial(fileManager.validate, self),bg=background_colour, fg=text_colour)
+            self.entryframe, text="New Session", command=partial(fileManager.validate, self),bg=self.button_colour, fg=self.text_colour)
         ToolTip(self.activebutton,delay=1,msg="Start a new Session with the entered source and destination")
         
         self.loadpathentry = tk.Entry(
-            self.entryframe, takefocus=False, textvariable=self.sessionpathvar, background=background_colour, foreground=text_colour)
+            self.entryframe, takefocus=False, textvariable=self.sessionpathvar, background=self.background_colour, foreground=self.text_colour)
         
         self.loadbutton = tk.Button(
-            self.entryframe, text="Load Session", command=self.fileManager.loadsession,bg=background_colour, fg=text_colour)
+            self.entryframe, text="Load Session", command=self.fileManager.loadsession,bg=self.button_colour, fg=self.text_colour)
         ToolTip(self.loadbutton,delay=1,msg="Load and start the selected session data.")
         
         self.loadfolderbutton = tk.Button(self.entryframe, text="Session Data:", command=partial(
-            self.filedialogselect, self.loadpathentry, "f"),bg=background_colour, fg=text_colour)
+            self.filedialogselect, self.loadpathentry, "f"),bg=self.button_colour, fg=self.text_colour)
         ToolTip(self.loadfolderbutton,delay=1,msg="Select a session json file to open.")
         
         self.loadfolderbutton.grid(row=3, column=0, sticky='ew')
@@ -245,50 +356,50 @@ class GUIManager(tk.Tk):
         
 
         self.excludebutton = tk.Button(
-            self.entryframe, text="Manage Exclusions", command=self.excludeshow,bg=background_colour, fg=text_colour)
+            self.entryframe, text="Manage Exclusions", command=self.excludeshow,bg=self.button_colour, fg=self.text_colour)
         
         self.excludebutton.grid(row=0, column=2)
+        if self.interactive_buttons:
+            #Option for making the buttons change color on hover
+            self.excludebutton.bind("<Enter>", self.exclude_on_enter)
+            self.excludebutton.bind("<Leave>", self.exclude_on_leave) 
+            self.activebutton.bind("<Enter>", self.active_on_enter)
+            self.activebutton.bind("<Leave>", self.active_on_leave)
 
-        """ #Option for making the buttons change color on hover
-        self.excludebutton.bind("<Enter>", self.exclude_on_enter)
-        self.excludebutton.bind("<Leave>", self.exclude_on_leave) 
-        self.activebutton.bind("<Enter>", self.active_on_enter)
-        self.activebutton.bind("<Leave>", self.active_on_leave)
+            self.sdpEntry.bind("<Enter>", self.sdpEntry_on_enter)
+            self.sdpEntry.bind("<Leave>", self.sdpEntry_on_leave)
 
-        self.sdpEntry.bind("<Enter>", self.sdpEntry_on_enter)
-        self.sdpEntry.bind("<Leave>", self.sdpEntry_on_leave)
+            self.ddpEntry.bind("<Enter>", self.ddpEntry_on_enter)
+            self.ddpEntry.bind("<Leave>", self.ddpEntry_on_leave)
 
-        self.ddpEntry.bind("<Enter>", self.ddpEntry_on_enter)
-        self.ddpEntry.bind("<Leave>", self.ddpEntry_on_leave)
+            self.sdplabel.bind("<Enter>", self.sdplabel_on_enter)
+            self.sdplabel.bind("<Leave>", self.sdplabel_on_leave)
 
-        self.sdplabel.bind("<Enter>", self.sdplabel_on_enter)
-        self.sdplabel.bind("<Leave>", self.sdplabel_on_leave)
+            self.ddplabel.bind("<Enter>", self.ddplabel_on_enter)
+            self.ddplabel.bind("<Leave>", self.ddplabel_on_leave)
 
-        self.ddplabel.bind("<Enter>", self.ddplabel_on_enter)
-        self.ddplabel.bind("<Leave>", self.ddplabel_on_leave)
+            self.loadbutton.bind("<Enter>", self.loadbutton_on_enter)
+            self.loadbutton.bind("<Leave>", self.loadbutton_on_leave)
 
-        self.loadbutton.bind("<Enter>", self.loadbutton_on_enter)
-        self.loadbutton.bind("<Leave>", self.loadbutton_on_leave)
+            self.loadfolderbutton.bind("<Enter>", self.loadfolderbutton_on_enter)
+            self.loadfolderbutton.bind("<Leave>", self.loadfolderbutton_on_leave)
 
-        self.loadfolderbutton.bind("<Enter>", self.loadfolderbutton_on_enter)
-        self.loadfolderbutton.bind("<Leave>", self.loadfolderbutton_on_leave)
+            self.loadpathentry.bind("<Enter>", self.loadpathentry_on_enter)
+            self.loadpathentry.bind("<Leave>", self.loadpathentry_on_leave)
 
-        self.loadpathentry.bind("<Enter>", self.loadpathentry_on_enter)
-        self.loadpathentry.bind("<Leave>", self.loadpathentry_on_leave)
-        """
+            
         
         # show the entry frame, sticky it to the west so it mostly stays put.
         self.entryframe.grid(row=0, column=0, sticky="ew")
         
         # Finish setup for the left hand bar.
         # Start the grid setup
-        imagegridframe = tk.Frame(self.toppane,bg=background_colour)
+        imagegridframe = tk.Frame(self.toppane,bg=self.background_colour)
         imagegridframe.grid(row=0, column=1, sticky="NSEW")
         
         # Replacing Text widget with Canvas for image grid
         self.imagegrid = tk.Text(
-            imagegridframe, wrap ='word', borderwidth=0, highlightthickness=0, state="disabled", background=background_colour)
-
+            imagegridframe, wrap ='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.background_colour)
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',command=lambda *args: throttled_yview(self.imagegrid, *args))
         vbar.grid(row=0, column=1, sticky='ns')
         
@@ -298,7 +409,7 @@ class GUIManager(tk.Tk):
         imagegridframe.columnconfigure(0, weight=1)
         style11 = ttk.Style()
 
-        style11.configure('Custom.TPanedwindow', background=divider_colour)  # No border for the PanedWindow
+        style11.configure('Custom.TPanedwindow', background=self.divider_colour)  # No border for the PanedWindow
         
         self.toppane.add(imagegridframe, weight=3)
         self.toppane.grid(row=0, column=0, sticky="NSEW")
@@ -313,50 +424,49 @@ class GUIManager(tk.Tk):
         self.winfo_toplevel().title("Simple Image Sorter: Multiview Edition v2.4")
         
     def exclude_on_enter(self, event):
-        self.excludebutton.config(bg=text_colour, fg=background_colour)
+        self.excludebutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def exclude_on_leave(self, event):
-        self.excludebutton.config(bg=background_colour, fg=text_colour)
+        self.excludebutton.config(bg=self.button_colour, fg=self.text_colour)
 
     def active_on_enter(self,event):
-        self.activebutton.config(bg=text_colour, fg=button_colour)
+        self.activebutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def active_on_leave(self,event):
-        self.activebutton.config(bg=button_colour, fg=text_colour)
+        self.activebutton.config(bg=self.button_colour, fg=self.text_colour)
 
     def sdpEntry_on_enter(self,event):
-        self.sdpEntry.config(bg=text_colour, fg=button_colour)
+        self.sdpEntry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def sdpEntry_on_leave(self,event):
-        self.sdpEntry.config(bg=button_colour, fg=text_colour)
+        self.sdpEntry.config(bg=self.background_colour, fg=self.text_colour)
 
     def ddpEntry_on_enter(self,event):
-        self.ddpEntry.config(bg=text_colour, fg=button_colour)
+        self.ddpEntry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def ddpEntry_on_leave(self,event):
-        self.ddpEntry.config(bg=button_colour, fg=text_colour)
+        self.ddpEntry.config(bg=self.background_colour, fg=self.text_colour)
 
     def sdplabel_on_enter(self,event):
-        self.sdplabel.config(bg=text_colour, fg=button_colour)
+        self.sdplabel.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def sdplabel_on_leave(self,event):
-        self.sdplabel.config(bg=button_colour, fg=text_colour)
+        self.sdplabel.config(bg=self.button_colour, fg=self.text_colour)
         
     def ddplabel_on_enter(self,event):
-        self.ddplabel.config(bg=text_colour, fg=button_colour)
+        self.ddplabel.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def ddplabel_on_leave(self, event):
-        self.ddplabel.config(bg=button_colour, fg=text_colour)
+        self.ddplabel.config(bg=self.button_colour, fg=self.text_colour)
 
     def loadbutton_on_enter(self,event):
-        self.loadbutton.config(bg=text_colour, fg=button_colour)
+        self.loadbutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def loadbutton_on_leave(self, event):
-        self.loadbutton.config(bg=button_colour, fg=text_colour)
+        self.loadbutton.config(bg=self.button_colour, fg=self.text_colour)
 
     def loadfolderbutton_on_enter(self,event):
-        self.loadfolderbutton.config(bg=text_colour, fg=button_colour)
+        self.loadfolderbutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def loadfolderbutton_on_leave(self, event):
-        self.loadfolderbutton.config(bg=button_colour, fg=text_colour)
+        self.loadfolderbutton.config(bg=self.button_colour, fg=self.text_colour)
 
     def loadpathentry_on_enter(self,event):
-        self.loadpathentry.config(bg=text_colour, fg=button_colour)
+        self.loadpathentry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
     def loadpathentry_on_leave(self, event):
-        self.loadpathentry.config(bg=button_colour, fg=text_colour)
-
+        self.loadpathentry.config(bg=self.background_colour, fg=self.text_colour)
         
 
     def isnumber(self, char):
@@ -365,18 +475,14 @@ class GUIManager(tk.Tk):
     def closeprogram(self):
         if len(self.assigned_squarelist) != 0:
             if askokcancel("Designated but Un-Moved files, really quit?","You have destination designated, but unmoved files. (Simply cancel and Move All if you want)"):
-                try:
-                    self.saveimagewindowgeo()
-                except Exception as e:
-                    pass
+                self.saveimagewindowgeo()
+                self.close_destination_window()
                 saveprefs(self.fileManager, self)
                 self.destroy()
                 exit(0)
         else:
-            try:
-                self.saveimagewindowgeo()
-            except Exception as e:
-                pass
+            self.saveimagewindowgeo()
+            self.close_destination_window()
             saveprefs(self.fileManager, self)
             self.destroy()
             exit(0)
@@ -410,11 +516,11 @@ class GUIManager(tk.Tk):
         text += "Leftclick to select this for assignment. Rightclick to open full view"
         return text
     
-
+    
     def makegridsquare(self, parent, imageobj, setguidata):
-        frame = tk.Frame(parent, borderwidth=0, bg=background_colour, highlightthickness = 1, highlightcolor='grey')
+        frame = tk.Frame(parent, borderwidth=0, bg=self.background_colour, highlightthickness = 0, highlightcolor='blue')
         frame.obj = imageobj
-        truncated_filename = self.truncate_text(frame, imageobj, textlength)
+        truncated_filename = self.truncate_text(frame, imageobj, self.textlength)
         truncated_name_var = tk.StringVar(frame, value=truncated_filename)
         frame.obj2 = truncated_name_var
         frame.grid_propagate(True)
@@ -424,19 +530,22 @@ class GUIManager(tk.Tk):
                 if not os.path.exists(imageobj.thumbnail):
                     self.fileManager.makethumb(imageobj)
                 try:
+                    img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
+                    
+                except:  # Pyvips fallback
                     buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
                     img = ImageTk.PhotoImage(Image.frombuffer(
                         "RGB", [buffer.width, buffer.height], buffer.write_to_memory()))
-                except:  # Pillow fallback
-                    img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
             else:
                 img = imageobj.guidata['img']
 
-            canvas = tk.Canvas(frame, width=self.thumbnailsize, 
-                               height=self.thumbnailsize,bg=background_colour, highlightthickness=1, highlightcolor='grey') #The gridbox color.
-            tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj))
+            self.canvas = tk.Canvas(frame, width=self.thumbnailsize, 
+                               height=self.thumbnailsize,bg=self.background_colour, highlightthickness=self.image_border_thickness, highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour) #The gridbox color.
+            #tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj)) #long time to initialize
+            tooltiptext = "long time to initialize"
 
-            ToolTip(canvas,msg=tooltiptext.get,delay=1)
+            canvas = self.canvas
+            #ToolTip(canvas,msg=tooltiptext.get,delay=1) #Long time to initialize
             frame.canvas = canvas
             
             canvas_image_id = canvas.create_image(
@@ -444,19 +553,23 @@ class GUIManager(tk.Tk):
             frame.canvas_image_id = canvas_image_id
             
             # Create a frame for the Checkbutton to control its height
-            check_frame = tk.Frame(frame, height=checkbox_height,bg=background_colour)  # Set a fixed height (e.g., 30 pixels)
+            check_frame = tk.Frame(frame, height=self.checkbox_height,bg=self.background_colour, highlightthickness=self.text_box_thickness, highlightcolor=self.text_box_selection_colour, highlightbackground=self.text_box_colour)  # Set a fixed height (e.g., 30 pixels)
             check_frame.grid(column=0, row=1, sticky="NSEW")  # Place the frame in the grid
-
-            check_frame.grid_propagate(True)
-            
-            check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, width=textlength,style="darkmode.TCheckbutton")
+            check_frame.grid_rowconfigure(0, weight=1)  # Ensure check_frame's internal row expands
+            check_frame.grid_columnconfigure(0, weight=1)  # Ensure check_frame's internal column expands
+            self.style5 = ttk.Style()
+            self.style5.configure("textc.TCheckbutton",
+                foreground=self.text_colour,  # Text color
+                background=self.background_colour)  # Background color
+            check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False,style="textc.TCheckbutton")
+            check.configure(style="textc.TCheckbutton")
             check.grid(sticky="NSEW")
-            
             canvas.grid(column=0, row=0, sticky="NSEW")
-            check.grid(column=0, row=1, sticky=textboxpos)
             
             frame.rowconfigure(0, weight=4)
             frame.rowconfigure(1, weight=1)
+            frame.columnconfigure(0, weight=1)
+
             frame.config(height=self.thumbnailsize+12) #might not be needed? unclear what does
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
@@ -486,6 +599,7 @@ class GUIManager(tk.Tk):
         return frame
     
     #max_length must be over 3+extension or negative indexes happen.
+    
     def truncate_text(self, frame, imageobj, max_length):
         """Truncate the text to fit within the specified max_length."""
         filename = imageobj.name.get()
@@ -496,55 +610,57 @@ class GUIManager(tk.Tk):
             return base_name
         return base_name + ext
     #Create secondary window for image viewing
-    def displayimage(self, imageobj, a):
+    
+    def displayimage(self, imageobj):
         path = imageobj.path
         # Check if the second window exists and is open
+        self.saveimagewindowgeo()
+
         if not hasattr(self, 'second_window') or not self.second_window or not self.second_window.winfo_exists():
             # Create a new window if it doesn't exist
             self.second_window = tk.Toplevel()
             second_window = self.second_window
-            second_window.configure(background=background_colour)
-            second_window.rowconfigure(1, weight=1)
+            second_window.configure(background=self.background_colour)
+            second_window.rowconfigure(0, weight=1)
             second_window.columnconfigure(0, weight=1)
             second_window.title("Image: " + path)
             second_window.geometry(self.imagewindowgeometry)
-            second_window.bind("<Button-3>", partial(bindhandler, second_window, "destroy"))
+            second_window.bind("<Button-3>", self.saveimagewindowgeo)
             second_window.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
-
-            renameframe = tk.Frame(second_window)
-            renameframe.grid(column=0, row=0, sticky="EW")
-            renameframe.columnconfigure(1, weight=1)
-
-            namelabel = tk.Label(renameframe, text="Image Name:")
-            namelabel.grid(column=0, row=0, sticky="W")
-
-            self.name_var = tk.StringVar(value=imageobj.name)
-            nameentry = tk.Entry(renameframe, textvariable=imageobj.name, takefocus=False)
-            nameentry.grid(row=0, column=1, sticky="EW")
-
             second_window.obj = imageobj
-
             # Create the initial Image_frame
-            self.Image_frame = CanvasImage(self.second_window, path, self.imagewindowgeometry.split('+')[0], canvas_colour)
-            self.Image_frame.grid(row=1, column=0, sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
-            self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, ((second_window.winfo_height()-renameframe.winfo_height()) / (self.Image_frame.imheight))))  # Scales to the window
+            self.Image_frame = CanvasImage(self.second_window, path, self.imagewindowgeometry.split('+')[0], self.canvas_colour, imageobj)
+            self.Image_frame.default_delay.set(self.default_delay.get())
+            self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
+            self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
             self.Image_frame.center_image()
-        else:
-            # If the window exists, remove the previous Image_frame from the grid
-            self.imagewindowgeometry = self.second_window.winfo_geometry()
-            self.Image_frame.destroy()
-            del self.Image_frame  # Remove the previous image frame from the grid
+        #else:
+            #self.Image_frame.closing = False
+
+            #if hasattr(self, 'Image_frame') and self.Image_frame:
+                # If the window exists, remove the previous Image_frame from the grid
+            #    self.imagewindowgeometry = self.second_window.winfo_geometry()
+            #    self.Image_frame.destroy()
+            #    del self.Image_frame  # Remove the previous image frame from the grid
 
             # Create a new Image_frame with the new image
-            self.Image_frame = CanvasImage(self.second_window, path, self.imagewindowgeometry.split('+')[0], canvas_colour)
-            self.Image_frame.grid(row=1, column=0, sticky='nswe')  # Add the new image frame to the grid
-            self.Image_frame.rescale(min(self.second_window.winfo_width() / self.Image_frame.imwidth, self.second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
-            self.Image_frame.center_image()
+            #self.Image_frame = CanvasImage(self.second_window, path, self.imagewindowgeometry.split('+')[0], self.canvas_colour)
+            #self.Image_frame.default_delay.set(self.default_delay.get())
+            #self.Image_frame.grid(sticky='nswe')  # Add the new image frame to the grid
+            #self.Image_frame.rescale(min(self.second_window.winfo_width() / self.Image_frame.imwidth, self.second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
+            #self.Image_frame.center_image()
 
 
-    def saveimagewindowgeo(self):
-        self.imagewindowgeometry = self.second_window.winfo_geometry()
-        self.second_window.destroy()
+    def saveimagewindowgeo(self, event=None):
+        try:
+            if hasattr(self, 'second_window') and self.second_window:
+                self.Image_frame.closing = False 
+                self.imagewindowgeometry = self.second_window.winfo_geometry()
+                self.second_window.destroy()
+                pass
+        except Exception as e:
+            print(f"testtest {e}")
+            pass
 
     def filedialogselect(self, target, type):
         if type == "d":
@@ -612,9 +728,9 @@ class GUIManager(tk.Tk):
                     random.seed(x['name'])
                     self.bind_all(hotkeys[itern], partial(
                         self.fileManager.setDestination, x))
-                    fg = text_colour
+                    fg = self.text_colour
                     if luminance(color) == 'light':
-                        fg = text_colour
+                        fg = self.text_colour
                     newbut.configure(bg=color, fg=fg)
                     original_colors[newbut] = {'bg': color, 'fg': fg}  # Store both colors
                     if(len(x['name']) >= 13):
@@ -624,10 +740,10 @@ class GUIManager(tk.Tk):
                         self.fileManager.setDestination, x, {"widget": None}), anchor="w")
                 itern += 1
             #elif x['name'] == "SKIP":
-            #    newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip, bg=button_colour, fg=text_colour)
+            #    newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip, bg=self.button_colour, fg=self.text_colour)
             #    tkroot.bind("<space>", skip)
             #elif x['name'] == "BACK":
-            #    newbut = tk.Button(buttonframe, text="BACK", command=back, bg=button_colour, fg=text_colour)
+            #    newbut = tk.Button(buttonframe, text="BACK", command=back, bg=self.button_colour, fg=self.text_colour)
 
             newbut.config(font=("Courier", 12), width=int(
                 (self.leftui.winfo_width()/12)/columns), height=1)
@@ -657,42 +773,44 @@ class GUIManager(tk.Tk):
         # For SKIP and BACK buttons, set hover to white
         for btn in self.buttons:
             if btn['text'] == "SKIP (Space)" or btn['text'] == "BACK":
-                btn.bind("<Enter>", lambda e, btn=btn: btn.config(bg=text_colour, fg=background_colour))
-                btn.bind("<Leave>", lambda e, btn=btn: btn.config(bg=button_colour, fg=text_colour))  # Reset to original colors
+                btn.bind("<Enter>", lambda e, btn=btn: btn.config(bg=self.text_colour, fg=self.background_colour))
+                btn.bind("<Leave>", lambda e, btn=btn: btn.config(bg=self.button_colour, fg=self.text_colour))  # Reset to original colors
             self.entryframe.grid_remove()
         # options frame
-        optionsframe = tk.Frame(self.leftui,bg=background_colour)
+        optionsframe = tk.Frame(self.leftui,bg=self.background_colour)
         
         valcmd = self.register(self.isnumber)
-        squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, takefocus=False, background=background_colour, foreground=text_colour)
+        self.squaresperpageentry = tk.Entry(
+            optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.background_colour, foreground=self.text_colour)
         if self.squaresperpage.get() < 0: #this wont let you save -1
             self.squaresperpage.set(1)
-        ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
+        ToolTip(self.squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         for n in range(0, itern):
-            squaresperpageentry.unbind(hotkeys[n])
-        addpagebut = tk.Button(
-            optionsframe, text="Load More Images", command=self.load_more_images,bg=background_colour, fg=text_colour)
-
-        ToolTip(addpagebut,msg="Add another batch of files from the source folders.", delay=1)
+            self.squaresperpageentry.unbind(hotkeys[n])
+        self.addpagebut = tk.Button(
+            optionsframe, text="Load More Images", command=self.load_more_images,bg=self.background_colour, fg=self.text_colour)
+        
+        ToolTip(self.addpagebut,msg="Add another batch of files from the source folders.", delay=1)
         
 
-        squaresperpageentry.grid(row=1, column=0, sticky="EW",)
+        self.squaresperpageentry.grid(row=1, column=0, sticky="EW",)
         
-        addpagebut.grid(row=1, column=1, sticky="EW")
-        self.addpagebutton = addpagebut
         
+        self.addpagebut.grid(row=1, column=1, sticky="EW")
+        self.addpagebutton = self.addpagebut
+        
+        self.default_delay_button = ttk.Checkbutton(optionsframe, text="Default delay", variable=self.default_delay, onvalue=True, offvalue=False, command=lambda: (self.default_delay_buttonpress(), self.default_delay) ,style="darkmode.TCheckbutton")
+        self.default_delay_button.grid(row=3, column=0, sticky="w", padx=25)        
         # save button
-        savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=background_colour, fg=text_colour)
-        ToolTip(savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
-        savebutton.grid(column=0,row=0,sticky="ew")
-        moveallbutton = tk.Button(
-            optionsframe, text="Move All", command=self.fileManager.moveall,bg=background_colour, fg=text_colour)
-        moveallbutton.grid(column=1, row=2, sticky="EW")
-        ToolTip(moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
-        clearallbutton = tk.Button(
-            optionsframe, text="Clear Selection", command=self.fileManager.clear,bg=background_colour, fg=text_colour)
-        
+        self.savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=self.button_colour, fg=self.text_colour)
+        ToolTip(self.savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
+        self.savebutton.grid(column=0,row=0,sticky="ew")
+        self.moveallbutton = tk.Button(
+            optionsframe, text="Move All", command=self.fileManager.moveall,bg=self.button_colour, fg=self.text_colour)
+        self.moveallbutton.grid(column=1, row=2, sticky="EW")
+        ToolTip(self.moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
+        self.clearallbutton = tk.Button(
+            optionsframe, text="Clear Selection", command=self.fileManager.clear,bg=self.button_colour, fg=self.text_colour)
         #optional dedicated buttons for views instead of 1 for all.
         #show_moved_button = tk.Button(optionsframe, text="Show moved", command=self.clicked_show_moved)
         #show_moved_button.grid(row=3, column=0, sticky="EW")
@@ -706,24 +824,67 @@ class GUIManager(tk.Tk):
         #show_unassigned_button.grid(row=2, column=1, sticky="EW")
         #ToolTip(show_moved_button, msg="Shows unassigned images", delay=1)
         style1 = ttk.Style()
-        style1.configure('darkmode.TMenubutton', background=background_colour, foreground=text_colour, highlightthickness = 0)
+        style1.configure('darkmode.TMenubutton', background=self.button_colour, foreground=self.text_colour, highlightthickness = 0)
         style1.map('darkmode.TMenubutton',
-           background=[('active', active_background_colour),  # Hover background
-                       ('pressed', active_background_colour)],  # Clicked background
-           foreground=[('active', active_foreground_colour),  # Hover text color
-                       ('pressed', active_foreground_colour)])  # Clicked text color
+           background=[('active', self.active_background_colour)],  # Clicked background
+           foreground=[('active', self.active_foreground_colour)])  # Clicked text color
         options = ["Show Unassigned", "Show Moved", "Show Assigned", "Show Unassigned", ] #"Show All"
         option_menu = ttk.OptionMenu(optionsframe, self.variable, *options)
         option_menu.grid(row = 2, column = 0, sticky = "EW")
         option_menu.config(style='darkmode.TMenubutton')
         
-        ToolTip(clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
-        clearallbutton.grid(row=0, column=1, sticky="EW")
+        ToolTip(self.clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
+        self.clearallbutton.grid(row=0, column=1, sticky="EW")
         optionsframe.columnconfigure(0, weight=1)
         optionsframe.columnconfigure(1, weight=3)  
         self.optionsframe = optionsframe
         self.optionsframe.grid(row=0, column=0, sticky="ew")
         self.bind_all("<Button-1>", self.setfocus)
+
+        self.clearallbutton.bind("<Enter>", self.clearallbutton_on_enter)
+        self.clearallbutton.bind("<Leave>", self.clearallbutton_on_leave)
+
+        self.addpagebut.bind("<Enter>", self.addpagebut_on_enter)
+        self.addpagebut.bind("<Leave>", self.addpagebut_on_leave)
+
+        self.moveallbutton.bind("<Enter>", self.moveallbutton_on_enter)
+        self.moveallbutton.bind("<Leave>", self.moveallbutton_on_leave)
+
+        self.savebutton.bind("<Enter>", self.savebutton_on_enter)
+        self.savebutton.bind("<Leave>", self.savebutton_on_leave)
+
+        self.squaresperpageentry.bind("<Enter>", self.squaresperpageentry_on_enter)
+        self.squaresperpageentry.bind("<Leave>", self.squaresperpageentry_on_leave)
+    def default_delay_buttonpress(self):
+        self.default_delay
+        if hasattr(self, 'Image_frame') and self.Image_frame:
+            self.Image_frame.default_delay.set(self.default_delay.get())
+
+    def squaresperpageentry_on_enter(self,event):
+        self.squaresperpageentry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
+    def squaresperpageentry_on_leave(self, event):
+        self.squaresperpageentry.config(bg=self.background_colour, fg=self.text_colour)
+
+    def clearallbutton_on_enter(self,event):
+        self.clearallbutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
+    def clearallbutton_on_leave(self, event):
+        self.clearallbutton.config(bg=self.button_colour, fg=self.text_colour)
+
+    def addpagebut_on_enter(self,event):
+        self.addpagebut.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
+    def addpagebut_on_leave(self, event):
+        self.addpagebut.config(bg=self.button_colour, fg=self.text_colour)
+    
+    def moveallbutton_on_enter(self,event):
+        self.moveallbutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
+    def moveallbutton_on_leave(self, event):
+        self.moveallbutton.config(bg=self.button_colour, fg=self.text_colour)
+    
+    def savebutton_on_enter(self,event):
+        self.savebutton.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
+    def savebutton_on_leave(self, event):
+        self.savebutton.config(bg=self.button_colour, fg=self.text_colour)
+
         
     def on_option_selected(self, *args):
         selected_option = self.variable.get()
@@ -738,88 +899,110 @@ class GUIManager(tk.Tk):
 
     def setfocus(self, event):
         event.widget.focus_set()
+        
+    def displaygrid(self, imagelist, number_to_load): #dummy to handle sortimages calls for now...
+        number_of_animated = 0
 
-    def displaygrid(self, imagelist, range1): #dummy to handle sortimages calls for now...
-        for i in range1:
+        for i in number_to_load:
+            
             gridsquare = self.makegridsquare(self.imagegrid, imagelist[i], True)
             self.gridsquarelist.append(gridsquare)
-            if gridsquare.obj.moved == False:
+
+            if not gridsquare.obj.moved:
                 self.unassigned_squarelist.append(gridsquare)
                 gridsquare.obj.isvisible = True
+                
             elif gridsquare.obj.moved:
                 self.moved_squarelist.append(gridsquare)
                 gridsquare.obj.isvisible = False
 
-            if gridsquare.obj.isanimated: #animated 
-                #temp
-                gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=gridsquare_padx, pady=gridsquare_pady)
+            if gridsquare.obj.isanimated: # If the imageobj is a gif or webp, we render the square
+                # Static fallback image in case we fail to animate.
+                gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
-                threading.Thread(target=self.load_frames, args=(gridsquare,)).start()
-                    
-            else: #normal static
-                gridsquare.obj.isanimated = False
-                gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=gridsquare_padx, pady=gridsquare_pady)
+                threading.Thread(target=self.fileManager.load_frames, args=(gridsquare,)).start() 
+                # Loads the first ones visible first. hmm. could make a personal thread for all of them
+                # We could limit the maximum concurrent thread numbeer too, and wait until creating more whne less than max.
+                number_of_animated += 1
+
+            else: # Normal image
+                gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
 
-        self.refresh_rendered_list() #attempts to render both img and gif.
-           
-    def load_frames(self, gridsquare):
-        #print(f"Creating frames. {gridsquare.obj.truncated}")
-        try:            
-            with Image.open(gridsquare.obj.path) as self.img:
-                
-                if self.img.format in ['GIF', 'WEBP']:
-                    gridsquare.obj.delay = self.img.info.get('duration', 50)
-                    for i in range(self.img.n_frames):
-                        self.img.seek(i)  # Move to the ith frame
-                        frame = self.img.copy()
-                        frame.thumbnail((256, 256), Image.Resampling.NEAREST)
-                        tk_image = ImageTk.PhotoImage(frame)
-                        
-                        gridsquare.obj.frames.append(tk_image)
-                        gridsquare.obj.isanimated = True
-                        gridsquare.canvas.itemconfig(gridsquare.canvas_image_id, image=gridsquare.obj.frames[gridsquare.obj.index])
-                    #print(f"All frames loaded. Name: {gridsquare.obj.truncated} Count: {len(gridsquare.obj.frames)} Duration: {gridsquare.obj.delay}")
-        except Exception as e: #fallback to static.
-            print(f"Fallback to static, cant load frames: {e}")
-            gridsquare.obj.isanimated = False
-            gridsquare.canvas.itemconfig(gridsquare.canvas_image_id, image=gridsquare.obj.frames[gridsquare.obj.index])
-
+            
+        print(f"Trying to animate {number_of_animated} pictures.")
         self.refresh_rendered_list()
         self.start_gifs()
-
-    #pre. Makes a list of all isanimated and isvisible pics and calls for their animation.
-    #would be good if they used the same clock but no.
+    
     def start_gifs(self):
-        #check displayed list for isanimated and animate them
+        # Check the visible list for pictures to animate.
         current_squares = set(self.displayedlist.keys())
-        for i in current_squares:
-            #print(f"{i.obj.isanimated} and { i.obj.isvisible}")
+        load_these = []
+        for i in current_squares: #could let in unanimated... because threading. check for frames?
             if i.obj.isanimated and i.obj.isvisible:
-                #print(f"{i in self.running}")
-                if i not in self.running:
-                    if len(i.obj.frames) > 0: #makes sure not trying to render before frames are ready.
-                        x = False
-                        self.animation_loop(i,x)
+                if i not in self.running: # not already displayed
+                    load_these.append(i)
+        for a in load_these:
+            lazy_index = 0
+            self.lazy_load(a, lazy_index)
+    
+    def lazy_load(self, i, lazy_index):
+        try:
+            if i.obj.frames and lazy_index != i.obj.framecount and i.obj.lazy_loading:
+                if len(i.obj.frames) > lazy_index:
+                    #print(f"Lazy frame to canvas {lazy_index}/{i.obj.framecount}")
+                    i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[lazy_index])
 
+                    if self.default_delay.get():
+                        #print(f"{i.obj.truncated}: {lazy_index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
+                        self.canvas.after(i.obj.delay, lambda: self.run_multiple(i, lazy_index)) #run again.
+                    else:
+                        #print(f"{i.obj.truncated}: {lazy_index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[lazy_index]}")
+                        self.canvas.after(i.obj.frametimes[lazy_index], lambda: self.run_multiple(i, lazy_index)) #or a.obj.delay
+
+                else: #wait for frame to load.
+                    print("Buffering")
+                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i, lazy_index))
+            else:
+                if not i.obj.lazy_loading and i.obj.frames: #if all loaded
+                    #print("Moving to animate_loop method")
+                    x = False
+                    self.animation_loop(i, x, lazy_index)
+                else: # 0 frames?
+                    #print("0 frames")
+                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i, lazy_index))
+        except Exception as e:
+            print(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
+
+    def run_multiple(self, i, lazy_index):
+        lazy_index += 1
+        self.lazy_load(i, lazy_index)
 
     #Post. animate a frame for each picture in the list and run this again.
-    def animation_loop(self, i,x): #frame by frame as to not freeze the main one XD
+    
+    def animation_loop(self, i,x, index): #frame by frame as to not freeze the main one XD
         #One time check
         if x == False:
             if i not in self.running:
                 self.running.append(i)
             else:
                 return
-
-        i.obj.index = (i.obj.index + 1) % len(i.obj.frames)
-        #print(f"Loop: {i.obj.truncated}, length: {i.obj.index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
-        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index]) #change the frame
+        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[index]) #change the frame
         if(i.obj.isvisible):
             x = True
-            i.canvas.after(i.obj.delay, lambda: self.animation_loop(i,x)) #run again.
+            if self.default_delay.get():
+                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
+                i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x,index)) #run again.
+            else:
+                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
+                i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple2(i,x,index)) #run again.
 
+    def run_multiple2(self, i, x, index):
+        index = (index + 1) % i.obj.framecount
+
+        self.animation_loop(i, x, index)
     #This renders the given squarelist.
+    
     def render_squarelist(self, squarelist):
         self.running = []
         current_squares = set(self.displayedlist.keys())
@@ -904,134 +1087,132 @@ class GUIManager(tk.Tk):
             self.show_moved.set(False)
             self.show_all.set(True)
             self.refresh_rendered_list()
-            """ 
-            
-    def set_active_window(self, dest_squarelist):
+                """ 
 
-        self.active_dest_squarelist = dest_squarelist
-
-        
     def showthisdest(self, dest, *args):
-        destwindow = tk.Toplevel()
-        dest_squarelist = []
-        dest_running = []
-
-
-        destwindow.geometry(str(int(self.winfo_screenwidth(
-        )*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60")
-        destwindow.winfo_toplevel().title(
-            "Files designated for" + dest['path'])
-        destgrid = tk.Text(destwindow, wrap='word', borderwidth=0,
-                           highlightthickness=0, state="disabled", background=background_colour)
-        destgrid.grid(row=0, column=0, sticky="NSEW")
-        destwindow.columnconfigure(0, weight=1)
-        destwindow.rowconfigure(0, weight=1)
-        vbar = tk.Scrollbar(destwindow, orient='vertical',
-                            command=destgrid.yview)
-        vbar.grid(row=0, column=1, sticky='ns')
-        self.destination_windows.append((destgrid, dest['path'], dest_squarelist, dest_running, destwindow))
-        destwindow.bind("<FocusIn>", lambda event: self.set_active_window(dest_squarelist))
-        destwindow.protocol("WM_DELETE_WINDOW", lambda: self.close_destination_window(destwindow, dest_running))
-        self.refresh_destinations()
-        self.set_active_window(dest_squarelist)
+        #If window open, do nothing
+        self.dest = dest['path']
+        if not hasattr(self, 'destwindow') or not self.destwindow or not self.destwindow.winfo_exists():
+            #Make new window
+            self.destwindow = tk.Toplevel()
+            destwindow = self.destwindow
+            #destwindow.configure(background=self.background_colour)
+            self.destwindow.columnconfigure(0, weight=1)
+            self.destwindow.rowconfigure(0, weight=1)     
+            self.destwindow.winfo_toplevel().title("Files designated for " + dest['path'])
+            self.destwindow.bind("<Button-3>", self.close_destination_window)
+            self.destwindow.protocol("WM_DELETE_WINDOW", self.close_destination_window)        
+            self.destwindow.geometry(str(int(self.winfo_screenwidth() * 0.80)) + "x" + str(self.winfo_screenheight() - 120) + "+365+60")
+            if self.save != 0:
+                try:
+                    self.destwindow.geometry(self.save)
+                except Exception as e:
+                    print(f"Couldn't load destwindow geometry")
+            self.destgrid = tk.Text(self.destwindow, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.background_colour)
+            destgrid = self.destgrid
+            self.destgrid.grid(row=0, column=0, sticky="NSEW")
+            #scrollbars
+            vbar = tk.Scrollbar(self.destwindow, orient='vertical', command=self.destgrid.yview)
+            vbar.grid(row=0, column=1, sticky='ns')
+            self.destgrid['yscrollcommand'] = vbar.set  # Link scrollbar to text widget
+        else:
+            pass
+            #del self.destgrid
         
-    def close_destination_window(self, destwindow, dest_running):
-        for window in self.destination_windows:
-            if window[4] == destwindow:
-                for i in dest_running:
-                    i.obj.isrunning = False
-                self.destination_windows.remove(window)
-                break
-        destwindow.destroy()
 
+        # Refresh the destinations and set the active window
+        self.refresh_destinations()
+
+    def close_destination_window(self, event=None):
+        try:
+            if hasattr(self, 'destwindow'):
+                self.save = self.destwindow.winfo_geometry()
+                self.destwindow.destroy()
+        except Exception as e:
+            #print(f"Destination window was not open: {e}")
+            pass
     
     def refresh_destinations(self):
-        if not self.destination_windows:
-            return  # Exit if there are no destination windows
-        for destination in self.destination_windows:
-            destgrid = destination[0]
-            dest_path = destination[1]
-            dest_squarelist = destination[2]
-                        
+        #so when view changes, squarelist is updated, the 
+        if hasattr(self, 'destgrid') and self.destgrid: #If a destination window is open
+            destgrid = self.destgrid
+            dest_path = self.dest            
+            
             combined_squarelist = self.assigned_squarelist + self.moved_squarelist
             filtered_images = [gridsquare.obj for gridsquare in combined_squarelist if hasattr(gridsquare.obj, 'dest') and gridsquare.obj.dest == dest_path]
-                        
-            # Add
+
+            # Add new images to the destination grid
             for img in filtered_images:
-                if not any(gridsquare.obj == img for gridsquare in dest_squarelist):
-                    new_frame = self.makegridsquare(destgrid, img, False)
-                    
+                if not any(gridsquare.obj == img for gridsquare in self.dest_squarelist):
+                    new_frame = self.makegridsquare(self.destgrid, img, False)
+
                     color = next((d['color'] for d in self.fileManager.destinations if d['path'] == img.dest), None)
                     if color:
                         new_frame['background'] = color
                         new_frame.children['!canvas']['background'] = color  # Assuming the canvas is the first child
-                    
-                    canvas_window_id = destgrid.window_create("insert", window=new_frame)
-                    new_frame.canvas_id = canvas_window_id
-                    dest_squarelist.append(new_frame)
-                    #new_frame.obj.isanimating = False #it is added to flag that animating should allow it
-                    print(f"Isrunning? {new_frame.obj.isrunning}")
-            
-                    
-                    
+                        #if luminance(color) == 'light':
+                        #    self.style5.configure("textc.TCheckbutton", foreground="black", background=color, selectcolor="grey")
+                        #else:
+                         #   self.style5.configure("textc.TCheckbutton", foreground="white", background=color, selectcolor="grey")
+                        
+                        
 
-            # Remove
-            to_remove = []  # Temporary list to track images to remove
-            for gridsquare in dest_squarelist:
+                    canvas_window_id = self.destgrid.window_create("insert", window=new_frame)
+                    new_frame.canvas_id = canvas_window_id
+                    self.dest_squarelist.append(new_frame)
+                    new_frame.obj.isvisible = True
+
+            # Remove images no longer present
+            to_remove = []
+            for gridsquare in self.dest_squarelist:
                 if gridsquare.obj not in filtered_images:
-                    # Hide the window associated with the image
                     try:
-                        destgrid.window_configure(gridsquare, window="")
+                        self.destgrid.window_configure(gridsquare, window="")
                     except Exception as e:
                         print(f"Error configuring window for image {gridsquare.obj}: {e}")
+                    to_remove.append(gridsquare)
 
-                    to_remove.append(gridsquare)  # Mark for removal
-
-            # Remove the images from the dest_squarelist
+            # Remove gridsquares from the list
             for gridsquare in to_remove:
-                dest_squarelist.remove(gridsquare)
-                gridsquare.obj.isrunning = False ## it is flagged that animating should not allow it
-                print(f"Isrunning after removal? {gridsquare.obj.isrunning}")
-                
-
-        self.start_gifs_indestinations() #when it is removed, it should call this and this should allow it.
-        #it this is called and stuff is still isvisible, it should reject it. so animatined
+                self.dest_squarelist.remove(gridsquare)
+                gridsquare.obj.isvisible = False
+            self.start_gifs_indestinations()
     
-    #pre. Makes a list of all isanimated and isvisible pics and calls for their animation.
     def start_gifs_indestinations(self):
-        for destination in self.destination_windows: #go through all instances and lists for them.
-            destgrid = destination[0]
-            dest_path = destination[1]
-            dest_squarelist = destination[2]
-            dest_running = destination[3]
-        
-            #check displayed list for isanimated and animate them
-            current_index = 0
-            index_length = 0
-            for i in dest_squarelist:
-                print(f"Will allow running? {i.obj.isrunning}")
-                #When is animating? It is animating when the loop runs once. should be set to false when closed.
-                if i.obj.isanimated: #if isanimating dont allow
-                    if i not in dest_running:
-                        index_length = len(i.obj.frames)
-                        if index_length > 0:
-                            current_index = i.obj.index
-                            x = False
-                            self.animation_loop_indestinations(i, current_index, index_length, x, dest_running)
-
-
-    #Post. animate a frame for each picture in the list and run this again.
-    def animation_loop_indestinations(self, i, current_index, index_length, x, dest_running): #frame by frame as to not freeze the main one XD
+        # Check if images in the current destination view are animated or not. 
+        current_index = 0
+        for i in self.dest_squarelist:
+            if i.obj.isanimated and i.obj.isvisible: # This prevents the same .gif or .webp having two or more loops at the same time, causing the index counting to double in speed.  
+                current_index = 0
+                x = False
+                self.animation_loop_indestinations(i, current_index, x)
+    
+    def animation_loop_indestinations(self, i, index, x):  # Frame by frame animation
         if x == False:
-            i.obj.isrunning = True
-            self.dest_running.append(i)
-            print(f"Ran? {i.obj.isrunning}")
-        current_index = (current_index + 1) % index_length
-        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[current_index]) #change the frame
-        if(i.obj.isrunning): #so visible will deny uppstream and this will die out soon.
+            if i not in self.track_animated:
+                self.track_animated.append(i)
+                #print(f"appended: {len(self.track_animated)} {self.track_animated}")
+            else:
+                #print("rejected")
+                return
+        #print(f"Loading frames: {index}/{i.obj.framecount} :Delay: {i.obj.delay}")
+        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[index])  # Change the frame
+        
+        if(i.obj.isvisible):
             x = True
-            i.canvas.after(i.obj.delay, lambda: self.animation_loop_indestinations(i, current_index, index_length,x, dest_running)) #run again.
-            
+            if self.default_delay.get():
+                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
+                i.canvas.after(i.obj.delay, lambda: self.run_multiple3(i,index,x)) #run again.
+            else:
+                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
+                i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple3(i,index,x)) #run again.
+    
+    def run_multiple3(self, i, index, x):
+        index = (index + 1) % i.obj.framecount
+        self.animation_loop_indestinations(i,index,x)
+
+
+    
     def load_more_images(self, *args):
         filelist = self.fileManager.imagelist
         if len(self.gridsquarelist) < len(filelist):
@@ -1039,6 +1220,7 @@ class GUIManager(tk.Tk):
                           self.squaresperpage.get(), len(filelist))
             ran = range(len(self.gridsquarelist), listmax)
             sublist = filelist[ran[0]:listmax]
+
             self.fileManager.generatethumbnails(sublist)
             self.displaygrid(self.fileManager.imagelist, ran)            
         else:
@@ -1050,7 +1232,7 @@ def throttled_yview(widget, *args):
 
     now = time.time()
 
-    if last_scroll_time is None or (now - last_scroll_time) > 0.00:  # 100ms throttle
+    if last_scroll_time is None or (now - last_scroll_time) > 0.01:  # 100ms throttle
         last_scroll_time = now
         widget.yview(*args)
 
@@ -1065,5 +1247,3 @@ def bindhandler(*args):
         widget.yview_scroll(-1*floor(args[2].delta/120), "units")
     elif command == "invoke":
         widget.invoke()
-    elif command == "destroy":
-        widget.destroy()
