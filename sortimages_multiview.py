@@ -1,6 +1,5 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
-#add sleep to canvasimage loader
 #""" #comment when building
 import ctypes
 try: #presumably for building only?
@@ -34,7 +33,6 @@ import pyvips
 from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
-import threading
 
 class Imagefile:
     path = ""
