@@ -611,7 +611,7 @@ class GUIManager(tk.Tk):
         return base_name + ext
     #Create secondary window for image viewing
     
-    def displayimage(self, imageobj):
+    def displayimage(self, imageobj, a):
         path = imageobj.path
         # Check if the second window exists and is open
         self.saveimagewindowgeo()
