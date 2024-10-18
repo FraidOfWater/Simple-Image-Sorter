@@ -314,87 +314,79 @@ class SortImages:
             pass
         
         else: #we could make marked list from check button adding it to the list or removing. ##OPTIMIZE
-            if current_list:
-                marked = [x for x in current_list if x.obj.checked.get()]
-
-                for x in marked:
-                    x.obj.setdest(dest)
-                    x.obj.guidata["frame"]['background'] = dest['color']
-                    x.obj.guidata["canvas"]['background'] = dest['color']
-                    x.obj.checked.set(False)
-
-                    #If we have the unassigned view, we want to move images from unassigned list to assigned list.
-                    if self.gui.show_unassigned.get(): #Unassigned list to Assigned list, Assigned True
-                        x.obj.assigned = True
-                        if x.obj.assigned and x not in self.gui.assigned_squarelist:
-                            self.gui.unassigned_squarelist.remove(x)
-                            self.gui.assigned_squarelist.append(x) 
-
-                            if x.obj.dest == dest['path']:
-                                #self.gui.filtered_images.append(x.obj)
-                                if hasattr(self.gui, 'destwindow'): # if we have new assigned.
-                                    if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
-                                        self.gui.filtered_images.append(x.obj)
-                                         #imageobject eventually
-                                        self.gui.queue.append(x)
-
-                            #self.gui.combined_squarelist.append(x)
-                            try:
-                                self.gui.running.remove(x)
-                                self.gui.track_animated.remove(x)
-                            except Exception as e:
-                                pass
-
-                    ##this is not enabled because we dont want placement to change here, it is too distracting.
-                    elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
-                        #self.gui.filtered_images = []
-                        #obj.assigned = True
-                        if hasattr(self.gui, 'destwindow'): # if we have the dest window open
-                            #self.gui.filtered_images.remove(x.obj)
+            
+            marked = [x for x in current_list if x.obj.checked.get()]
+            for x in marked:
+                x.obj.setdest(dest)
+                x.obj.guidata["frame"]['background'] = dest['color']
+                x.obj.guidata["canvas"]['background'] = dest['color']
+                x.obj.checked.set(False)
+                #If we have the unassigned view, we want to move images from unassigned list to assigned list.
+                if self.gui.show_unassigned.get(): #Unassigned list to Assigned list, Assigned True
+                    x.obj.assigned = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.unassigned_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x) 
+                        if x.obj.dest == dest['path']:
                             #self.gui.filtered_images.append(x.obj)
-                            if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
-                                try:
-                                    if x.obj not in self.gui.filtered_images:
-                                        self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
-                                        self.gui.queue.append(x)
-                                    else:
-                                        x.obj.checked.set(True)
-                                        #self.gui.destgrid_updateslist.append(x) # x in here?
-                                        x.obj.destchecked.set(True)                                    
-
-                                        #self.gui.filtered_images.remove(x.obj)
-                                        #self.gui.filtered_images.append(x.obj)
-
-                                except Exception as e:
-                                    print(f"first {e}")
-                            else:
-                                try:
-                                    self.gui.filtered_images.remove(x.obj)
-                                except Exception as e:
-                                    print(f"second {e}")
-                                    pass
-                    #If we have the moved view, we want to move images from moved list to assigned list.
-                    elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
-                        x.obj.assigned = True
-                        x.obj.moved = True
-                        if x.obj.assigned and x not in self.gui.assigned_squarelist:
-                            self.gui.moved_squarelist.remove(x)
-                            self.gui.assigned_squarelist.append(x)
-                            if x.obj.dest == dest['path']:
-                                #self.gui.filtered_images.append(x.obj)
-                                if hasattr(self.gui, 'destwindow'): # if we have new assigned.
-                                    if self.gui.dest == dest['path']:
-                                        self.gui.filtered_images.append(x.obj)
-                                        self.gui.queue.append(x)
-                            #self.gui.combined_squarelist.remove(square)
-                            #self.gui.combined_squarelist.append(square)
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
+                                    self.gui.filtered_images.append(x.obj)
+                                     #imageobject eventually
+                                    self.gui.queue.append(x)
+                        #self.gui.combined_squarelist.append(x)
+                        try:
+                            self.gui.running.remove(x)
+                            self.gui.track_animated.remove(x)
+                        except Exception as e:
+                            pass
+                ##this is not enabled because we dont want placement to change here, it is too distracting.
+                elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
+                    #self.gui.filtered_images = []
+                    #obj.assigned = True
+                    if hasattr(self.gui, 'destwindow'): # if we have the dest window open
+                        #self.gui.filtered_images.remove(x.obj)
+                        #self.gui.filtered_images.append(x.obj)
+                        if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
                             try:
-                                self.gui.running.remove(x)
-                                self.gui.track_animated.remove(x)
+                                if x.obj not in self.gui.filtered_images:
+                                    self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
+                                    self.gui.queue.append(x)
+                                else:
+                                    x.obj.checked.set(True)
+                                    #self.gui.destgrid_updateslist.append(x) # x in here?
+                                    x.obj.destchecked.set(True)                                    
+                                    #self.gui.filtered_images.remove(x.obj)
+                                    #self.gui.filtered_images.append(x.obj)
                             except Exception as e:
+                                print(f"first {e}")
+                        else:
+                            try:
+                                self.gui.filtered_images.remove(x.obj)
+                            except Exception as e:
+                                print(f"second {e}")
                                 pass
-                            
-
+                #If we have the moved view, we want to move images from moved list to assigned list.
+                elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
+                    x.obj.assigned = True
+                    x.obj.moved = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.moved_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x)
+                        if x.obj.dest == dest['path']:
+                            #self.gui.filtered_images.append(x.obj)
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']:
+                                    self.gui.filtered_images.append(x.obj)
+                                    self.gui.queue.append(x)
+                        #self.gui.combined_squarelist.remove(square)
+                        #self.gui.combined_squarelist.append(square)
+                        try:
+                            self.gui.running.remove(x)
+                            self.gui.track_animated.remove(x)
+                        except Exception as e:
+                            pass
+                        
         #checks for click in destination windows, if seen, changes their colour.
         marked = []
         ##--could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
