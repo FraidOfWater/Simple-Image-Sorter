@@ -151,7 +151,7 @@ class GUIManager(tk.Tk):
         self.divider_colour = 'grey'
 
 
-        self.textlength = 38 # Maximum length allowed for filenames. #must use square or canvas to limit text length.
+        self.textlength = 34 # Maximum length allowed for filenames. #must use square or canvas to limit text length.
 
         self.gridsquare_padx = 2
         self.gridsquare_pady = 2
@@ -170,7 +170,7 @@ class GUIManager(tk.Tk):
         
         self.default_delay = tk.BooleanVar()    # Whether to use global delay from a gif or a per frame delay.
         self.default_delay.set(True)
-
+        self.fix_flag = True
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
             prefs_path = os.path.join(script_dir, "prefs.json")
@@ -238,6 +238,7 @@ class GUIManager(tk.Tk):
         self.show_assigned = tk.BooleanVar()
         self.show_moved = tk.BooleanVar()
         #self.show_all = tk.BooleanVar()
+        self.show_animated = tk.BooleanVar()
         
         #Initialization for view-button
         self.variable = tk.StringVar()
@@ -254,11 +255,13 @@ class GUIManager(tk.Tk):
         self.combined_squarelist = []
         self.filtered_images = []
         self.moved_squarelist = []    
+        #self.animated_squarelist = []
         self.running = []
         self.track_animated = []
         self.dest_squarelist = []
         self.render_refresh = []
         self.queue = []
+        self.clear_all = False
         self.save = 0
         
         #Old (Hideonassing on off implementation?) (That's just "show all" I guess.)
@@ -689,7 +692,7 @@ class GUIManager(tk.Tk):
                 self.second_window.destroy()
                 pass
         except Exception as e:
-            print(f"testtest {e}")
+            print(f"Something wrong when saving imagewindow {e}")
             pass
 
     def filedialogselect(self, target, type):
@@ -885,7 +888,7 @@ class GUIManager(tk.Tk):
         optionsframe.columnconfigure(1, weight=1)  
         """
 
-        options = ["Show Unassigned", "Show Assigned", "Show Moved"] #"Show All"
+        options = ["Show Unassigned", "Show Assigned", "Show Moved", "Show Animated"] #"Show All"
         option_menu = tk.OptionMenu(optionsframe, self.variable, *options)
         self.variable.set(options[0])
         option_menu.config(background=self.background_colour, foreground=self.text_colour, borderwidth = 1, relief="ridge", highlightthickness=0)
@@ -949,17 +952,20 @@ class GUIManager(tk.Tk):
     def on_option_selected(self, *args):
         selected_option = self.variable.get()
         if selected_option == "Show Unassigned":
+            self.show_unassigned.set(False)
             self.clicked_show_unassigned()
         elif selected_option == "Show Assigned":
             self.clicked_show_assigned()
         elif selected_option == "Show Moved":
             self.clicked_show_moved()
+        elif selected_option == "Show Animated":
+            self.clicked_show_animated()
         #elif selected_option == "Show All":
         #    self.clicked_show_all()
 
     def setfocus(self, event):
         event.widget.focus_set()
-
+        
     def displaygrid(self, imagelist, number_to_load): #dummy to handle sortimages calls for now...
         number_of_animated = 0
 
@@ -981,9 +987,8 @@ class GUIManager(tk.Tk):
                 # Static fallback image in case we fail to animate.
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
-                threading.Thread(target=self.fileManager.load_frames, args=(gridsquare,)).start() 
-                # Loads the first ones visible first. hmm. could make a personal thread for all of them
-                # We could limit the maximum concurrent thread numbeer too, and wait until creating more whne less than max.
+                #self.animated_squarelist.append(gridsquare) # Initialize, then remove in load_frames if errors.
+                threading.Thread(target=self.fileManager.load_frames, args=(gridsquare,)).start()
                 number_of_animated += 1
 
             else: # Normal image
@@ -994,85 +999,101 @@ class GUIManager(tk.Tk):
         print(f"Trying to animate {number_of_animated} pictures.")
         self.refresh_rendered_list()
         self.start_gifs()
-
+    
     def start_gifs(self):
+        print("starting gifs, if you see two of these, something is wrong.")
         # Check the visible list for pictures to animate.
+        self.running = []
         current_squares = set(self.displayedlist.keys())
         load_these = []
         for i in current_squares: #could let in unanimated... because threading. check for frames?
             if i.obj.isanimated and i.obj.isvisible:
-                if i not in self.running: # not already displayed
+                if i not in [tup[0] for tup in self.running]: # not already displayed
                     load_these.append(i)
         for a in load_these:
-            lazy_index = 0
-            self.lazy_load(a, lazy_index)
-
-    def lazy_load(self, i, lazy_index):
+            self.lazy_load(a)
+    
+    def lazy_load(self, i):
         try:
-            if i.obj.frames and lazy_index != i.obj.framecount and i.obj.lazy_loading:
-                if len(i.obj.frames) > lazy_index:
-                    #print(f"Lazy frame to canvas {lazy_index}/{i.obj.framecount}")
-                    i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[lazy_index])
+            if i.obj.frames and i.obj.index != i.obj.framecount and i.obj.lazy_loading:
+                if len(i.obj.frames) > i.obj.index:
+                    print(f"Lazy frame to canvas {i.obj.index}/{i.obj.framecount}")
+                    i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index])
 
                     if self.default_delay.get():
-                        #print(f"{i.obj.truncated}: {lazy_index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
-                        self.canvas.after(i.obj.delay, lambda: self.run_multiple(i, lazy_index)) #run again.
+                        #print(f"{i.obj.truncated}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
+                        self.canvas.after(i.obj.delay, lambda: self.run_multiple(i)) #run again.
                     else:
-                        #print(f"{i.obj.truncated}: {lazy_index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[lazy_index]}")
-                        self.canvas.after(i.obj.frametimes[lazy_index], lambda: self.run_multiple(i, lazy_index)) #or a.obj.delay
+                        #print(f"{i.obj.truncated}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
+                        self.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple(i)) #or a.obj.delay
 
                 else: #wait for frame to load.
                     print("Buffering")
-                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i, lazy_index))
+                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
             else:
                 if not i.obj.lazy_loading and i.obj.frames: #if all loaded
-                    #print("Moving to animate_loop method")
+                    print("Moving to animate_loop method")
                     x = False
-                    self.animation_loop(i, x, lazy_index)
+                    self.animation_loop(i, x)
                 else: # 0 frames?
-                    #print("0 frames")
-                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i, lazy_index))
+                    print("0 frames")
+                    self.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
         except Exception as e:
             print(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
 
-    def run_multiple(self, i, lazy_index):
-        lazy_index += 1
-        self.lazy_load(i, lazy_index)
+    def run_multiple(self, i):
+        i.obj.index += 1
+        self.lazy_load(i)
 
     #Post. animate a frame for each picture in the list and run this again.
-
-    def animation_loop(self, i,x, index): #frame by frame as to not freeze the main one XD
+    
+    def animation_loop(self, i,x, random_id = None): #frame by frame as to not freeze the main one XD
         #One time check
         if x == False:
             if i not in self.running:
-                self.running.append(i)
+                random_id = random.randint(1,1000000)
+                self.running.append((i, random_id))
             else:
                 return
-        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[index]) #change the frame
-        if(i.obj.isvisible):
+            
+        i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index]) #change the frame
+        if(i.obj.isvisible and random_id in [tup[1] for tup in self.running]): #and i in self.running
             x = True
             if self.default_delay.get():
-                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
-                i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x,index)) #run again.
+                print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
+                i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x, random_id)) #run again.
             else:
-                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
-                i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple2(i,x,index)) #run again.
+                print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
+                i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple2(i,x, random_id)) #run again.""
+        else:
+            #print(f"ended animation for {i.obj.truncated}")
+            pass
 
-    def run_multiple2(self, i, x, index):
-        index = (index + 1) % i.obj.framecount
+    def run_multiple2(self, i, x, random_id):
+        i.obj.index = (i.obj.index + 1) % i.obj.framecount
 
-        self.animation_loop(i, x, index)
+        self.animation_loop(i, x, random_id)
     #This renders the given squarelist.
     
     def render_squarelist(self, squarelist):
-        self.running = []
+        #self.running = []
         current_squares = set(self.displayedlist.keys())
-        
+        if self.clear_all:
+            for gridsquare in current_squares:
+                if gridsquare in squarelist:
+                    self.imagegrid.window_configure(gridsquare, window="")
+
+                    # Remove the entry from the dictionary
+                    del self.displayedlist[gridsquare]
+                    gridsquare.obj.isvisible = False
+            
+            self.clear_all = False
+
         #delete
         for gridsquare in current_squares:
             if gridsquare not in squarelist:
                 self.imagegrid.window_configure(gridsquare, window="")
-                print("did it2")
+
                 # Remove the entry from the dictionary
                 del self.displayedlist[gridsquare]
                 gridsquare.obj.isvisible = False
@@ -1081,13 +1102,13 @@ class GUIManager(tk.Tk):
         # Readd
         if self.show_assigned.get():
             for gridsquare in self.render_refresh:
-                print(f"{gridsquare.obj.truncated}")
+                #print(f"{gridsquare.obj.truncated}")
                 self.imagegrid.window_configure(gridsquare, window="")
                 gridsquare.canvas_window = self.imagegrid.window_create(
                             "1.0", window=gridsquare)
+                
                 gridsquare.obj.isvisible = True
-                print("did it")
-                print(f"{len(self.render_refresh)} and {len(self.displayedlist)}")
+                #print(f"{len(self.render_refresh)} and {len(self.displayedlist)}")
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
             self.render_refresh = []
             
@@ -1103,15 +1124,20 @@ class GUIManager(tk.Tk):
                         "insert", window=gridsquare)
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
                 gridsquare.obj.isvisible = True
-                print("did it2")
 
          #shouldnt activate for setdestination.
 
     def refresh_rendered_list(self):
         current_list = None
         if self.show_unassigned.get():
-            self.render_squarelist(self.unassigned_squarelist)
-            current_list = self.unassigned_squarelist
+            
+            if self.show_animated.get():
+                unassigned_animated = [item for item in self.unassigned_squarelist if item.obj.isanimated]
+                self.render_squarelist(unassigned_animated)
+                current_list = unassigned_animated
+            else:
+                self.render_squarelist(self.unassigned_squarelist)
+                current_list = self.unassigned_squarelist
            
         elif self.show_assigned.get():
             self.render_squarelist(self.assigned_squarelist)
@@ -1119,9 +1145,7 @@ class GUIManager(tk.Tk):
           
         elif self.show_moved.get():
             self.render_squarelist(self.moved_squarelist)
-            current_list = self.moved_squarelist
-        
-        
+            current_list = self.moved_squarelist 
         
         #Debugging
         #print("###############################################")
@@ -1132,21 +1156,28 @@ class GUIManager(tk.Tk):
         #print(f"U:{self.show_unassigned.get()}:A:{self.show_assigned.get()}:M:{self.show_moved.get()}")
     
     def clicked_show_unassigned(self): #Turn you on.
-        if self.show_unassigned.get() == False:
-            self.show_assigned.set(False)
-            self.show_moved.set(False)
-            self.show_unassigned.set(True)
-            self.refresh_rendered_list()
-            self.running = []
-            self.start_gifs()
-            
+        if not self.fix_flag:
+            if self.show_unassigned.get() == False:
+                self.show_assigned.set(False)
+                self.show_moved.set(False)
+                self.show_unassigned.set(True)
+                self.show_animated.set(False)
+                self.clear_all = True
+                self.running = []
+                self.refresh_rendered_list()
+                self.start_gifs()
+        else:
+            self.fix_flag = False
+
     def clicked_show_assigned(self):
         if self.show_assigned.get() == False:
             self.show_unassigned.set(False)
             self.show_moved.set(False)
             self.show_assigned.set(True)
-            self.refresh_rendered_list()
+            self.show_animated.set(False)
+            self.clear_all = True
             self.running = []
+            self.refresh_rendered_list()
             self.start_gifs()
             
     def clicked_show_moved(self):
@@ -1154,8 +1185,10 @@ class GUIManager(tk.Tk):
             self.show_assigned.set(False)
             self.show_unassigned.set(False)
             self.show_moved.set(True)
-            self.refresh_rendered_list()
+            self.show_animated.set(False)
+            self.clear_all = True
             self.running = []
+            self.refresh_rendered_list()
             self.start_gifs()
     """    
     def clicked_show_all(self):
@@ -1163,9 +1196,20 @@ class GUIManager(tk.Tk):
             self.show_assigned.set(False)
             self.show_unassigned.set(False)
             self.show_moved.set(False)
+            self.show_animated.set(False)
             self.show_all.set(True)
             self.refresh_rendered_list()
                 """ 
+    def clicked_show_animated(self):
+        if self.show_animated.get() == False:
+            self.show_assigned.set(False)
+            self.show_unassigned.set(True)
+            self.show_moved.set(False)
+            self.show_animated.set(True)
+            self.clear_all = True
+            self.refresh_rendered_list()
+            self.running = []
+            self.start_gifs()
 
     def showthisdest(self, dest, *args):
         #If a destination window is already open, just update it.
@@ -1201,6 +1245,13 @@ class GUIManager(tk.Tk):
 
 
     def close_destination_window(self, event=None):
+        if event:
+            for square in self.dest_squarelist:
+                if square.winfo_x() <= event.x <= square.winfo_x() + square.winfo_width() and \
+                   square.winfo_y() <= event.y <= square.winfo_y() + square.winfo_height():
+                    print("Click inside a square, not closing.")
+                    return  # Click is inside a square, do not close
+            
         try:
             if hasattr(self, 'destwindow'):
                 self.save = self.destwindow.winfo_geometry()
@@ -1212,17 +1263,17 @@ class GUIManager(tk.Tk):
                 self.dest_squarelist = []
                 self.filtered_images = []
                 self.queue = []
-                print(f"Destination window destroyed")
+                
+                #print(f"Destination window destroyed")
         except Exception as e:
             print(f"Destination window was not open: {e}")
             pass
-    #@profile
+    
     def refresh_destinations(self):
         #so when view changes, squarelist is updated, the 
         if hasattr(self, 'destgrid') and self.destgrid: #If a destination window is open
             destgrid = self.destgrid
             dest_path = self.dest            
-            check_if_animateable = []
             #make a list of destination pics to compare current squarelist against.
             #to rollback to this just delete self.combined_squarelists from sortimages.
             combined_squarelist = self.assigned_squarelist + self.moved_squarelist
@@ -1233,7 +1284,6 @@ class GUIManager(tk.Tk):
             if not self.filtered_images:
                 temp = True
                 self.filtered_images = [gridsquare.obj for gridsquare in combined_squarelist if gridsquare.obj.dest == dest_path]
-                print("regen")
             filtered_images = self.filtered_images
     
 
@@ -1272,7 +1322,6 @@ class GUIManager(tk.Tk):
                         canvas_window_id = self.destgrid.window_create("1.0", window=new_frame)
                         new_frame.canvas_id = canvas_window_id
                         self.dest_squarelist.append(new_frame)
-                        check_if_animateable.append(new_frame)
                         new_frame.obj.isvisibleindestination = True
             else:
                 for square in self.queue:
@@ -1288,7 +1337,6 @@ class GUIManager(tk.Tk):
                     canvas_window_id = self.destgrid.window_create("1.0", window=new_frame)
                     new_frame.canvas_id = canvas_window_id
                     self.dest_squarelist.append(new_frame)
-                    check_if_animateable.append(new_frame)
                     new_frame.obj.isvisibleindestination = True
                     self.queue.remove(square)
             # Remove images no longer present #this can be done like filtered list too. just record all deletes.
@@ -1305,17 +1353,17 @@ class GUIManager(tk.Tk):
             for gridsquare in to_remove:
                 self.dest_squarelist.remove(gridsquare)
                 gridsquare.obj.isvisibleindestination = False
-            self.start_gifs_indestinations(check_if_animateable)
+            self.start_gifs_indestinations()
 
-    def start_gifs_indestinations(self, check_if_animateable):
+    def start_gifs_indestinations(self):
         # Check if images in the current destination view are animated or not. 
         current_index = 0
-        for i in check_if_animateable:
+        for i in self.dest_squarelist:
             if i.obj.isanimated and i.obj.isvisibleindestination: # This prevents the same .gif or .webp having two or more loops at the same time, causing the index counting to double in speed.  
                 current_index = 0
                 x = False
                 self.animation_loop_indestinations(i, current_index, x)
-
+    
     def animation_loop_indestinations(self, i, index, x):  # Frame by frame animation
         if x == False:
             if i not in self.track_animated:
@@ -1335,7 +1383,10 @@ class GUIManager(tk.Tk):
             else:
                 #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
                 i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple3(i,index,x)) #run again.
-
+        else:
+            #print("dest animations ended")
+            pass
+    
     def run_multiple3(self, i, index, x):
         index = (index + 1) % i.obj.framecount
         self.animation_loop_indestinations(i,index,x)
@@ -1366,7 +1417,6 @@ def throttled_yview(widget, *args):
         widget.yview(*args)
 
 # Throttled scrollbar callback
-
 def throttled_scrollbar(*args):
     throttled_yview(args[0], 'yview', *args[1:])
 
