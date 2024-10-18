@@ -1,8 +1,6 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
-#gif view, show only gifs
-
 #""" #comment when building
 import ctypes
 
@@ -285,7 +283,11 @@ class SortImages:
     def get_current_list(self):
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
-            return unassign
+            if self.gui.show_animated.get():
+                unassigned_animated = [item for item in unassign if item.obj.isanimated]
+                return unassigned_animated
+            else:
+                return unassign
         
         elif self.gui.show_assigned.get():
             assign = self.gui.assigned_squarelist
@@ -294,6 +296,7 @@ class SortImages:
         elif self.gui.show_moved.get():
             moved = self.gui.moved_squarelist
             return moved
+
     #@profile
     def setDestination(self, *args):
         dest = args[0]
@@ -354,7 +357,6 @@ class SortImages:
                                     self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
                                     self.gui.queue.append(x)
                                 else:
-                                    print("FUUUCK")
                                     x.obj.checked.set(True)
                                     #self.gui.destgrid_updateslist.append(x) # x in here?
                                     x.obj.destchecked.set(True)                                    
@@ -394,7 +396,7 @@ class SortImages:
                             
         #checks for click in destination windows, if seen, changes their colour.
         marked = []
-        ##-- could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
+        ##--could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
         marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
         
         #changes destination and the color regardless of whether it was active window or dest that this happened in.
@@ -581,7 +583,7 @@ class SortImages:
                 return            
             
             try:
-                print("created a new file")
+                print("Generated a thumbnail")
                 im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
@@ -608,7 +610,7 @@ class SortImages:
                     image = pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential')
                     gridsquare.obj.framecount = image.get('n-pages')
                 gridsquare.obj.delay = img.info.get('duration', 20)
-                
+
                 #print(f"test {gridsquare.obj.framecount}")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
@@ -617,11 +619,10 @@ class SortImages:
                     frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
-                    
+            
                 gridsquare.obj.lazy_loading = False
                 print(f"All frames loaded for: {gridsquare.obj.truncated}, Frames: {len(gridsquare.obj.frames)}, Default duration: {gridsquare.obj.delay}")
         except Exception as e: #fallback to static.
-            self.gui.animated_squarelist.remove(gridsquare)
             print(f"Fallback to static, {gridsquare.obj.truncated}: {e}")
             gridsquare.obj.isanimated = False
             
