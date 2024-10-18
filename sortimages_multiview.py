@@ -1,7 +1,12 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
+#Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
+#gif view, show only gifs
+#want to make picks add to destwindow beginning not end.
 #""" #comment when building
 import ctypes
+
+
 try: #presumably for building only?
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
@@ -37,19 +42,22 @@ from PIL import Image, ImageTk
 class Imagefile:
     path = ""
     dest = ""
-    
+
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
         self.name.set(name)
         self.path = path
+        self.mod_time = None
+        self.file_size = None
         self.checked = tk.BooleanVar(value=False)
+        self.destchecked = tk.BooleanVar(value=False)
         self.moved = False
         self.assigned = False
         self.isanimated = False
         self.isvisible = False
+        self.isvisibleindestination = False
         self.lazy_loading = True
         self.frames = []
-        self.bigframes = []
         self.frametimes = []
         self.framecount = 0
         self.delay = 100 #Default delay
@@ -95,6 +103,7 @@ class SortImages:
     destinations = []
     exclude = []
     thumbnailsize = 256
+    
     def __init__(self) -> None:
         
         self.existingnames = set()
@@ -161,6 +170,8 @@ class SortImages:
                     self.gui.canvas_colour = jprefs['canvas_colour']
                 if "active_background_colour" in jprefs:
                     self.gui.active_background_colour = jprefs['active_background_colour']
+                if "grid_background_colour" in jprefs:
+                    self.gui.grid_background_colour = jprefs['grid_background_colour']
                 if "active_foreground_colour" in jprefs:
                     self.gui.active_foreground_colour = jprefs['active_foreground_colour']
                 if "selectcolour" in jprefs:
@@ -221,6 +232,8 @@ class SortImages:
             temp.append(image_obj) #store imageobj
             self.gui.assigned_squarelist.remove(x)
             self.gui.moved_squarelist.append(x)
+            #combined_squarelist.remove(x)
+            #self.gui.combined_squarelist.append(x)
             for obj in temp:
                 out = obj.move()
                 obj.dest = ""
@@ -237,7 +250,7 @@ class SortImages:
                     logfile.writelines(loglist)
         except:
             logging.error("Failed to write filelog.txt")
-        
+
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
@@ -251,6 +264,7 @@ class SortImages:
                     full_path = f"{root}/{name}"
                     #full_path = os.path.join(root, name) #long time initializing
                     imgfile = Imagefile(name, full_path)
+
                     if ext == "gif" or ext == "webp":
                         imgfile.isanimated = True
                     if name in existing:
@@ -279,12 +293,14 @@ class SortImages:
         elif self.gui.show_moved.get():
             moved = self.gui.moved_squarelist
             return moved
-        
+    #@profile
     def setDestination(self, *args):
         dest = args[0]
         marked = []
         current_list = []
-        current_list = self.get_current_list()                
+        current_list = self.get_current_list()     
+        #self.gui.render_refresh = []
+        temp2 = []   
         try:
             wid = args[1].widget
         except AttributeError:
@@ -293,69 +309,142 @@ class SortImages:
         if isinstance(wid, tk.Entry):
             pass
         
-        else:
-            for x in current_list[:]:
-                image_obj = x.obj
-                if image_obj.checked.get():
-                    marked.append(image_obj)
-            for obj in marked:
-                obj.setdest(dest)
-                obj.guidata["frame"]['background'] = dest['color']
-                obj.guidata["canvas"]['background'] = dest['color']
-                obj.checked.set(False)
-                
+        else: #we could make marked list from check button adding it to the list or removing. ##OPTIMIZE
+            for x in current_list[:]: #---
+                if x.obj.checked.get():
+                    marked.append(x)
+            for x in marked:
+                x.obj.setdest(dest)
+                x.obj.guidata["frame"]['background'] = dest['color']
+                x.obj.guidata["canvas"]['background'] = dest['color']
+                x.obj.checked.set(False)
+
+                #If we have the unassigned view, we want to move images from unassigned list to assigned list.
                 if self.gui.show_unassigned.get(): #Unassigned list to Assigned list, Assigned True
-                    obj.assigned = True
-                    for square in current_list:
-                        if square.obj.assigned and square not in self.gui.assigned_squarelist:
-                            self.gui.unassigned_squarelist.remove(square)
-                            self.gui.assigned_squarelist.append(square)
-                            try:
-                                self.gui.running.remove(square)
-                                self.gui.track_animated.remove(square)
-                            except Exception as e:
-                                pass
-                
-                #elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
-                #    print("test")
-                #    obj.assigned = True
-                #    for square in current_list:
-                #        if square.obj.assigned and square in self.gui.assigned_squarelist:
-                #            self.gui.assigned_squarelist.remove(square)
-                #            self.gui.assigned_squarelist.append(square)
+                    x.obj.assigned = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.unassigned_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x) 
+                        
+                        if x.obj.dest == dest['path']:
+                            #self.gui.filtered_images.append(x.obj)
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
+                                    self.gui.filtered_images.append(x.obj)
+                                     #imageobject eventually
+                                    self.gui.queue.append(x)
                             
-                elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
-                    obj.assigned = True
-                    obj.moved = True
-                    for square in current_list:
-                        if square.obj.assigned and square not in self.gui.assigned_squarelist:
-                            self.gui.moved_squarelist.remove(square)
-                            self.gui.assigned_squarelist.append(square)
+                        #self.gui.combined_squarelist.append(x)
+                        try:
+                            self.gui.running.remove(x)
+                            self.gui.track_animated.remove(x)
+                        except Exception as e:
+                            pass
+
+                ##this is not enabled because we dont want placement to change here, it is too distracting.
+                elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
+                    #self.gui.filtered_images = []
+                    #obj.assigned = True
+                    if hasattr(self.gui, 'destwindow'): # if we have the dest window open
+                        #self.gui.filtered_images.remove(x.obj)
+                        #self.gui.filtered_images.append(x.obj)
+                        if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
                             try:
-                                self.gui.running.remove(square)
-                                self.gui.track_animated.remove(square)
+                                if x.obj not in self.gui.filtered_images:
+                                    self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
+                                    self.gui.queue.append(x)
+                                else:
+                                    print("FUUUCK")
+                                    x.obj.checked.set(True)
+                                    #self.gui.destgrid_updateslist.append(x) # x in here?
+                                    x.obj.destchecked.set(True)                                    
+                                    
+                                    #self.gui.filtered_images.remove(x.obj)
+                                    #self.gui.filtered_images.append(x.obj)
+                                    
                             except Exception as e:
+                                print(f"first {e}")
+                        else:
+                            try:
+                                self.gui.filtered_images.remove(x.obj)
+                            except Exception as e:
+                                print(f"second {e}")
                                 pass
+                #If we have the moved view, we want to move images from moved list to assigned list.
+                elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
+                    x.obj.assigned = True
+                    x.obj.moved = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.moved_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x)
+                        if x.obj.dest == dest['path']:
+                            #self.gui.filtered_images.append(x.obj)
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']:
+                                    self.gui.filtered_images.append(x.obj)
+                                    self.gui.queue.append(x)
+                        #self.gui.combined_squarelist.remove(square)
+                        #self.gui.combined_squarelist.append(square)
+                        try:
+                            self.gui.running.remove(x)
+                            self.gui.track_animated.remove(x)
+                        except Exception as e:
+                            pass
             
                             
-
+        #checks for click in destination windows, if seen, changes their colour.
         marked = []
-        for x in self.gui.dest_squarelist:
-            image_obj = x.obj
-            if image_obj.checked.get():
-                marked.append(image_obj)
+        ##-- could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
+        for square in self.gui.dest_squarelist: #note that dest_squarelist uses its own squares (not tied to same parent, so it cant compare them 1 to 1)
+            if square.obj.destchecked.get():    #OPTIMIZE
+                marked.append(square) #sould we use copy here or just make a to_remove list to avoid that continuosuyl.
                 
-        for obj in marked: #make a border around assigned?
-            obj.setdest(dest)
-            obj.guidata["frame"]['background'] = dest['color']
-            obj.guidata["canvas"]['background'] = dest['color']
-            obj.checked.set(False)
         
+        #changes destination and the color regardless of whether it was active window or dest that this happened in.
+        temp = self.gui.assigned_squarelist.copy()
 
+        for square in marked:
+            if self.gui.show_assigned.get():
+                for gridsquare in self.gui.assigned_squarelist: ##OPTIMIZE change to the current displayedlist, but that has to not be dictionary.
+                    if gridsquare.obj.id == square.obj.id:
+                        print(f"this activates {square.obj.truncated}")
+                        if not(square.obj.destchecked.get() and square.obj.checked.get()):
+                            self.gui.render_refresh.append(gridsquare) #need the other record.
+                            break
+             #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
+            for item in temp:
+                if item.obj.id == square.obj.id and dest['path'] == square.obj.dest:
+                    if not (square.obj.destchecked.get() and square.obj.checked.get()):
+                        print("true")
+                        self.gui.assigned_squarelist.remove(item)
+                        self.gui.assigned_squarelist.append(item)
+                    square.obj.checked.set(False)
+                    self.gui.destgrid_updateslist.append(square)
+                    self.gui.filtered_images.remove(square.obj)
+                    self.gui.filtered_images.append(square.obj) # going to the same destnation, just refresh, update pos.
+                    break
+                elif item.obj.id == square.obj.id:
+                    self.gui.assigned_squarelist.remove(item)
+                    self.gui.assigned_squarelist.append(item)
+                    self.gui.filtered_images.remove(square.obj)
+                    break
+                #self.gui.queue.append(square.obj) # when the image selected is not going to the same destination, #to remove?
+                """
+                elif item.obj.id == square.obj.id:
+                    self.gui.combined_squarelist.remove(item)
+                    self.gui.combined_squarelist.append(item)
+                """ 
+            
+            square.obj.setdest(dest)
+            square.obj.guidata["frame"]['background'] = dest['color']
+            square.obj.guidata["canvas"]['background'] = dest['color']
+            square.obj.destchecked.set(False)
+        
         #Updates main and destination windows.
         
         self.gui.refresh_rendered_list()
-        self.gui.refresh_destinations()
+        if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
+            self.gui.refresh_destinations()
 
     def savesession(self,asksavelocation):
         if asksavelocation:
@@ -378,16 +467,13 @@ class SortImages:
                     "moved": obj.moved,
                     "thumbnail": thumb,
                     "isanimated": obj.isanimated, #flag that the image is indeed animated. This is normally done by walk, but for session it must be saved here.
-                    "frametimes":obj.frametimes,
-                    
-
 
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
-    
+
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
@@ -408,8 +494,6 @@ class SortImages:
                     n.thumbnail = o['thumbnail']
                     n.dest=o['dest']
                     n.isanimated=o['isanimated']
-                    n.frametimes=o['frametimes']
-
                     self.imagelist.append(n)
             
             self.thumbnailsize=savedata['thumbnailsize']
@@ -466,14 +550,17 @@ class SortImages:
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
                     self.destinationsraw.append(entry.path)
+
     def makethumb(self, imagefile):
             file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
-            file_stats = os.stat(imagefile.path)
-            file_size = file_stats.st_size
-            mod_time = file_stats.st_mtime
-            
-            id = file_name1 + " " +str(file_size)+ " " + str(mod_time)
+            if not imagefile.file_size or not imagefile.mod_time:
+                file_stats = os.stat(imagefile.path)
+                imagefile.file_size = file_stats.st_size
+                imagefile.mod_time = file_stats.st_mtime
 
+            id = file_name1 + " " +str(imagefile.file_size)+ " " + str(imagefile.mod_time)
+
+            #dramatically faster hashing.
             hash = md5()
             hash.update(id.encode('utf-8'))
             imagefile.setid(hash.hexdigest())
@@ -506,9 +593,7 @@ class SortImages:
     def load_frames(self, gridsquare):
         try:            
             with Image.open(gridsquare.obj.path) as img:
-                existing_frametimes = True
-                if gridsquare.obj.frametimes:
-                    existing_frametimes = False
+
                 with pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential') as image:
                     image = pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential')
                     gridsquare.obj.framecount = image.get('n-pages')
@@ -518,9 +603,7 @@ class SortImages:
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
-                    if existing_frametimes: # Retrieve frametimes
-                        #print(f"added")
-                        gridsquare.obj.frametimes.append(frame.info.get('duration',gridsquare.obj.delay))
+                    gridsquare.obj.frametimes.append(frame.info.get('duration',gridsquare.obj.delay))
                     frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
@@ -528,7 +611,7 @@ class SortImages:
                 gridsquare.obj.lazy_loading = False
                 print(f"All frames loaded for: {gridsquare.obj.truncated}, Frames: {len(gridsquare.obj.frames)}, Default duration: {gridsquare.obj.delay}")
         except Exception as e: #fallback to static.
-            print(f"Fallback to static, cant load frames: {e}")
+            print(f"Fallback to static, {gridsquare.obj.truncated}: {e}")
             gridsquare.obj.isanimated = False
             
 # Run Program
