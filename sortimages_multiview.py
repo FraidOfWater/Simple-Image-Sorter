@@ -2,7 +2,7 @@ import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
 #gif view, show only gifs
-#want to make picks add to destwindow beginning not end.
+
 #""" #comment when building
 import ctypes
 
@@ -53,13 +53,14 @@ class Imagefile:
         self.destchecked = tk.BooleanVar(value=False)
         self.moved = False
         self.assigned = False
-        self.isanimated = False
+        self.isanimated = None
         self.isvisible = False
         self.isvisibleindestination = False
         self.lazy_loading = True
         self.frames = []
         self.frametimes = []
         self.framecount = 0
+        self.index = 0
         self.delay = 100 #Default delay
         self.id = None
         self.truncated = self.name.get()[:50]
@@ -310,9 +311,8 @@ class SortImages:
             pass
         
         else: #we could make marked list from check button adding it to the list or removing. ##OPTIMIZE
-            for x in current_list[:]: #---
-                if x.obj.checked.get():
-                    marked.append(x)
+            marked = [x for x in current_list if x.obj.checked.get()]
+
             for x in marked:
                 x.obj.setdest(dest)
                 x.obj.guidata["frame"]['background'] = dest['color']
@@ -395,10 +395,7 @@ class SortImages:
         #checks for click in destination windows, if seen, changes their colour.
         marked = []
         ##-- could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
-        for square in self.gui.dest_squarelist: #note that dest_squarelist uses its own squares (not tied to same parent, so it cant compare them 1 to 1)
-            if square.obj.destchecked.get():    #OPTIMIZE
-                marked.append(square) #sould we use copy here or just make a to_remove list to avoid that continuosuyl.
-                
+        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
         
         #changes destination and the color regardless of whether it was active window or dest that this happened in.
         temp = self.gui.assigned_squarelist.copy()
@@ -407,7 +404,6 @@ class SortImages:
             if self.gui.show_assigned.get():
                 for gridsquare in self.gui.assigned_squarelist: ##OPTIMIZE change to the current displayedlist, but that has to not be dictionary.
                     if gridsquare.obj.id == square.obj.id:
-                        print(f"this activates {square.obj.truncated}")
                         if not(square.obj.destchecked.get() and square.obj.checked.get()):
                             self.gui.render_refresh.append(gridsquare) #need the other record.
                             break
@@ -415,7 +411,6 @@ class SortImages:
             for item in temp:
                 if item.obj.id == square.obj.id and dest['path'] == square.obj.dest:
                     if not (square.obj.destchecked.get() and square.obj.checked.get()):
-                        print("true")
                         self.gui.assigned_squarelist.remove(item)
                         self.gui.assigned_squarelist.append(item)
                     square.obj.checked.set(False)
@@ -427,6 +422,7 @@ class SortImages:
                     self.gui.assigned_squarelist.remove(item)
                     self.gui.assigned_squarelist.append(item)
                     self.gui.filtered_images.remove(square.obj)
+                    
                     break
                 #self.gui.queue.append(square.obj) # when the image selected is not going to the same destination, #to remove?
                 """
@@ -459,15 +455,26 @@ class SortImages:
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
-                imagesavedata.append({
-                    "name": obj.name.get(),
-                    "path": obj.path,
-                    "dest": obj.dest,
-                    "checked": obj.checked.get(),
-                    "moved": obj.moved,
-                    "thumbnail": thumb,
-                    "isanimated": obj.isanimated, #flag that the image is indeed animated. This is normally done by walk, but for session it must be saved here.
+                
+                if obj.isanimated:
+                    imagesavedata.append({
+                        "name": obj.name.get(),
+                        "path": obj.path,
+                        "dest": obj.dest,
+                        "checked": obj.checked.get(),
+                        "moved": obj.moved,
+                        "thumbnail": thumb,
+                        "isanimated": obj.isanimated,
 
+                    })
+                else:
+                    imagesavedata.append({
+                        "name": obj.name.get(),
+                        "path": obj.path,
+                        "dest": obj.dest,
+                        "checked": obj.checked.get(),
+                        "moved": obj.moved,
+                        "thumbnail": thumb,
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
@@ -493,7 +500,10 @@ class SortImages:
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
                     n.dest=o['dest']
-                    n.isanimated=o['isanimated']
+                    try:
+                        n.isanimated=o['isanimated']
+                    except Exception as e: #nonexistent
+                        pass
                     self.imagelist.append(n)
             
             self.thumbnailsize=savedata['thumbnailsize']
@@ -598,7 +608,7 @@ class SortImages:
                     image = pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential')
                     gridsquare.obj.framecount = image.get('n-pages')
                 gridsquare.obj.delay = img.info.get('duration', 20)
-
+                
                 #print(f"test {gridsquare.obj.framecount}")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
@@ -607,10 +617,11 @@ class SortImages:
                     frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
-            
+                    
                 gridsquare.obj.lazy_loading = False
                 print(f"All frames loaded for: {gridsquare.obj.truncated}, Frames: {len(gridsquare.obj.frames)}, Default duration: {gridsquare.obj.delay}")
         except Exception as e: #fallback to static.
+            self.gui.animated_squarelist.remove(gridsquare)
             print(f"Fallback to static, {gridsquare.obj.truncated}: {e}")
             gridsquare.obj.isanimated = False
             
