@@ -1001,7 +1001,7 @@ class GUIManager(tk.Tk):
         self.start_gifs()
     
     def start_gifs(self):
-        print("starting gifs, if you see two of these, something is wrong.")
+        #print("starting gifs, if you see two of these, something is wrong.")
         # Check the visible list for pictures to animate.
         self.running = []
         current_squares = set(self.displayedlist.keys())
@@ -1017,7 +1017,7 @@ class GUIManager(tk.Tk):
         try:
             if i.obj.frames and i.obj.index != i.obj.framecount and i.obj.lazy_loading:
                 if len(i.obj.frames) > i.obj.index:
-                    print(f"Lazy frame to canvas {i.obj.index}/{i.obj.framecount}")
+                    #print(f"Lazy frame to canvas {i.obj.index}/{i.obj.framecount}")
                     i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index])
 
                     if self.default_delay.get():
@@ -1036,7 +1036,7 @@ class GUIManager(tk.Tk):
                     x = False
                     self.animation_loop(i, x)
                 else: # 0 frames?
-                    print("0 frames")
+                    #print("0 frames")
                     self.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
         except Exception as e:
             print(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
@@ -1060,10 +1060,10 @@ class GUIManager(tk.Tk):
         if(i.obj.isvisible and random_id in [tup[1] for tup in self.running]): #and i in self.running
             x = True
             if self.default_delay.get():
-                print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
+                #print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
                 i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x, random_id)) #run again.
             else:
-                print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
+                #print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
                 i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple2(i,x, random_id)) #run again.""
         else:
             #print(f"ended animation for {i.obj.truncated}")
@@ -1121,7 +1121,7 @@ class GUIManager(tk.Tk):
                         "1.0", window=gridsquare)
                 else:
                     gridsquare.canvas_window = self.imagegrid.window_create(
-                        "insert", window=gridsquare)
+                        "1.0", window=gridsquare)
                 self.displayedlist[gridsquare] = gridsquare.canvas_window
                 gridsquare.obj.isvisible = True
 
@@ -1167,6 +1167,7 @@ class GUIManager(tk.Tk):
                 self.refresh_rendered_list()
                 self.start_gifs()
         else:
+            self.show_unassigned.set(True)
             self.fix_flag = False
 
     def clicked_show_assigned(self):
