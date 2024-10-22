@@ -1077,6 +1077,7 @@ class GUIManager(tk.Tk):
         i.obj.index = (i.obj.index + 1) % i.obj.framecount
 
         self.animation_loop(i, x, random_id)
+    
     #This renders the given squarelist.
     def render_squarelist(self, squarelist):
         current_squares = self.displayedlist.copy()
@@ -1085,8 +1086,6 @@ class GUIManager(tk.Tk):
             for gridsquare in current_squares:
                 if gridsquare in squarelist:
                     self.imagegrid.window_configure(gridsquare, window="")
-
-                    # Remove the entry from the dictionary
                     self.displayedlist.remove(gridsquare)
                     gridsquare.obj.isvisible = False
             
@@ -1096,22 +1095,16 @@ class GUIManager(tk.Tk):
         for gridsquare in current_squares:
             if gridsquare not in squarelist:
                 self.imagegrid.window_configure(gridsquare, window="")
-                
-                # Remove the entry from the dictionary
                 self.displayedlist.remove(gridsquare)
                 gridsquare.obj.isvisible = False
                 
-        #self.displayedlist.clear() #rearrange pics when reassigning. Not fully implemented. Optional.
         # Readd
         if self.show_assigned.get():
             for gridsquare in self.render_refresh:
-                #print(f"{gridsquare.obj.truncated}")
                 self.imagegrid.window_configure(gridsquare, window="")
                 gridsquare.canvas_window = self.imagegrid.window_create(
                             "1.0", window=gridsquare)
-                
                 gridsquare.obj.isvisible = True
-                #print(f"{len(self.render_refresh)} and {len(self.displayedlist)}")
                 self.displayedlist.append(gridsquare)
             self.render_refresh = []
             
@@ -1127,8 +1120,6 @@ class GUIManager(tk.Tk):
                         "insert", window=gridsquare)
                 self.displayedlist.append(gridsquare)
                 gridsquare.obj.isvisible = True
-        #print(f"First image: {self.displayedlist[0].obj.truncated}")
-         #shouldnt activate for setdestination.
 
     def refresh_rendered_list(self):
         current_list = None
