@@ -2,7 +2,9 @@ import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
 #center image can be controlled to set where centers.
-#make prefs more. for centering image, then for auto display.
+# Add options to prefs for:
+# Centering image for displayimage. Centered or the default that it is now, no other options supported.
+# Auto display checkbox and prefs option. On/Off
 #throttle destwindow also, fix its scrollbar.
 #cleanup code.
 
@@ -421,7 +423,8 @@ class SortImages:
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
-        if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display:
+        if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display.get():
+            print("testin1")
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             if self.gui.current_selection: #If any pics borders are blue
                 self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
@@ -455,6 +458,7 @@ class SortImages:
                         "thumbnail": thumb,
                         "isanimated": obj.isanimated, 
                         "dupename": obj.dupename,
+                        "id": obj.id,
                     })
                     else:
                         imagesavedata.append({
@@ -465,6 +469,7 @@ class SortImages:
                         "moved": obj.moved,
                         "thumbnail": thumb,
                         "dupename": obj.dupename,
+                        "id": obj.id,
                     })
                 else:
                     thumb = ""
@@ -476,6 +481,7 @@ class SortImages:
                         "moved": obj.moved,
                         "thumbnail": thumb,
                         "dupename": obj.dupename,
+                        "id": obj.id,
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
@@ -502,6 +508,7 @@ class SortImages:
                     n.thumbnail = o['thumbnail']
                     n.dupename=o['dupename']
                     n.dest=o['dest']
+                    n.id=o['id']
                     if not n.isanimated == None:
                         n.isanimated=o['isanimated']
                     self.imagelist.append(n)
@@ -574,6 +581,7 @@ class SortImages:
             #dramatically faster hashing.
             hash = md5()
             hash.update(id.encode('utf-8'))
+            
             imagefile.setid(hash.hexdigest())
 
             thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
