@@ -55,3 +55,6 @@ For performance, only a set amount is loaded at first. Press the "Add Files" but
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
 
 The journey is night complete. Just have to solve a few performance problems with the animation support.
+
+It is unclear what LICENSE the original has currently. The last LICENSE it had was GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007.
