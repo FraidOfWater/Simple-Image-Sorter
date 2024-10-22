@@ -12,8 +12,9 @@ import threading
 import time
 class CanvasImage:
     """ Display and zoom image """
-    
+    #@profile
     def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj):
+        
         """ Initialize core attributes and lists"""
         print("")
         # Import needed objects and values from GUI
@@ -31,7 +32,7 @@ class CanvasImage:
         # Image rendering defautls
         self.__first_filter = Image.Resampling.NEAREST # The initial quality of placeholder image, used to display the image just a bit faster.
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
-
+        self.fast_render_size = 111500*111500 #use initial NEAREST rendering for pics exceeding this size.
         # Lists, attributes and other flags.
         self.frames = []            # Stores loaded frames for .Gif, .Webp
         self.original_frames = []   # Could be used for zooming logic
@@ -64,6 +65,7 @@ class CanvasImage:
         self.__huge = False
         self.__huge_size = 14000
         self.__band_width = 1024
+        
         Image.MAX_IMAGE_PIXELS = 1000000000  # suppress DecompressionBombError for the big image
 
         with warnings.catch_warnings():  # suppress DecompressionBombWarning
@@ -103,52 +105,48 @@ class CanvasImage:
         #self.canvas.grid_propagate(True) #Experimental
 
         # threading here?
+        self.creation_time = time.time()
         if not self.animated:
 
             self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
             #self.__show_image()
             
             w, h = self.__pyramid[-1].size
+            self.pyramid_ready = threading.Event()
             self.pyramid_thread = threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
-        
-        self.canvas.update()  # Wait until the canvas has finished creating.
-        self.canvas_height = self.canvas.winfo_height()
-        self.canvas_width = self.canvas.winfo_width()
-        
-        
-        #Try to load frames from gif and webp images.
-        
-        self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
+        else:
+            try:
+                self.length = self.obj.framecount
 
-        # Start measuring frame creation time after canvas initialized.
-        self.creation_time = time.time()
-        print("Trying to render")
-        try:
-            self.length = self.obj.framecount
-                        
-            new_width = self.canvas_width
-            new_height = self.canvas_height
-            width, height = self.image.size
-            aspect_ratio = width / height
+                new_width = self.canvas_width
+                new_height = self.canvas_height
+                width, height = self.image.size
+                aspect_ratio = width / height
 
-            if new_width / new_height > aspect_ratio:
-                new_width = int(new_height*aspect_ratio)
-            else:
-                new_height = int(new_width / aspect_ratio)
-            
-            self.new_size = (new_width, new_height)
-            if self.image.format in ['GIF', 'WEBP']:
+                if new_width / new_height > aspect_ratio:
+                    new_width = int(new_height*aspect_ratio)
+                else:
+                    new_height = int(new_width / aspect_ratio)
+
+                self.new_size = (new_width, new_height)
+
                 self.animated = True
                 self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
                 self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
                 #self.pyramid_thread = threading.Thread(target=self.lazy_gif_pyramid, daemon=True).start()
-               
-        except Exception as e:
-            #print("Can't access imageinfo.")
-            self.animated = False
-            pass
 
-        self.canvas.bind('<Configure>', lambda event: (self.__show_image()))  # canvas is resized / updated "broken?"
+            except Exception as e:
+                print("Can't access imageinfo.")
+                self.animated = False
+                pass
+
+        self.canvas.update()  # Wait until the canvas has finished creating.
+        self.canvas_height = int(geometry_width)
+        self.canvas_width = int(geometry_height)
+        #Try to load frames from gif and webp images.
+        self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
+        #this creates displays first image?
+        self.canvas.bind('<Configure>', lambda event: (self.__show_image()))  # canvas is resized from displayimage, time to show image.
         # Create image pyramid
         #old place for image:
             
@@ -169,10 +167,13 @@ class CanvasImage:
         # Handle keystrokes in idle mode, because program slows down on a weak computers,
         # when too many key stroke events in the same time
   
-        self.canvas.focus_set()
+        #self.canvas.focus_set()
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.__keystroke, event))
         #self.center_image()
         self.__image.close()
+        self.image.close()
+        #self.__show_image()
+
     """
     def lazy_gif_pyramid(self):
         self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]    
@@ -186,20 +187,27 @@ class CanvasImage:
             self.__pyramid = self.pyramid
     """
     def lazy_pyramid(self,w,h):
+        
         if self.closing:
+
             self.pyramid = [Image.open(self.path)]
+            #self.pyramid = self.__pyramid
             self.replace_first = True
             while w > 512 and h > 512 and self.closing:  # top pyramid image is around 512 pixels in size
                 w /= self.__reduction  # divide on reduction degree
                 h /= self.__reduction  # divide on reduction degree
-                self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter)) #logic here so we can avert resize function?
+                self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter)) # This creates a new first image that is not nearest.
+                #starts this creation at the same time as the original nearest basically.
                 if self.replace_first and self.closing: #when image created with better filter, replaces the old one.
+                    #problem, it doesnt wait until self_image is done rendering first picture.
                     self.replace_first = False
                     self.replace_await = True
                     self.__pyramid = self.pyramid
+                    self.pyramid_ready.wait()
+                    #self.canvas.update_idletasks() # wait till first pic is rendered
                     self.__show_image() # For replacing second picture
-            self.__pyramid = self.pyramid
-    
+            self.__pyramid = self.pyramid # pass the whole zoom pyramid when it is ready.
+
     def load_frames(self): 
         try:
             #Happy ending, all frames found, return.
@@ -227,7 +235,7 @@ class CanvasImage:
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
                 print(f"{self.obj.truncated}")
-                print(f"F:  {elapsed_time}")
+                print(f"F:  {elapsed_time} {self.obj.framecount}")
                 del end_time2
                 self.first = False # Flags that the first has been created
                 #print(f"{len(self.frames)}/{self.obj.framecount} Delay: {self.obj.frametimes[0]}")
@@ -407,7 +415,7 @@ class CanvasImage:
         self.__show_image()  # redraw the image
     
     def __show_image(self):
-        if self.image.format in ['GIF', 'WEBP']: #Let another function handle if animated
+        if self.obj.isanimated: #Let another function handle if animated
             if self.frames:
                 pass
         else:
@@ -463,7 +471,11 @@ class CanvasImage:
                         
 
                         image = self.__pyramid[(max(0, self.__curr_img))]
-                        imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
+                        if self.imwidth * self.imheight < self.fast_render_size: # if small render high quality
+                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
+                        else:
+                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
+
                         self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                    max(box_canvas[1], box_img_int[1]),
                                                 anchor='nw', image=imagetk)
@@ -472,10 +484,11 @@ class CanvasImage:
                         del end_time
                         print(f"F:  {elapsed_time}")
                         self.canvas.lower(self.imageid)  # set image into background
-                        self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection    
+                        self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
+                        self.pyramid_ready.set() #tell threading that second picture is allowed to render.
                         
 
-                    elif self.replace_await:
+                    elif self.replace_await and self.imwidth * self.imheight > self.fast_render_size: # only render second time if needed.
                         self.replace_await = False
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
@@ -485,7 +498,7 @@ class CanvasImage:
                         
                         end_time = time.time()
                         elapsed_time = end_time - self.creation_time
-                        del self.creation_time
+                        #del self.creation_time
                         del end_time
                         print(f"R:  {elapsed_time}")
                         self.canvas.lower(self.imageid)  # set image into background
@@ -631,18 +644,18 @@ class CanvasImage:
     
     def rescale(self, scale):
         """ Rescale the Image without doing anything else """
-        if self.image.format not in ['GIF', 'WEBP']:
+        if  not self.obj.isanimated:
             self.__scale=scale
             self.imscale=scale
 
             self.canvas.scale('all', self.canvas_width, 0, scale, scale)  # rescale all objects
-            #print(f"Rescaled")
+            print(f"Rescaled")
             #self.redraw_figures()
             #self.__show_image()
     
     def center_image(self):
         """ Center the image on the canvas """
-        if self.image.format not in ['GIF', 'WEBP']:
+        if not self.obj.isanimated:
             canvas_width = self.canvas_width
             canvas_height = self.canvas_height
     
@@ -654,14 +667,14 @@ class CanvasImage:
     
             # Calculate offsets to center the image
             x_offset = (canvas_width - scaled_image_width)-int((canvas_width - scaled_image_width)/2)
-            y_offset = 0 #(canvas_height - scaled_image_height)
+            y_offset = 0 #(canvas_height - scaled_image_height)/2
     
             # Update the position of the image container
             self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
             #self.canvas.scan_dragto(int(-scaled_image_width*0.90), 0, gain=1)
             #self.__show_image()
 
-            #print(f"Centered")
+            print(f"Centered")
             
 
 def main():
