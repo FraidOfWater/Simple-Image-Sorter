@@ -13,7 +13,7 @@ import time
 class CanvasImage:
     """ Display and zoom image """
     #@profile
-    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj):
+    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_y_centering):
         self.imageobj = imageobj
         """ Initialize core attributes and lists"""
         print("")
@@ -32,12 +32,14 @@ class CanvasImage:
         # Image rendering defautls
         self.__first_filter = Image.Resampling.NEAREST # The initial quality of placeholder image, used to display the image just a bit faster.
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
-        self.fast_render_size = 111500*111500 #use initial NEAREST rendering for pics exceeding this size.
+        self.fast_render_size = fast_render_size
+        #self.fast_render_size = 11500*11500 #use initial NEAREST rendering for pics exceeding this size. this loads already from prefs.
         # Lists, attributes and other flags.
         self.frames = []            # Stores loaded frames for .Gif, .Webp
         self.original_frames = []   # Could be used for zooming logic
         self.default_delay = tk.BooleanVar()    # Frame refresh time. Unique for each frame, or use singular, default reported by image?
         self.default_delay.set(True)            # Fallback to default_delay. This is linked to the button in GUI: default_delay_button.
+        self.viewer_y_centering = viewer_y_centering
         self.animated = False
         self.lazy_index = 0
         self.lazy_loading = True    # Flag that turns off when all frames have been loaded to frames.
@@ -106,14 +108,12 @@ class CanvasImage:
 
         # threading here?
         self.creation_time = time.time()
-        self.canvas.update()  # Wait until the canvas has finished creating.
-        self.canvas_height = int(geometry_width)
-        self.canvas_width = int(geometry_height)
-        #Try to load frames from gif and webp images.
-        self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
+        self.canvas_height = int(geometry_height)
+        self.canvas_width = int(geometry_width)
+        self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
         if not imageobj.isanimated:
-            print("error")
-            self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
+
+            
             #self.__show_image()
             
             w, h = self.__pyramid[-1].size
@@ -121,7 +121,6 @@ class CanvasImage:
             self.pyramid_thread = threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
         else:
             try:
-                print("stage 1")
                 self.length = imageobj.framecount
 
                 new_width = self.canvas_width
@@ -136,18 +135,18 @@ class CanvasImage:
 
                 self.new_size = (new_width, new_height)
 
-                print("stage 2")
                 self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
-                print("stage 3")
                 self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
-                print("stage 4")
                 #self.pyramid_thread = threading.Thread(target=self.lazy_gif_pyramid, daemon=True).start()
 
             except Exception as e:
                 print(f"Can't access imageinfo. {e}")
                 pass
 
+        self.canvas.update()  # Wait until the canvas has finished creating.
         
+        #Try to load frames from gif and webp images.
+        self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
         #this creates displays first image?
         self.canvas.bind('<Configure>', lambda event: (self.__show_image()))  # canvas is resized from displayimage, time to show image.
         # Create image pyramid
@@ -223,7 +222,7 @@ class CanvasImage:
                 # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
                 #centering of frames and rescaling?
                 frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
-                #frame = ImageTk.PhotoImage(self.image.resize(self.new_size, Image.Resampling.LANCZOS))
+                
                 canvas_width = self.canvas_width
                 canvas_height = self.canvas_height
                 frame_width = frame.width()
@@ -660,7 +659,7 @@ class CanvasImage:
         """ Center the image on the canvas """
         if not self.imageobj.isanimated:
             canvas_width = self.canvas_width
-            canvas_height = self.canvas_height
+            canvas_height = self.canvas_height 
     
             # Calculate scaled image dimensions
             #print(f"canvas {canvas_width} and {canvas_height}")
@@ -670,7 +669,11 @@ class CanvasImage:
     
             # Calculate offsets to center the image
             x_offset = (canvas_width - scaled_image_width)-int((canvas_width - scaled_image_width)/2)
-            y_offset = 0 #(canvas_height - scaled_image_height)/2
+            if self.viewer_y_centering:
+                y_offset = (canvas_height - scaled_image_height)/2
+            else:
+                y_offset = 0
+               
     
             # Update the position of the image container
             self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
