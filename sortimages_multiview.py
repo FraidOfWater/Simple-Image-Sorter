@@ -1,6 +1,11 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
+#center image can be controlled to set where centers.
+#make prefs more. for centering image, then for auto display.
+#throttle destwindow also, fix its scrollbar.
+#cleanup code.
+
 #""" #comment when building
 import ctypes
 try: #presumably for building only?
