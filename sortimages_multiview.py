@@ -3,8 +3,6 @@ import os
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
 #""" #comment when building
 import ctypes
-
-
 try: #presumably for building only?
     script_dir = os.path.dirname(os.path.abspath(__file__))
     dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
@@ -40,6 +38,7 @@ from PIL import Image, ImageTk
 class Imagefile:
     path = ""
     dest = ""
+    dupename=False
 
     def __init__(self, name, path) -> None:
         self.name = tk.StringVar()
@@ -61,8 +60,7 @@ class Imagefile:
         self.index = 0
         self.delay = 100 #Default delay
         self.id = None
-        self.truncated = self.name.get()[:50]
-                        
+        
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
@@ -97,12 +95,11 @@ class Imagefile:
 
 
 class SortImages:
-
     imagelist = []
     destinations = []
     exclude = []
     thumbnailsize = 256
-    
+
     def __init__(self) -> None:
         
         self.existingnames = set()
@@ -122,7 +119,6 @@ class SortImages:
         #prefs_path = os.path.join(script_dir, "prefs.json")
         self.threads = os.cpu_count()
         hotkeys = ""
-
         try:
             with open(prefs_path, "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -191,8 +187,11 @@ class SortImages:
         except Exception as e:
             logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
             logging.error(e)
+
+        #This remembers the size of the leftgui (updated on close or in prefs))
         self.gui.leftui.configure(width=self.gui.toppane_width)
 
+        #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (User changed thumbnails, generate thumbnails again)
         self.data_dir = os.path.join(script_dir, "data")
         if(os.path.exists(self.data_dir) and os.path.isdir(self.data_dir)):
             temp = os.listdir(self.data_dir)
@@ -220,7 +219,6 @@ class SortImages:
         else:
             os.mkdir(self.data_dir)
         self.gui.mainloop()
-        
 
     def moveall(self):
         loglist = []
@@ -231,8 +229,6 @@ class SortImages:
             temp.append(image_obj) #store imageobj
             self.gui.assigned_squarelist.remove(x)
             self.gui.moved_squarelist.append(x)
-            #combined_squarelist.remove(x)
-            #self.gui.combined_squarelist.append(x)
             for obj in temp:
                 out = obj.move()
                 obj.dest = ""
@@ -250,6 +246,7 @@ class SortImages:
         except:
             logging.error("Failed to write filelog.txt")
 
+    
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
@@ -260,14 +257,12 @@ class SortImages:
             for name in files:
                 ext = os.path.splitext(name)[1][1:].lower()
                 if ext in supported_formats:
-                    full_path = f"{root}/{name}"
-                    #full_path = os.path.join(root, name) #long time initializing
-                    imgfile = Imagefile(name, full_path)
-
+                    imgfile = Imagefile(name, os.path.join(root, name))
                     if ext == "gif" or ext == "webp":
                         imgfile.isanimated = True
                     if name in existing:
                         duplicates.append(imgfile)
+                        imgfile.dupename=True
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
@@ -276,6 +271,19 @@ class SortImages:
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
         return self.imagelist
+    
+                 
+    def checkdupefilenames(self, imagelist):
+        duplicates: list[Imagefile] = []
+        existing: set[str] = set()
+
+        for item in imagelist:
+            if item.name.get() in existing:
+                duplicates.append(item)
+                item.dupename=True
+            else:
+                existing.add(item.name)
+        return duplicates
     
     #This tells the setDestination method the current list being viewed.
     #Picture selection checkboxes aren't cleared when switching views
@@ -296,25 +304,20 @@ class SortImages:
         elif self.gui.show_moved.get():
             moved = self.gui.moved_squarelist
             return moved
-
-    #@profile
+        
     def setDestination(self, *args):
         dest = args[0]
         marked = []
         current_list = []
-        current_list = self.get_current_list()     
-        #self.gui.render_refresh = []
+        current_list = self.get_current_list()
         temp2 = []   
         try:
             wid = args[1].widget
         except AttributeError:
             wid = args[1]["widget"]
-
         if isinstance(wid, tk.Entry):
             pass
-        
-        else: #we could make marked list from check button adding it to the list or removing. ##OPTIMIZE
-            
+        else:
             marked = [x for x in current_list if x.obj.checked.get()]
             for x in marked:
                 x.obj.setdest(dest)
@@ -328,13 +331,11 @@ class SortImages:
                         self.gui.unassigned_squarelist.remove(x)
                         self.gui.assigned_squarelist.append(x) 
                         if x.obj.dest == dest['path']:
-                            #self.gui.filtered_images.append(x.obj)
                             if hasattr(self.gui, 'destwindow'): # if we have new assigned.
                                 if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
                                     self.gui.filtered_images.append(x.obj)
                                      #imageobject eventually
                                     self.gui.queue.append(x)
-                        #self.gui.combined_squarelist.append(x)
                         try:
                             self.gui.running.remove(x)
                             self.gui.track_animated.remove(x)
@@ -342,11 +343,7 @@ class SortImages:
                             pass
                 ##this is not enabled because we dont want placement to change here, it is too distracting.
                 elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
-                    #self.gui.filtered_images = []
-                    #obj.assigned = True
                     if hasattr(self.gui, 'destwindow'): # if we have the dest window open
-                        #self.gui.filtered_images.remove(x.obj)
-                        #self.gui.filtered_images.append(x.obj)
                         if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
                             try:
                                 if x.obj not in self.gui.filtered_images:
@@ -354,10 +351,7 @@ class SortImages:
                                     self.gui.queue.append(x)
                                 else:
                                     x.obj.checked.set(True)
-                                    #self.gui.destgrid_updateslist.append(x) # x in here?
                                     x.obj.destchecked.set(True)                                    
-                                    #self.gui.filtered_images.remove(x.obj)
-                                    #self.gui.filtered_images.append(x.obj)
                             except Exception as e:
                                 print(f"first {e}")
                         else:
@@ -374,27 +368,19 @@ class SortImages:
                         self.gui.moved_squarelist.remove(x)
                         self.gui.assigned_squarelist.append(x)
                         if x.obj.dest == dest['path']:
-                            #self.gui.filtered_images.append(x.obj)
                             if hasattr(self.gui, 'destwindow'): # if we have new assigned.
                                 if self.gui.dest == dest['path']:
                                     self.gui.filtered_images.append(x.obj)
                                     self.gui.queue.append(x)
-                        #self.gui.combined_squarelist.remove(square)
-                        #self.gui.combined_squarelist.append(square)
                         try:
                             self.gui.running.remove(x)
                             self.gui.track_animated.remove(x)
                         except Exception as e:
                             pass
                         
-        #checks for click in destination windows, if seen, changes their colour.
         marked = []
-        ##--could replace with normal marked list which is activated and removed from by athe checkbutton functioning. no need to filter the whole list!
         marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
-        
-        #changes destination and the color regardless of whether it was active window or dest that this happened in.
         temp = self.gui.assigned_squarelist.copy()
-
         for square in marked:
             if self.gui.show_assigned.get():
                 for gridsquare in self.gui.assigned_squarelist: ##OPTIMIZE change to the current displayedlist, but that has to not be dictionary.
@@ -419,23 +405,29 @@ class SortImages:
                     self.gui.filtered_images.remove(square.obj)
                     
                     break
-                #self.gui.queue.append(square.obj) # when the image selected is not going to the same destination, #to remove?
-                """
-                elif item.obj.id == square.obj.id:
-                    self.gui.combined_squarelist.remove(item)
-                    self.gui.combined_squarelist.append(item)
-                """ 
             
             square.obj.setdest(dest)
             square.obj.guidata["frame"]['background'] = dest['color']
             square.obj.guidata["canvas"]['background'] = dest['color']
-            square.obj.destchecked.set(False)
-        
+            square.obj.destchecked.set(False) #Not .checked for purposes of having different actions take place independent of current view. So
+            #For example... I dont remember
         #Updates main and destination windows.
         
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
+        if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display:
+            #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
+            if self.gui.current_selection: #If any pics borders are blue
+                self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
+                self.gui.current_selection = [] #forget about them
+            self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
+            self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
+           
+            self.gui.current_selection.append(self.gui.displayedlist[self.gui.last_viewed_image_pos]) #adds modified to current list
+
+            self.gui.leftui.focus_set()
+        #if not moved current id, dont refresh displayimage. Just get new index for it instead.
 
     def savesession(self,asksavelocation):
         if asksavelocation:
@@ -448,21 +440,29 @@ class SortImages:
             for obj in self.imagelist:
                 if hasattr(obj, 'thumbnail'):
                     thumb = obj.thumbnail
-                else:
-                    thumb = ""
-                
-                if obj.isanimated:
-                    imagesavedata.append({
+                    if obj.isanimated:
+                        imagesavedata.append({
                         "name": obj.name.get(),
                         "path": obj.path,
                         "dest": obj.dest,
                         "checked": obj.checked.get(),
                         "moved": obj.moved,
                         "thumbnail": thumb,
-                        "isanimated": obj.isanimated,
-
+                        "isanimated": obj.isanimated, 
+                        "dupename": obj.dupename,
+                    })
+                    else:
+                        imagesavedata.append({
+                        "name": obj.name.get(),
+                        "path": obj.path,
+                        "dest": obj.dest,
+                        "checked": obj.checked.get(),
+                        "moved": obj.moved,
+                        "thumbnail": thumb,
+                        "dupename": obj.dupename,
                     })
                 else:
+                    thumb = ""
                     imagesavedata.append({
                         "name": obj.name.get(),
                         "path": obj.path,
@@ -470,12 +470,13 @@ class SortImages:
                         "checked": obj.checked.get(),
                         "moved": obj.moved,
                         "thumbnail": thumb,
+                        "dupename": obj.dupename,
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
-
+      
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
@@ -494,11 +495,10 @@ class SortImages:
                     n.checked.set(o['checked'])
                     n.moved = o['moved']
                     n.thumbnail = o['thumbnail']
+                    n.dupename=o['dupename']
                     n.dest=o['dest']
-                    try:
+                    if not n.isanimated == None:
                         n.isanimated=o['isanimated']
-                    except Exception as e: #nonexistent
-                        pass
                     self.imagelist.append(n)
             
             self.thumbnailsize=savedata['thumbnailsize']
@@ -508,40 +508,41 @@ class SortImages:
             gui.guisetup(self.destinations)
         else:
             logging.error("No Last Session!")
-
+      
     def validate(self, gui):
 
-        self.sdp = gui.sdpEntry.get()
-        self.ddp = gui.ddpEntry.get()
+        self.sdp = self.gui.sdpEntry.get()
+        self.ddp = self.gui.ddpEntry.get()
         samepath = (self.sdp == self.ddp)
 
-        print(f"{gui.sdpEntry.get()}, {self.ddp}")
+        print(f"{self.gui.sdpEntry.get()}, {self.ddp}")
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
 
             
             #logging.info("main class setup")
             self.setup(self.ddp)
-            #logging.info("GUI setup")
+            logging.info("GUI setup")
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
-            #logging.info("displaying first image grid")
+            logging.info("displaying first image grid")
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
-            self.generatethumbnails(sublist) #so the problem is that this doesnt check the existing stuff!
+            self.generatethumbnails(sublist)
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
 
         elif samepath:
-            self.sdp.delete(0, tk.END)
-            self.ddp.delete(0, tk.END)
-            self.sdp.insert(0, "PATHS CANNOT BE SAME")
-            self.ddp.insert(0, "PATHS CANNOT BE SAME")
+            self.gui.sdpEntry.delete(0, tk.END)
+            self.gui.ddpEntry.delete(0, tk.END)
+            self.gui.sdpEntry.insert(0, "PATHS CANNOT BE SAME")
+            self.gui.ddpEntry.insert(0, "PATHS CANNOT BE SAME")
+            
         else:
-            self.sdp.delete(0, tk.END)
-            self.ddp.delete(0, tk.END)
-            self.sdp.insert(0, "ERROR INVALID PATH")
-            self.ddp.insert(0, "ERROR INVALID PATH")
+            self.gui.sdpEntry.delete(0, tk.END)
+            self.gui.ddpEntry.delete(0, tk.END)
+            self.gui.sdpEntry.insert(0, "ERROR INVALID PATH")
+            self.gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
 
     def setup(self, dest):
@@ -555,7 +556,7 @@ class SortImages:
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
                     self.destinationsraw.append(entry.path)
-
+      
     def makethumb(self, imagefile):
             file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
             if not imagefile.file_size or not imagefile.mod_time:
@@ -576,7 +577,7 @@ class SortImages:
                 return            
             
             try:
-                print("Generated a thumbnail")
+                #print("Generated a thumbnail")
                 im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
@@ -588,23 +589,21 @@ class SortImages:
         max_workers = max(1,self.threads)
         with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
-        #logging.info("Finished making thumbnails")
+        logging.info("Finished making thumbnails")
 
     def clear(self, *args):
         if askokcancel("Confirm", "Really clear your selection?"):
             for x in self.imagelist:
                 x.checked.set(False)
-    
+    #creates thumbnail gif frames and other data for grid and canvasimage.
     def load_frames(self, gridsquare):
         try:            
             with Image.open(gridsquare.obj.path) as img:
-
-                with pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential') as image:
-                    image = pyvips.Image.new_from_file(gridsquare.obj.path, access='sequential')
-                    gridsquare.obj.framecount = image.get('n-pages')
+                gridsquare.obj.framecount = img.n_frames
                 gridsquare.obj.delay = img.info.get('duration', 20)
-
-                #print(f"test {gridsquare.obj.framecount}")
+                if gridsquare.obj.framecount == 1:
+                    raise Exception(f"Found static: {gridsquare.obj.name.get()}")
+                print(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames.")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
@@ -614,10 +613,11 @@ class SortImages:
                     gridsquare.obj.frames.append(tk_image)
             
                 gridsquare.obj.lazy_loading = False
-                print(f"All frames loaded for: {gridsquare.obj.truncated}")
+                #print(f"All frames loaded for: {gridsquare.obj.name.get()}")
         except Exception as e: #fallback to static.
-            print(f"Fallback to static, {gridsquare.obj.truncated}: {e}")
+            print(f"{e}")
             gridsquare.obj.isanimated = False
+            
             
 # Run Program
 if __name__ == '__main__':
