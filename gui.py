@@ -76,6 +76,8 @@ def saveprefs(manager, gui):
         "squaresperpage": gui.squaresperpage.get(), 
         "sortbydate": gui.sortbydatevar.get(),
         "default_delay": gui.default_delay.get(),
+        "viewer_y_centering": gui.viewer_y_centering,
+        "fast_render_size": gui.fast_render_size,
 
         #Customization
         "checkbox_height":gui.checkbox_height,
@@ -116,6 +118,7 @@ def saveprefs(manager, gui):
         "autosave":manager.autosave,
         "hideonassign": gui.hideonassignvar.get(), 
         "hidemoved": gui.hidemovedvar.get(),
+        "auto_display": gui.auto_display.get(),
 
         }
     
@@ -170,6 +173,12 @@ class GUIManager(tk.Tk):
         
         self.default_delay = tk.BooleanVar()    # Whether to use global delay from a gif or a per frame delay.
         self.default_delay.set(True)
+        self.viewer_y_centering = False
+        self.auto_display = tk.BooleanVar()
+        self.auto_display.set(False)
+        #at 20000x20000 to disable it.
+        self.fast_render_size = "20000*20000" # Size at which we start to buffer the image to load the displayimage faster. We use NEAREST, then when LANCZOS is ready, we swap it to that.
+        
         self.fix_flag = True
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
@@ -228,6 +237,12 @@ class GUIManager(tk.Tk):
                     self.image_border_colour = jprefs['image_border_colour']
                 if "default_delay" in jprefs:
                     self.default_delay.set(jprefs['default_delay'])
+                if "viewer_y_centering" in jprefs:
+                    self.viewer_y_centering = jprefs['viewer_y_centering']
+                if "fast_render_size" in jprefs:
+                    self.fast_render_size = jprefs['fast_render_size']
+                if "auto_display" in jprefs:
+                    self.auto_display.set(jprefs['auto_display'])
 
         except Exception as e:
             logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
@@ -267,7 +282,7 @@ class GUIManager(tk.Tk):
         self.clear_all = False
         self.save = 0
         self.refresh_flag = False
-        self.auto_display = False
+        
         #Old (Hideonassing on off implementation?) (That's just "show all" I guess.)
         self.hideonassignvar = tk.BooleanVar()
         self.hideonassignvar.set(True)
@@ -286,7 +301,7 @@ class GUIManager(tk.Tk):
                       str(self.winfo_screenheight()-120))
         self.geometry("+0+60")
         self.buttons = []
-        self.hotkeys = "123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
+        self.hotkeys = "123456qwerty7890uiopasdfghjklzxcvbnm"
 
         #Default toppane width
         self.toppane_width = 363
@@ -701,17 +716,23 @@ class GUIManager(tk.Tk):
             second_window.focus_force()
             # Create the initial Image_frame
             geometry = self.imagewindowgeometry.split('+')[0]
-            self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj)
+            pass_x, pass_y = self.fast_render_size.split('*', 1)
+            pass_fast_render_size = int(pass_x) * int(pass_y)
+            self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, pass_fast_render_size, self.viewer_y_centering)
             self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
             self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
+            print("calling rescale")
             self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
             self.Image_frame.center_image()
             self.displayedimage = imageobj.id
-            if self.auto_display:
+            if self.auto_display.get():
+                print("testin2")
                 for index in self.displayedlist:
+                    print(f"{index.obj.id} vs {imageobj.id}")
                     if index.obj.id == imageobj.id:
+                        print(f"victory for {index.obj.id} vs {imageobj.id}")
                         self.last_viewed_image_pos = self.displayedlist.index(index)
-                        print(f"testing index {self.last_viewed_image_pos}")
+                        print(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
                         if self.current_selection:
                             self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
                             self.current_selection = []
@@ -866,7 +887,9 @@ class GUIManager(tk.Tk):
 
 
         self.default_delay_button = ttk.Checkbutton(optionsframe, text="Default delay", variable=self.default_delay, onvalue=True, offvalue=False, command=lambda: (self.default_delay_buttonpress(), self.default_delay) ,style="darkmode1.TCheckbutton")
-        self.default_delay_button.grid(row=3, column=0, sticky="w", padx=25)        
+        self.default_delay_button.grid(row=3, column=0, sticky="w", padx=25)      
+        self.auto_display_button = ttk.Checkbutton(optionsframe, text="Auto display", variable=self.auto_display, onvalue=True, offvalue=False, command=lambda: self.auto_display ,style="darkmode1.TCheckbutton")
+        self.auto_display_button.grid(row=3, column=1, sticky="w", padx=25)  
         # save button
         self.savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=self.button_colour, fg=self.text_colour)
         ToolTip(self.savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
@@ -928,10 +951,11 @@ class GUIManager(tk.Tk):
 
         self.squaresperpageentry.bind("<Enter>", self.squaresperpageentry_on_enter)
         self.squaresperpageentry.bind("<Leave>", self.squaresperpageentry_on_leave)
+
     def default_delay_buttonpress(self):
-        self.default_delay
         if hasattr(self, 'Image_frame') and self.Image_frame:
             self.Image_frame.default_delay.set(self.default_delay.get())
+    
 
     def squaresperpageentry_on_enter(self,event):
         self.squaresperpageentry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
