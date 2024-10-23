@@ -13,7 +13,7 @@ import time
 class CanvasImage:
     """ Display and zoom image """
     #@profile
-    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_y_centering):
+    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_y_centering, filter_mode):
         self.imageobj = imageobj
         """ Initialize core attributes and lists"""
         print("")
@@ -29,8 +29,15 @@ class CanvasImage:
         self.replace_first = True   # Flag that turns off when the pyramid has created the same picture in higher quality and rendered it.
         self.replace_await = False
 
-        # Image rendering defautls
-        self.__first_filter = Image.Resampling.BILINEAR # The initial quality of placeholder image, used to display the image just a bit faster.
+        # Image rendering defaults
+
+        # The initial quality of placeholder image, used to display the image just a bit faster.
+        accepted_modes = ["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]
+        if filter_mode.upper() in accepted_modes:
+            self.__first_filter = getattr(Image.Resampling, filter_mode.upper())
+        else:
+            self.__first_filter = Image.Resampling.BILINEAR
+ 
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
         self.fast_render_size = fast_render_size
         #self.fast_render_size = 11500*11500 #use initial NEAREST rendering for pics exceeding this size. this loads already from prefs.
