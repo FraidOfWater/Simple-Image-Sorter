@@ -30,7 +30,7 @@ class CanvasImage:
         self.replace_await = False
 
         # Image rendering defautls
-        self.__first_filter = Image.Resampling.NEAREST # The initial quality of placeholder image, used to display the image just a bit faster.
+        self.__first_filter = Image.Resampling.BILINEAR # The initial quality of placeholder image, used to display the image just a bit faster.
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
         self.fast_render_size = fast_render_size
         #self.fast_render_size = 11500*11500 #use initial NEAREST rendering for pics exceeding this size. this loads already from prefs.
@@ -473,9 +473,17 @@ class CanvasImage:
                         
 
                         image = self.__pyramid[(max(0, self.__curr_img))]
-                        if self.imwidth * self.imheight < self.fast_render_size: # if small render high quality
+                        a = round(self.imageobj.file_size/1000000,2) #file size
+                        b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
+                        c = round(self.fast_render_size,2) #Prefs set limit in MB
+
+                        if b < c: # if small render high quality
+                            #print(f"smoll {a}  converted {b} MB with limit {c} MB")
+                            print(f"{b} MB no buffer")
                             imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
                         else:
+                            #print(f"smoll {a}  converted {b} MB with limit {c} MB")
+                            print(f"{b} MB/{c} MB buffered")
                             imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
 
                         self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
@@ -490,7 +498,7 @@ class CanvasImage:
                         self.pyramid_ready.set() #tell threading that second picture is allowed to render.
                         
 
-                    elif self.replace_await and self.imwidth * self.imheight > self.fast_render_size: # only render second time if needed.
+                    elif self.replace_await and self.imageobj.file_size > self.fast_render_size: # only render second time if needed.
                         self.replace_await = False
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
