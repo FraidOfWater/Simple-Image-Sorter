@@ -1,10 +1,7 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
-#center image can be controlled to set where centers.
-# Add options to prefs for:
-# Centering image for displayimage. Centered or the default that it is now, no other options supported.
-# Auto display checkbox and prefs option. On/Off
+
 #throttle destwindow also, fix its scrollbar.
 #cleanup code.
 
@@ -424,7 +421,6 @@ class SortImages:
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
         if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display.get():
-            print("testin1")
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             if self.gui.current_selection: #If any pics borders are blue
                 self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
@@ -451,6 +447,8 @@ class SortImages:
                     if obj.isanimated:
                         imagesavedata.append({
                         "name": obj.name.get(),
+                        "file_size": obj.file_size,
+                        "id": obj.id,
                         "path": obj.path,
                         "dest": obj.dest,
                         "checked": obj.checked.get(),
@@ -458,30 +456,33 @@ class SortImages:
                         "thumbnail": thumb,
                         "isanimated": obj.isanimated, 
                         "dupename": obj.dupename,
-                        "id": obj.id,
+                        
                     })
                     else:
                         imagesavedata.append({
                         "name": obj.name.get(),
+                        "file_size": obj.file_size,
+                        "id": obj.id,
                         "path": obj.path,
                         "dest": obj.dest,
                         "checked": obj.checked.get(),
                         "moved": obj.moved,
                         "thumbnail": thumb,
                         "dupename": obj.dupename,
-                        "id": obj.id,
+                        
                     })
                 else:
                     thumb = ""
                     imagesavedata.append({
                         "name": obj.name.get(),
+                        "file_size": obj.file_size,
+                        "id": obj.id,
                         "path": obj.path,
                         "dest": obj.dest,
                         "checked": obj.checked.get(),
                         "moved": obj.moved,
                         "thumbnail": thumb,
                         "dupename": obj.dupename,
-                        "id": obj.id,
                 })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
@@ -500,18 +501,21 @@ class SortImages:
             self.setup(savedata['dest'])
             if 'existingnames' in savedata:
                 self.existingnames = set(savedata['existingnames'])
-            for o in savedata['imagelist']:
-                if os.path.exists(o['path']):
-                    n = Imagefile(o['name'], o['path'])
-                    n.checked.set(o['checked'])
-                    n.moved = o['moved']
-                    n.thumbnail = o['thumbnail']
-                    n.dupename=o['dupename']
-                    n.dest=o['dest']
-                    n.id=o['id']
-                    if not n.isanimated == None:
-                        n.isanimated=o['isanimated']
-                    self.imagelist.append(n)
+            for line in savedata['imagelist']:
+                if os.path.exists(line['path']):
+                    obj = Imagefile(line['name'], line['path'])
+                    obj.checked.set(line['checked'])
+                    obj.moved = line['moved']
+                    obj.thumbnail = line['thumbnail']
+                    obj.dupename=line['dupename']
+                    obj.dest=line['dest']
+                    obj.id=line['id']
+                    obj.file_size=line['file_size']
+                    try:
+                        obj.isanimated=line['isanimated']
+                    except Exception as e:
+                        pass
+                    self.imagelist.append(obj)
             
             self.thumbnailsize=savedata['thumbnailsize']
             self.gui.thumbnailsize=savedata['thumbnailsize']
