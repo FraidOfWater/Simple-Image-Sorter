@@ -77,6 +77,7 @@ def saveprefs(manager, gui):
         "sortbydate": gui.sortbydatevar.get(),
         "default_delay": gui.default_delay.get(),
         "viewer_y_centering": gui.viewer_y_centering,
+        "filter_mode": gui.filter_mode,
         "fast_render_size": gui.fast_render_size,
 
         #Customization
@@ -158,12 +159,12 @@ class GUIManager(tk.Tk):
 
         self.gridsquare_padx = 2
         self.gridsquare_pady = 2
-        self.checkbox_height = 24
+        self.checkbox_height = 25
 
         self.interactive_buttons = False # Color change on hover
 
-        self.text_box_thickness = 2
-        self.image_border_thickness = 2
+        self.text_box_thickness = 0
+        self.image_border_thickness = 1
         
         self.text_box_selection_colour  = "grey"
         self.image_border_selection_colour  = "grey"
@@ -176,8 +177,8 @@ class GUIManager(tk.Tk):
         self.viewer_y_centering = False
         self.auto_display = tk.BooleanVar()
         self.auto_display.set(False)
-        self.fast_render_size = 3 # Size at which we start to buffer the image to load the displayimage faster. We use NEAREST, then when LANCZOS is ready, we swap it to that.
-        
+        self.fast_render_size = 5 # Size at which we start to buffer the image to load the displayimage faster. We use NEAREST, then when LANCZOS is ready, we swap it to that.
+        self.filter_mode = "BILINEAR"
         self.fix_flag = True
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
@@ -242,6 +243,8 @@ class GUIManager(tk.Tk):
                     self.fast_render_size = jprefs['fast_render_size']
                 if "auto_display" in jprefs:
                     self.auto_display.set(jprefs['auto_display'])
+                if "filter_mode" in jprefs:
+                    self.filter_mode = jprefs['filter_mode']
 
         except Exception as e:
             logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
@@ -711,7 +714,7 @@ class GUIManager(tk.Tk):
             
             #print(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
             
-            self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_y_centering)
+            self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_y_centering, self.filter_mode)
             self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
             self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
             self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
@@ -743,7 +746,7 @@ class GUIManager(tk.Tk):
                     # Create the initial Image_frame
                     geometry = self.imagewindowgeometry.split('+')[0]
                     pass_fast_render_size = int(self.fast_render_size)
-                    self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, pass_fast_render_size, self.viewer_y_centering)
+                    self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, pass_fast_render_size, self.viewer_y_centering, self.filter_mode)
                     self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
                     self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
                     self.Image_frame.rescale(min(self.second_window.winfo_width() / self.Image_frame.imwidth, self.second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
