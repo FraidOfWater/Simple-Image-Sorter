@@ -1,7 +1,7 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
-
+#make possible hoering over diplsayiamge pressing hotkey, and it working.
 #throttle destwindow also, fix its scrollbar.
 #cleanup code.
 
@@ -68,8 +68,17 @@ class Imagefile:
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
+            temp = os.path.join(destpath, self.name.get())
+            if os.path.exists(temp):
+                logging.error("File already exists at destination, moved with ID instead of name.")
+                self.guidata["frame"].configure(
+                highlightbackground="red", highlightthickness=2)
+                ext = os.path.splitext(self.name.get())[1][1:].lower()
+                file_name = self.id+ "." +ext
+            else:
+                file_name = self.name.get()
             try:
-                shmove(self.path, os.path.join(destpath, self.name.get()))
+                shmove(self.path, os.path.join(destpath, file_name))
                 self.moved = True
                 self.show = False
                 self.guidata["frame"].configure(
@@ -247,8 +256,9 @@ class SortImages:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
-        except:
-            logging.error("Failed to write filelog.txt")
+        except Exception as e:
+            print(f"ERROR {e}")
+            logging.error("Failed to write filelog.txt ")
 
     
     def walk(self, src):
@@ -422,15 +432,18 @@ class SortImages:
             self.gui.refresh_destinations()
         if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display.get():
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
-            if self.gui.current_selection: #If any pics borders are blue
-                self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
-                self.gui.current_selection = [] #forget about them
-            self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
-            self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
-           
-            self.gui.current_selection.append(self.gui.displayedlist[self.gui.last_viewed_image_pos]) #adds modified to current list
+            try:
+                if self.gui.current_selection: #If any pics borders are blue
+                    self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
+                    self.gui.current_selection = [] #forget about them
+                self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
+                self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
 
-            self.gui.leftui.focus_set()
+                self.gui.current_selection.append(self.gui.displayedlist[self.gui.last_viewed_image_pos]) #adds modified to current list
+
+                self.gui.leftui.focus_set()
+            except Exception as e:
+                print(f"Error auto_display: {e}")
         #if not moved current id, dont refresh displayimage. Just get new index for it instead.
 
     def savesession(self,asksavelocation):
@@ -487,7 +500,7 @@ class SortImages:
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
-                json.dump(save, savef)
+                json.dump(save, savef, indent=4)
       
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
