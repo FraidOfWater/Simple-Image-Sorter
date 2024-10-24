@@ -69,12 +69,14 @@ class Imagefile:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
             temp = os.path.join(destpath, self.name.get())
+            flag = False
             if os.path.exists(temp):
-                logging.error("File already exists at destination, moved with ID instead of name.")
+                
                 self.guidata["frame"].configure(
                 highlightbackground="red", highlightthickness=2)
                 ext = os.path.splitext(self.name.get())[1][1:].lower()
                 file_name = self.id+ "." +ext
+                flag = True
             else:
                 file_name = self.name.get()
             try:
@@ -87,6 +89,9 @@ class Imagefile:
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
                 destpath = ""
+                if flag:
+                    logging.error(f"File {self.name.get()} already exists at destination, file renamed to it's ID {file_name} and moved to destination.")
+
                 return returnstr
             except Exception as e:
                 logging.error("Error moving: %s . File: %s",
