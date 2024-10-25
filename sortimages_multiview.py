@@ -14,7 +14,7 @@ try: #presumably for building only?
     dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
     dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
 except FileNotFoundError:
-    print("The file was not found.")
+    logging.error("The file was not found. (You are missing .dlls)")
     
 ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
@@ -54,7 +54,7 @@ class Imagefile:
         self.destchecked = tk.BooleanVar(value=False)
         self.moved = False
         self.assigned = False
-        self.isanimated = None
+        self.isanimated = False
         self.isvisible = False
         self.isvisibleindestination = False
         self.lazy_loading = True
@@ -94,7 +94,7 @@ class Imagefile:
 
                 return returnstr
             except Exception as e:
-                logging.error("Error moving: %s . File: %s",
+                logging.error("Error moving/deleting: %s . File: %s",
                               e, self.name.get())
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
@@ -119,12 +119,13 @@ class SortImages:
     thumbnailsize = 256
 
     def __init__(self) -> None:
-        
+        logging.info("Starting main program")
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
         self.gui = GUIManager(self)
         
+        logging.info("Loading preferences")
         # Determine the correct directory for prefs.json
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
@@ -209,6 +210,7 @@ class SortImages:
         #This remembers the size of the leftgui (updated on close or in prefs))
         self.gui.leftui.configure(width=self.gui.toppane_width)
 
+        logging.info("Checking data folder")
         #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (User changed thumbnails, generate thumbnails again)
         self.data_dir = os.path.join(script_dir, "data")
         if(os.path.exists(self.data_dir) and os.path.isdir(self.data_dir)):
@@ -224,14 +226,13 @@ class SortImages:
                     
                     if max(width, height) != self.thumbnailsize:
                         shutil.rmtree(self.data_dir)
-                        print(f"Removing data folder, thumbnailsize changed")
+                        logging.info(f"Removing data folder, thumbnailsize changed")
                         os.mkdir(self.data_dir)
-                        print(f"Re-created data folder.")
+                        logging.info(f"Re-created data folder.")
                 except Exception as e:
-                    print(f"Coudln't load first image in data folder")
-                    pass
+                    logging.error(f"Couldn't load first image in data folder")
             else:
-                print(f"Data folder is empty")
+                logging.info(f"Data folder is empty")
                 pass
             pass
         else:
@@ -239,6 +240,7 @@ class SortImages:
         self.gui.mainloop()
 
     def moveall(self):
+        logging.info("Moving items")
         loglist = []
         temp1 = list(self.gui.assigned_squarelist)
         for x in temp1:
@@ -262,8 +264,7 @@ class SortImages:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
         except Exception as e:
-            print(f"ERROR {e}")
-            logging.error("Failed to write filelog.txt ")
+            logging.error(f"Failed to write filelog.txt: {e}")
 
     
     def walk(self, src):
@@ -355,30 +356,27 @@ class SortImages:
                                     self.gui.filtered_images.append(x.obj)
                                      #imageobject eventually
                                     self.gui.queue.append(x)
-                        try:
+
+                        if x in self.gui.running:
                             self.gui.running.remove(x)
+                        if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
-                        except Exception as e:
-                            pass
+
                 ##this is not enabled because we dont want placement to change here, it is too distracting.
                 elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
                     if hasattr(self.gui, 'destwindow'): # if we have the dest window open
                         if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
-                            try:
-                                if x.obj not in self.gui.filtered_images:
-                                    self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
-                                    self.gui.queue.append(x)
-                                else:
-                                    x.obj.checked.set(True)
-                                    x.obj.destchecked.set(True)                                    
-                            except Exception as e:
-                                print(f"first {e}")
+                            if x.obj not in self.gui.filtered_images:
+                                self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
+                                self.gui.queue.append(x)
+                            else:
+                                x.obj.checked.set(True)
+                                x.obj.destchecked.set(True)                                    
+
                         else:
-                            try:
+                            if x.obj in self.gui.filtered_images:
                                 self.gui.filtered_images.remove(x.obj)
-                            except Exception as e:
-                                print(f"second {e}")
-                                pass
+
                 #If we have the moved view, we want to move images from moved list to assigned list.
                 elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
                     x.obj.assigned = True
@@ -391,11 +389,11 @@ class SortImages:
                                 if self.gui.dest == dest['path']:
                                     self.gui.filtered_images.append(x.obj)
                                     self.gui.queue.append(x)
-                        try:
+
+                        if x in self.gui.running:
                             self.gui.running.remove(x)
+                        if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
-                        except Exception as e:
-                            pass
                         
         marked = []
         marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
@@ -448,10 +446,11 @@ class SortImages:
 
                 self.gui.leftui.focus_set()
             except Exception as e:
-                print(f"Error auto_display: {e}")
+                logging.error(f"Error auto_display: {e}")
         #if not moved current id, dont refresh displayimage. Just get new index for it instead.
 
     def savesession(self,asksavelocation):
+        logging.info("Saving session")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
@@ -508,6 +507,7 @@ class SortImages:
                 json.dump(save, savef, indent=4)
       
     def loadsession(self):
+        logging.info("Loading session")
         sessionpath = self.gui.sessionpathvar.get()
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
             with open(sessionpath, "r") as savef:
@@ -532,7 +532,7 @@ class SortImages:
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
-                        pass
+                        logging.error(f"Error in loadsession: {e}")
                     self.imagelist.append(obj)
             
             self.thumbnailsize=savedata['thumbnailsize']
@@ -549,21 +549,23 @@ class SortImages:
         self.ddp = self.gui.ddpEntry.get()
         samepath = (self.sdp == self.ddp)
 
-        print(f"{self.gui.sdpEntry.get()}, {self.ddp}")
+        logging.info(f"Using source: {self.gui.sdpEntry.get()}, and destination: {self.ddp}")
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
 
             
             #logging.info("main class setup")
+            logging.info("Setting up GUI")
             self.setup(self.ddp)
-            logging.info("GUI setup")
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
-            logging.info("displaying first image grid")
+            logging.info("Scanning folders")
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
+            logging.info("Generating thumbnails")
             self.generatethumbnails(sublist)
+            logging.info("Displaying images")
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
 
         elif samepath:
@@ -611,13 +613,13 @@ class SortImages:
                 imagefile.thumbnail = thumbpath
                 return            
             
-            try:
-                #print("Generated a thumbnail")
+            try:      
                 im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
+                logging.debug("Generated a thumbnail")
             except Exception as e:
-                logging.error("Error:: %s", e)
+                logging.error("Error in thumbnail generation: %s", e)
     
     def generatethumbnails(self, images):
         #logging.info("md5 hashing %s files", len(images))
@@ -632,25 +634,34 @@ class SortImages:
                 x.checked.set(False)
     #creates thumbnail gif frames and other data for grid and canvasimage.
     def load_frames(self, gridsquare):
+        logging.info("Loading frames")
         try:            
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
-                gridsquare.obj.delay = img.info.get('duration', 20)
+                check_delay = img.info.get('duration', gridsquare.obj.delay)
+                if check_delay == 0:
+                    gridsquare.obj.delay = gridsquare.obj.delay #100
+                else:
+                    gridsquare.obj.delay = check_delay # if not 0, just use the given duration.
                 if gridsquare.obj.framecount == 1:
                     raise Exception(f"Found static: {gridsquare.obj.name.get()}")
-                print(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames.")
+                logging.debug(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames. {gridsquare.obj.delay}")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
-                    gridsquare.obj.frametimes.append(frame.info.get('duration',gridsquare.obj.delay))
+                    check_frametime = frame.info.get('duration',gridsquare.obj.delay)
+                    if check_frametime == 0:
+                        check_frametime = gridsquare.obj.delay
+                    gridsquare.obj.frametimes.append(check_frametime)
                     frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
             
                 gridsquare.obj.lazy_loading = False
-                #print(f"All frames loaded for: {gridsquare.obj.name.get()}")
+                logging.debug(f"frametimes {gridsquare.obj.frametimes}")
+                logging.info(f"All frames loaded for: {gridsquare.obj.name.get()}")
         except Exception as e: #fallback to static.
-            print(f"{e}")
+            logging.error(f"Error in load_frames: {e}")
             gridsquare.obj.isanimated = False
             
             
