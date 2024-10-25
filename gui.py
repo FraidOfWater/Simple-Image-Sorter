@@ -551,8 +551,8 @@ class GUIManager(tk.Tk):
         self.fileManager.exclude = exclude
         try:
             toplevelwin.destroy()
-        except:
-            pass
+        except Exception as e:
+            logging.error(f"Error in excludesave: {e}")
 
 
     def tooltiptext(self,imageobject):
@@ -677,6 +677,7 @@ class GUIManager(tk.Tk):
             self.displayimage(imageobj, None)  # You can pass the appropriate second argument if needed
             self.current_image_obj = imageobj
         """
+    
     #max_length must be over 3+extension or negative indexes happen.
     def truncate_text(self, frame, imageobj, max_length):
         """Truncate the text to fit within the specified max_length."""
@@ -712,21 +713,22 @@ class GUIManager(tk.Tk):
             geometry = self.imagewindowgeometry.split('+')[0]
             pass_fast_render_size = int(self.fast_render_size)
             
-            #print(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
+            logging.debug(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
             
             self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_y_centering, self.filter_mode)
             self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
             self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
             self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
             self.Image_frame.center_image()
+            logging.info("Rescaled and Centered")
             self.displayedimage = imageobj.id
             if self.auto_display.get():
                 for index in self.displayedlist:
-                    #print(f"{index.obj.id} vs {imageobj.id}")
+                    logging.debug(f"{index.obj.id} vs {imageobj.id}")
                     if index.obj.id == imageobj.id:
-                        #print(f"victory for {index.obj.id} vs {imageobj.id}")
+                        logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
                         self.last_viewed_image_pos = self.displayedlist.index(index)
-                        #print(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
+                        logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
                         if self.current_selection:
                             self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
                             self.current_selection = []
@@ -739,7 +741,7 @@ class GUIManager(tk.Tk):
                     self.second_window.title("Image: " + path)
                     if self.Image_frame:
                         self.Image_frame.closing = False
-                        self.Image_frame.destroy()
+                        self.Image_frame.close_window()
                         
                         del self.Image_frame
                     self.second_window.focus_force()
@@ -754,11 +756,11 @@ class GUIManager(tk.Tk):
                     self.displayedimage = imageobj.id
                     if self.auto_display.get():
                         for index in self.displayedlist:
-                            #print(f"{index.obj.id} vs {imageobj.id}")
+                            logging.debug(f"{index.obj.id} vs {imageobj.id}")
                             if index.obj.id == imageobj.id:
-                                #print(f"victory for {index.obj.id} vs {imageobj.id}")
+                                logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
                                 self.last_viewed_image_pos = self.displayedlist.index(index)
-                                #print(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
+                                logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
                                 if self.current_selection:
                                     self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
                                     self.current_selection = []
@@ -771,6 +773,8 @@ class GUIManager(tk.Tk):
             self.Image_frame.closing = False #warns threads that they must close
             self.imagewindowgeometry = self.second_window.winfo_geometry()
             #self.checkdupename(self.second_window.obj)
+            self.Image_frame.close_window()
+            del self.Image_frame
             self.second_window.destroy()
 
     def filedialogselect(self, target, type):
@@ -1049,12 +1053,12 @@ class GUIManager(tk.Tk):
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
                 self.displayedlist.append(gridsquare)
 
-        print(f"Trying to animate {number_of_animated} pictures.")
+        logging.debug(f"Trying to animate {number_of_animated} pictures.")
         self.refresh_rendered_list()
         self.start_gifs()
     
     def start_gifs(self):
-        #print("starting gifs, if you see two of these, something is wrong.")
+        logging.debug("starting gifs, if you see two of these, something is wrong.") #should only run once. Otherwise two processes try to change the frame leading to speed issues.
         # Check the visible list for pictures to animate.
         self.running = []
         current_squares = self.displayedlist
@@ -1070,29 +1074,29 @@ class GUIManager(tk.Tk):
         try:
             if i.obj.frames and i.obj.index != i.obj.framecount and i.obj.lazy_loading:
                 if len(i.obj.frames) > i.obj.index:
-                    #print(f"Lazy frame to canvas {i.obj.index}/{i.obj.framecount}")
+                    logging.debug(f"Lazy frame to canvas {i.obj.index}/{i.obj.framecount}")
                     i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index])
 
                     if self.default_delay.get():
-                        #print(f"{i.obj.truncated}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
+                        logging.debug(f"{i.obj.name.get()}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
                         i.canvas.after(i.obj.delay, lambda: self.run_multiple(i)) #run again.
                     else:
-                        #print(f"{i.obj.truncated}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
+                        logging.debug(f"{i.obj.name.get()}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
                         i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple(i)) #or a.obj.delay
 
                 else: #wait for frame to load.
-                    #print("Buffering")
+                    logging.debug("Buffering")
                     i.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
             else:
                 if not i.obj.lazy_loading and i.obj.frames: #if all loaded
-                    #print("Moving to animate_loop method")
+                    logging.debug("Moving to animate_loop method")
                     x = False
                     self.animation_loop(i, x)
                 else: # 0 frames?
-                    #print("0 frames")
+                    logging.debug("0 frames")
                     i.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
         except Exception as e:
-            print(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
+            logging.error(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
 
     def run_multiple(self, i):
         i.obj.index += 1
@@ -1113,13 +1117,13 @@ class GUIManager(tk.Tk):
         if(i.obj.isvisible and random_id in [tup[1] for tup in self.running]): #and i in self.running
             x = True
             if self.default_delay.get():
-                #print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
+                logging.debug(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
                 i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x, random_id)) #run again.
             else:
-                #print(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
+                logging.debug(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
                 i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple2(i,x, random_id)) #run again.""
         else:
-            #print(f"ended animation for {i.obj.truncated}")
+            logging.debug(f"ended animation for {i.obj.name.get()}")
             pass
 
     def run_multiple2(self, i, x, random_id):
@@ -1271,7 +1275,7 @@ class GUIManager(tk.Tk):
                 try:
                     self.destwindow.geometry(self.save)
                 except Exception as e:
-                    print(f"Couldn't load destwindow geometry")
+                    logging.error(f"Couldn't load destwindow geometry")
             self.destgrid = tk.Text(self.destwindow, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.background_colour)
             self.destgrid.grid(row=0, column=0, sticky="NSEW")
             #scrollbars
@@ -1292,7 +1296,7 @@ class GUIManager(tk.Tk):
             for square in self.dest_squarelist:
                 if square.winfo_x() <= event.x <= square.winfo_x() + square.winfo_width() and \
                    square.winfo_y() <= event.y <= square.winfo_y() + square.winfo_height():
-                    print("Click inside a square, not closing.")
+                    logging.debug("Click inside a square, not closing.")
                     return  # Click is inside a square, do not close
             
         try:
@@ -1307,10 +1311,9 @@ class GUIManager(tk.Tk):
                 self.filtered_images = []
                 self.queue = []
                 
-                #print(f"Destination window destroyed")
+                logging.debug(f"Destination window destroyed")
         except Exception as e:
-            print(f"Destination window was not open: {e}")
-            pass
+            logging.debug(f"Destination window was not open: {e}")
     
     def refresh_destinations(self):
         #so when view changes, squarelist is updated, the 
@@ -1338,12 +1341,12 @@ class GUIManager(tk.Tk):
                         try: #remove old placement
                             self.destgrid.window_configure(gridsquare, window="")
                         except Exception as e:
-                            print(f"Error configuring window for image {gridsquare.obj}: {e}")
+                            logging.error(f"Error configuring window for image {gridsquare.obj}: {e}")
                         self.dest_squarelist.remove(gridsquare) ##remove pic from squarelist  so it is generated again!
                         self.queue.append(gridsquare) #this adds to the queue to be generated along new ones.
                         self.destgrid_updateslist.remove(gridsquare) # remove from updateslist as the task is compelte
             except Exception as e:
-                print(f"stupid {e}")
+                logging.error(f"Erron in refresh_destinations {e}")
 
             # Add new images to the destination grid #-- we can still add a changed_ list here.
             #basically at initial load, check the whole list, then subsequently, we can only check the changed.
@@ -1389,7 +1392,7 @@ class GUIManager(tk.Tk):
                     try:
                         self.destgrid.window_configure(gridsquare, window="")
                     except Exception as e:
-                        print(f"Error configuring window for image {gridsquare.obj}: {e}")
+                        logging.error(f"Error configuring window for image {gridsquare.obj}: {e}")
                     to_remove.append(gridsquare)
 
             # Remove gridsquares from the list
@@ -1411,23 +1414,23 @@ class GUIManager(tk.Tk):
         if x == False:
             if i not in self.track_animated:
                 self.track_animated.append(i)
-                #print(f"appended: {len(self.track_animated)} {self.track_animated}")
+                logging.debug(f"appended: {len(self.track_animated)} {self.track_animated}")
             else:
-                #print("rejected")
+                logging.debug("rejected")
                 return
-        #print(f"Loading frames: {index}/{i.obj.framecount} :Delay: {i.obj.delay}")
+        logging.debug(f"Loading frames: {index}/{i.obj.framecount} :Delay: {i.obj.delay}")
         i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[index])  # Change the frame
         
         if(i.obj.isvisibleindestination):
             x = True
             if self.default_delay.get():
-                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
+                logging.debug(f"{i.obj.name.get()}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
                 i.canvas.after(i.obj.delay, lambda: self.run_multiple3(i,index,x)) #run again.
             else:
-                #print(f"{i.obj.truncated}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
+                logging.debug(f"{i.obj.name.get()}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
                 i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple3(i,index,x)) #run again.
         else:
-            #print("dest animations ended")
+            logging.debug("dest animations ended")
             pass
     
     def run_multiple3(self, i, index, x):
