@@ -1279,7 +1279,9 @@ class GUIManager(tk.Tk):
             self.destgrid = tk.Text(self.destwindow, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.background_colour)
             self.destgrid.grid(row=0, column=0, sticky="NSEW")
             #scrollbars
-            vbar = tk.Scrollbar(self.destwindow, orient='vertical', command=self.destgrid.yview)
+            vbar = tk.Scrollbar(self.destwindow, orient='vertical',command=lambda *args: throttled_yview(self.destgrid, *args))
+
+            #vbar = tk.Scrollbar(self.destwindow, orient='vertical', command=self.destgrid.yview)
             vbar.grid(row=0, column=1, sticky='ns')
             self.destgrid['yscrollcommand'] = vbar.set  # Link scrollbar to text widget
         else:
