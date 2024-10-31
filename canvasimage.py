@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Advanced zoom for images of various types from small to huge up to several GB
 
-import os
 import math
 import warnings
 import tkinter as tk
@@ -12,6 +11,7 @@ import threading
 import time
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.getLogger("pyvips").setLevel(logging.WARNING)
 class CanvasImage:
     """ Display and zoom image """
 
@@ -30,7 +30,7 @@ class CanvasImage:
         self.first = True           # Flag that turns off when the initial picture has been rendered.
         self.replace_first = True   # Flag that turns off when the pyramid has created the same picture in higher quality and rendered it.
         self.replace_await = False
-
+        self.flagg = False
         # Image rendering defaults
 
         # The initial quality of placeholder image, used to display the image just a bit faster.
@@ -120,35 +120,26 @@ class CanvasImage:
         self.canvas_width = int(geometry_width)
         self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
         self.pyramid = []
-        if not imageobj.isanimated:
-
             
-            #self.__show_image()
-            
-            w, h = self.__pyramid[-1].size
-            self.pyramid_ready = threading.Event()
-            threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
-        else:
-            try:
-                self.length = imageobj.framecount
+        w, h = self.__pyramid[-1].size
+        self.pyramid_ready = threading.Event()
+        threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
 
-                new_width = self.canvas_width
-                new_height = self.canvas_height
-                width, height = self.image.size
-                aspect_ratio = width / height
-
-                if new_width / new_height > aspect_ratio:
-                    new_width = int(new_height*aspect_ratio)
-                else:
-                    new_height = int(new_width / aspect_ratio)
-
-                self.new_size = (new_width, new_height)
-
-                self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
-                self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
-
-            except Exception as e:
-                logging.error(f"Can't access imageinfo. {e}")
+        try:
+            self.length = imageobj.framecount
+            new_width = self.canvas_width
+            new_height = self.canvas_height
+            width, height = self.image.size
+            aspect_ratio = width / height
+            if new_width / new_height > aspect_ratio:
+                new_width = int(new_height*aspect_ratio)
+            else:
+                new_height = int(new_width / aspect_ratio)
+            self.new_size = (new_width, new_height)
+            self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
+            self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
+        except Exception as e:
+            logging.error(f"Can't access imageinfo. {e}")
 
         self.canvas.update()  # Wait until the canvas has finished creating.
         
@@ -183,19 +174,8 @@ class CanvasImage:
             self.__image.close()
         except Exception as e:
             logging.error(f"Error in destroy displayimage: {e}")
-        logging.info(f"{self.imageobj.name.get()}. Animated: {self.imageobj.isanimated}")
-    """
-    def lazy_gif_pyramid(self):
-        self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]    
-        w, h = self.__pyramid[-1].size
-        if self.closing:
-            self.pyramid = [Image.open(self.path)]
-            while w > 512 and h > 512 and self.closing:  # top pyramid image is around 512 pixels in size
-                w /= self.__reduction  # divide on reduction degree
-                h /= self.__reduction  # divide on reduction degree
-                self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter)) #logic here so we can avert resize function?
-            self.__pyramid = self.pyramid
-    """
+        
+
     def lazy_pyramid(self,w,h):
         
         if self.closing:
@@ -217,36 +197,42 @@ class CanvasImage:
 
             self.__pyramid = self.pyramid # pass the whole zoom pyramid when it is ready.
 
-    def load_frames(self): 
+    def load_frames(self, x1=None, x2=None, y1=None, y2=None, image=None): #parameter x1,x2,y1,y2,image
         try:
             #Happy ending, all frames found, return.
             if not self.closing:
                 self.close_window()
                 return
             if not self.frames:
-                logging.info(f"No existing frames found, starting to load {self.obj.framecount}:")
+                logging.info(f"{self.obj.framecount} frames")
                 #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
                 # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
                 #centering of frames and rescaling?
-                frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
-                
-                canvas_width = self.canvas_width
-                canvas_height = self.canvas_height
-                frame_width = frame.width()
-                frame_height = frame.height()
-                x_offset = (canvas_width - frame_width) // 2
-                y_offset = (canvas_height - frame_height) // 2
-                
+                #flag to disable after first
+                if not self.flagg: #skip initial as this is done from self_image. Only allow show_image to run after this has ran. so first.
+                    frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
 
-                self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
-                self.frames.append(frame)
+                    canvas_width = self.canvas_width
+                    canvas_height = self.canvas_height
+                    frame_width = frame.width()
+                    frame_height = frame.height()
+                    x_offset = (canvas_width - frame_width) // 2
+                    y_offset = (canvas_height - frame_height) // 2
+
+
+                    self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
+
+                    self.frames.append(frame)
                 
                 end_time2 = time.time()
-                elapsed_time = end_time2 - self.creation_time
-                logging.info(f"Loaded frames for: {self.imageobj.name.get()} in  {elapsed_time} with {self.imageobj.framecount} frames")
+                elapsed_time = end_time2 - self.creation_time 
+                logging.info(f"F:  {elapsed_time}")
                 del end_time2
                 self.first = False # Flags that the first has been created
+                #flag to disable after first
                 
+                #this actually creates the frames, we need to pass correct size and pyramid here.
+                #parameter self.image, and dimensions. then should actually work!
                 for i in range(1, self.imageobj.framecount):
                     if self.closing:
                         self.image.seek(i)
@@ -259,7 +245,7 @@ class CanvasImage:
 
                         
 
-                    
+                #then apss to lazy_loading, which will configure the self.imageid.
                 """All frames have been loaded"""
                 self.lazy_loading = False # Lower the lazy_loading flag so animate can take over.
                 self.timeit()             # Tell time it took to load all.
@@ -448,7 +434,62 @@ class CanvasImage:
     def __show_image(self):
         if self.imageobj.isanimated: #Let another function handle if animated
             if self.frames:
-                pass
+                #need to have rescaling and centering done by the other function, not by load_frames itself. So it acts same as the other.
+                #It should rescale and center the first, and the pos should be updated for every single picture.
+                """ #What if make this do rescaling and all others just like the other.
+                if not self.first: #after initial is shown. we can start this handler.
+                    if self.count < self.count1: # fixes lag on movign rescaled picture.
+                            self.manual_wheel()
+                            logging.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
+                            self.count += 1
+                    box_image = self.canvas.coords(self.container)  # get image area
+                    box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
+                                  self.canvas.canvasy(0),
+                                  self.canvas.canvasx(self.canvas_width),
+                                  self.canvas.canvasy(self.canvas_height))
+                    box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
+                    # Get scroll region box
+                    box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
+                                  max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
+                    # Horizontal part of the image is in the visible area
+                    if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
+                        box_scroll[0]  = box_img_int[0]
+                        box_scroll[2]  = box_img_int[2]
+                    # Vertical part of the image is in the visible area
+                    if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
+                        box_scroll[1]  = box_img_int[1]
+                        box_scroll[3]  = box_img_int[3]
+                    # Convert scroll region to tuple and to integer
+                    self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
+                    x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
+                    y1 = max(box_canvas[1] - box_image[1], 0)
+                    x2 = min(box_canvas[2], box_image[2]) - box_image[0]
+                    y2 = min(box_canvas[3], box_image[3]) - box_image[1]
+                    
+
+                    image = self.__pyramid[(max(0, self.__curr_img))].crop(  # crop current img from pyramid
+                                        (int(x1 / self.__scale), int(y1 / self.__scale),
+                                         int(x2 / self.__scale), int(y2 / self.__scale)))
+                                        
+                    imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
+                    self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                                               max(box_canvas[1], box_img_int[1]),
+                                            anchor='nw', image=imagetk)
+                    
+                    self.canvas.lower(self.imageid)  # set image into background
+                    self.canvas.imagetk = imagetk
+
+                    self.frames = [] #we reset the frames. we need to display initial, then reconfigure each subsequent using image passed from here.
+                    #flag to disable load_frames centering and auto resizing
+                    #first frame #turn flag on
+                    self.frames.append(imagetk)
+                    self.flagg = True
+                    self.load_frames(x1,x2,y1,y2,image)
+                    
+
+                else:
+                    pass
+                """
         else:
             
             """ Show image on the Canvas. Implements correct image zoom almost like in Google Maps """
