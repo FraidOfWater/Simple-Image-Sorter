@@ -124,22 +124,22 @@ class CanvasImage:
         w, h = self.__pyramid[-1].size
         self.pyramid_ready = threading.Event()
         threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
-
-        try:
-            self.length = imageobj.framecount
-            new_width = self.canvas_width
-            new_height = self.canvas_height
-            width, height = self.image.size
-            aspect_ratio = width / height
-            if new_width / new_height > aspect_ratio:
-                new_width = int(new_height*aspect_ratio)
-            else:
-                new_height = int(new_width / aspect_ratio)
-            self.new_size = (new_width, new_height)
-            self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
-            self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
-        except Exception as e:
-            logging.error(f"Can't access imageinfo. {e}")
+        if imageobj.isanimated:
+            try:
+                self.length = imageobj.framecount
+                new_width = self.canvas_width
+                new_height = self.canvas_height
+                width, height = self.image.size
+                aspect_ratio = width / height
+                if new_width / new_height > aspect_ratio:
+                    new_width = int(new_height*aspect_ratio)
+                else:
+                    new_height = int(new_width / aspect_ratio)
+                self.new_size = (new_width, new_height)
+                self.load_frames_thread = threading.Thread(target=self.load_frames, daemon=True).start()
+                self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
+            except Exception as e:
+                logging.error(f"Can't access imageinfo. {e}")
 
         self.canvas.update()  # Wait until the canvas has finished creating.
         
