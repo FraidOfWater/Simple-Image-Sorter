@@ -522,14 +522,14 @@ class GUIManager(tk.Tk):
                 self.close_destination_window()
                 saveprefs(self.fileManager, self)
                 self.destroy()
-                exit(0)
+                #exit(0)
         else:
             if hasattr(self, 'second_window') and self.second_window:
                 self.saveimagewindowgeo()
             self.close_destination_window()
             saveprefs(self.fileManager, self)
             self.destroy()
-            exit(0)
+            #exit(0)
 
 
     def excludeshow(self):
@@ -1045,15 +1045,15 @@ class GUIManager(tk.Tk):
             if gridsquare.obj.isanimated: # If the imageobj is a gif or webp, we render the square
                 # Static fallback image in case we fail to animate.
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
-                self.displayedlist.append(gridsquare)
+                #self.displayedlist.append(gridsquare)
                 threading.Thread(target=self.fileManager.load_frames, args=(gridsquare,)).start()
                 number_of_animated += 1
 
             else: # Normal image
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
-                self.displayedlist.append(gridsquare)
+                #self.displayedlist.append(gridsquare)
 
-        logging.debug(f"Trying to animate {number_of_animated} pictures.")
+        logging.info(f"Trying to animate {number_of_animated} pictures.")
         self.refresh_rendered_list()
         self.start_gifs()
     
@@ -1099,7 +1099,7 @@ class GUIManager(tk.Tk):
             logging.error(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
 
     def run_multiple(self, i):
-        i.obj.index += 1
+        i.obj.index = (i.obj.index + 1) % i.obj.framecount
         self.lazy_load(i)
 
     #Post. animate a frame for each picture in the list and run this again.
