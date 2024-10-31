@@ -7,7 +7,7 @@ This is a WIP fork. You can do whatever you want with "My" portions of the code.
 
 (This is not intended as a replacement, it is for testing purposes only, and there is no quarantee of stability. If you wish, you can copy specific changes like sorting by date modification or centering buttons for singleview.) (The build released is a showcase, I will try to merge useful additions back to to Main instance once I know they're stable, but you may do so also)
 
-TODO: make zooming work for gifs. Fixing destwindow, now scrollbar and scrolling is broken. Cleanup code.
+TODO: make zooming work for gifs. Cleanup code.
 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
 
