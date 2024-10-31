@@ -1,10 +1,7 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
 #Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
-#make possible hoering over diplsayiamge pressing hotkey, and it working.
-#throttle destwindow also, fix its scrollbar.
-#cleanup code.
-
+import time
 #""" #comment when building
 import ctypes
 try: #presumably for building only?
@@ -436,11 +433,15 @@ class SortImages:
         if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display.get():
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             try:
-                if self.gui.current_selection: #If any pics borders are blue
+                if self.gui.current_selection: # If something is blue as recorded by current_selection append, try to restore its border colour.
                     self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
-                    self.gui.current_selection = [] #forget about them
+                
+                # always add colour to the selected indexe's gridsquare.
                 self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
-                self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
+                #if gridsquare is same as gridsquare from current_selection, dont run this
+                if not self.gui.current_selection[0] == self.gui.displayedlist[self.gui.last_viewed_image_pos]:
+                    self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
+                self.gui.current_selection = []
 
                 self.gui.current_selection.append(self.gui.displayedlist[self.gui.last_viewed_image_pos]) #adds modified to current list
 
@@ -532,7 +533,7 @@ class SortImages:
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
-                        logging.error(f"Error in loadsession: {e}")
+                        logging.debug(f"No value isanimated: {e}")
                     self.imagelist.append(obj)
             
             self.thumbnailsize=savedata['thumbnailsize']
@@ -638,28 +639,24 @@ class SortImages:
         try:            
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
-                check_delay = img.info.get('duration', gridsquare.obj.delay)
-                if check_delay == 0:
-                    gridsquare.obj.delay = gridsquare.obj.delay #100
-                else:
-                    gridsquare.obj.delay = check_delay # if not 0, just use the given duration.
-                if gridsquare.obj.framecount == 1:
+
+                if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
                     raise Exception(f"Found static: {gridsquare.obj.name.get()}")
+                                
                 logging.debug(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames. {gridsquare.obj.delay}")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
-                    check_frametime = frame.info.get('duration',gridsquare.obj.delay)
-                    if check_frametime == 0:
-                        check_frametime = gridsquare.obj.delay
-                    gridsquare.obj.frametimes.append(check_frametime)
+                    frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
+                    if frame_frametime == 0:
+                        frame_frametime = gridsquare.obj.delay # Replace with default_delay
+                    gridsquare.obj.frametimes.append(frame_frametime)
                     frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
-            
                 gridsquare.obj.lazy_loading = False
                 logging.debug(f"frametimes {gridsquare.obj.frametimes}")
-                logging.info(f"All frames loaded for: {gridsquare.obj.name.get()}")
+                logging.info(f"All frames loaded for: {gridsquare.obj.name.get()[:30]}")
         except Exception as e: #fallback to static.
             logging.error(f"Error in load_frames: {e}")
             gridsquare.obj.isanimated = False
