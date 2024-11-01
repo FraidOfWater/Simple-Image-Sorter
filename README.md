@@ -14,7 +14,7 @@ Below is a mostly complete changelog:
       Ability to customize colours (Dark mode, or whatever you want, change from .prefs, use hex codes or tkinter defaults white,black...)
       Better window handling (All windows save their position upon closing, also the divider in the main window saves it's position, too)
       Changed Imagefile hash to hash from header data instead of binary imagedata for lower latency
-      If destination already has an identical image, it moves the image using the hash, instead of OVERWRITING the one in destination.
+      If destination already has an identical image, it doesn't move it, otherwise it would OVERWRITE the one in destination! If image locked by image viewer or other processes, same thing.
       Attempted threading to make some stuff faster
       
       Tweaks to main GUI:
