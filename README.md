@@ -1,4 +1,4 @@
-# Simple-Image-Sorter QOL FORK
+# Simple-Image-Sorter QOL fork
 
 Sorts images into destination files.
 
