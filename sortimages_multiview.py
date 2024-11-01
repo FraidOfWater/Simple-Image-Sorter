@@ -62,22 +62,32 @@ class Imagefile:
         self.delay = 100 #Default delay
         self.id = None
         
-    def move(self) -> str:
+    def move(self, x, ref, ref2) -> str:
         destpath = self.dest
+        do_not_move_if_exists = True
+
         if destpath != "" and os.path.isdir(destpath):
             temp = os.path.join(destpath, self.name.get())
-            flag = False
+            exists_in_dest = False
+
             if os.path.exists(temp):
+                if do_not_move_if_exists:
+                    logging.error(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
+                    return ("")
                 
                 self.guidata["frame"].configure(
                 highlightbackground="red", highlightthickness=2)
                 ext = os.path.splitext(self.name.get())[1][1:].lower()
                 file_name = self.id+ "." +ext
-                flag = True
+                exists_in_dest = True
             else:
                 file_name = self.name.get()
             try:
-                shmove(self.path, os.path.join(destpath, file_name))
+                a = os.path.join(destpath, file_name)
+                shmove(self.path, a)
+                temp = os.path.join(self.path, file_name)
+                ref.remove(x) #if already in dest, or if image locked this shouldnt happen.
+                ref2.append(x)
                 self.moved = True
                 self.show = False
                 self.guidata["frame"].configure(
@@ -86,13 +96,18 @@ class Imagefile:
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
                 destpath = ""
-                if flag:
+                if exists_in_dest:
                     logging.error(f"File {self.name.get()} already exists at destination, file renamed to it's ID {file_name} and moved to destination.")
-
+                self.dest = "" #not if move fails
+                self.assigned = False
+                self.moved = True
                 return returnstr
             except Exception as e:
                 logging.error("Error moving/deleting: %s . File: %s",
                               e, self.name.get())
+                if os.path.exists(a) and os.path.exists(temp):
+                    os.remove(a)
+                    print("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
@@ -240,18 +255,11 @@ class SortImages:
         logging.info("Moving items")
         loglist = []
         temp1 = list(self.gui.assigned_squarelist)
-        for x in temp1:
-            temp = []
-            image_obj = x.obj
-            temp.append(image_obj) #store imageobj
-            self.gui.assigned_squarelist.remove(x)
-            self.gui.moved_squarelist.append(x)
-            for obj in temp:
-                out = obj.move()
-                obj.dest = ""
-                obj.assigned = False
-                obj.moved = True
-                
+        ref = self.gui.assigned_squarelist
+        ref2 = self.gui.moved_squarelist
+        for x in temp1: #gridsquare
+            out = x.obj.move(x, ref, ref2)
+            
             if isinstance(out, str):
                 loglist.append(out)
         self.gui.refresh_rendered_list()
