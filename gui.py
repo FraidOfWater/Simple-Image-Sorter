@@ -1045,13 +1045,13 @@ class GUIManager(tk.Tk):
             if gridsquare.obj.isanimated: # If the imageobj is a gif or webp, we render the square
                 # Static fallback image in case we fail to animate.
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
-                #self.displayedlist.append(gridsquare)
+                self.displayedlist.append(gridsquare)
                 threading.Thread(target=self.fileManager.load_frames, args=(gridsquare,)).start()
                 number_of_animated += 1
 
             else: # Normal image
                 gridsquare.canvas_window = self.imagegrid.window_create("insert", window=gridsquare, padx=self.gridsquare_padx, pady=self.gridsquare_pady)
-                #self.displayedlist.append(gridsquare)
+                self.displayedlist.append(gridsquare)
 
         logging.info(f"Trying to animate {number_of_animated} pictures.")
         self.refresh_rendered_list()
