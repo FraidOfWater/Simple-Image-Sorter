@@ -60,6 +60,14 @@ Warnings and other info:
   Reason for this is because its complicated -,_,- How I'd do it is
   1. Get the zoom pyramid to do it for me. It will do the zooming for us, then it will pass the image to the lazy frame loader, which loads slowly frame by frame, as to not slow down. It will pass it everytime we zoom.
   2. Sounds easy, but there is a lot of cropping and other logic involved, so its very confusing at times.
+
+  Other things to add?
+  1. Button to change the side which dock view appears
+  2. Button to change centering modes
+  3. Switching from standalone viewer to dock, scroll the last selection to center
+  4. View button has a white border, get rid of it (Most likely activation related)
+  5. Help text under destination buttons?
+  6. Consolidate code into methods. Alot of spaghetti out there, cowboy
   
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
 
