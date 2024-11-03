@@ -15,7 +15,7 @@ from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
 
-""" # This can/should be commented if you build.
+#""" # This can/should be commented if you build.
 import ctypes
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
-"""
+#"""
 
 
 
@@ -144,8 +144,8 @@ class SortImages:
         else: # Assumes we are running from script
             script_dir = os.path.dirname(os.path.abspath(__file__))
             prefs_path = os.path.join(script_dir, "prefs.json") 
-            self.data_dir = os.path.join(script_dir, "data")
-            data_dir = self.data_dir
+        self.data_dir = os.path.join(script_dir, "data")
+        data_dir = self.data_dir
             
         self.threads = os.cpu_count()
         hotkeys = ""
