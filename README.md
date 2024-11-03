@@ -23,7 +23,6 @@ Below is a mostly up-to-date changelog:
         Added last window positions - Saves most positions and size adjustments by user - In Prefs.json
         Added dock view - Choose between docked and standalone image viewer- In Prefs.json, In GUI
         Added dock side button - Change the side the viewer uses! - In prefs, In GUI
-        Added centering options - Determine the way images center in the viewer - In prefs, In GUI (Toggle "extra_buttons")
         Added scrollbar override - Disable the white scrollbar - In prefs "Force_scrollbar = False"
         
         Removed squaresperpage entryfield annoying validation
@@ -38,6 +37,7 @@ Below is a mostly up-to-date changelog:
         Added auto scaling - Scales to the window automatically
         Added centering - Centers to the window automatically
         Added centering options - Tweak how the image is centered - In prefs "viewer_x_centering" and "viewer_y_centering"
+        Added centering button - In prefs, In GUI (Toggle "extra_buttons")
         Added free imageviewer zooming - No longer have to hover over the picture to zoom
         
         Removed scrollbars - Messed with scaling and centering
