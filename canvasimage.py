@@ -15,7 +15,7 @@ logging.getLogger("pyvips").setLevel(logging.WARNING)
 class CanvasImage:
     """ Display and zoom image """
 
-    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_y_centering, filter_mode):
+    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode):
         self.imageobj = imageobj
         """ Initialize core attributes and lists"""
         print("")
@@ -48,7 +48,9 @@ class CanvasImage:
         self.original_frames = []   # Could be used for zooming logic
         self.default_delay = tk.BooleanVar()    # Frame refresh time. Unique for each frame, or use singular, default reported by image?
         self.default_delay.set(True)            # Fallback to default_delay. This is linked to the button in GUI: default_delay_button.
+        self.viewer_x_centering = viewer_x_centering
         self.viewer_y_centering = viewer_y_centering
+        
         self.lazy_index = 0
         self.lazy_loading = True    # Flag that turns off when all frames have been loaded to frames.
         self.closing = True        # Flag that turn on when the window shuts down, so that open threads know to shutdown.
@@ -672,7 +674,10 @@ class CanvasImage:
             scaled_image_height = self.imheight * self.imscale
     
             # Calculate offsets to center the image
-            x_offset = (canvas_width - scaled_image_width)-int((canvas_width - scaled_image_width)/2)
+            if self.viewer_x_centering:
+                x_offset = (canvas_width - scaled_image_width)-int((canvas_width - scaled_image_width)/2)
+            else:
+                x_offset = 0
             if self.viewer_y_centering:
                 y_offset = (canvas_height - scaled_image_height)/2
             else:
