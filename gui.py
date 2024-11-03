@@ -270,6 +270,7 @@ class GUIManager(tk.Tk):
         self.last_viewed_image_pos = 0
         self.destgrid_updateslist = []
         self.current_selection = []
+        self.templist = []
         #Main window sorted lists
         self.unassigned_squarelist = []
         self.assigned_squarelist = []
@@ -707,7 +708,7 @@ class GUIManager(tk.Tk):
             second_window.bind("<Button-3>", self.saveimagewindowgeo)
             second_window.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
             second_window.obj = imageobj
-            second_window.attributes("-topmost", True)
+            second_window.wm_attributes("-topmost", 1)
             second_window.focus_force()
             # Create the initial Image_frame
             geometry = self.imagewindowgeometry.split('+')[0]
@@ -763,6 +764,10 @@ class GUIManager(tk.Tk):
                                 logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
                                 if self.current_selection:
                                     self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
+                                    if self.templist and not self.templist[-1] == imageobj:
+                                        print("test2")
+                                        self.templist[-1].checked.set(False)
+                                        self.templist = []
                                     self.current_selection = []
 
                                 self.displayedlist[self.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
@@ -1271,6 +1276,7 @@ class GUIManager(tk.Tk):
             self.destwindow.bind("<Button-3>", self.close_destination_window)
             self.destwindow.protocol("WM_DELETE_WINDOW", self.close_destination_window)        
             self.destwindow.geometry(str(int(self.winfo_screenwidth() * 0.80)) + "x" + str(self.winfo_screenheight() - 120) + "+365+60")
+            self.destwindow.wm_attributes("-topmost", 1)
             if self.save != 0:
                 try:
                     self.destwindow.geometry(self.save)
