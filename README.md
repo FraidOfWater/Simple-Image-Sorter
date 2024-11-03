@@ -22,6 +22,9 @@ Below is a mostly complete changelog:
         Better list view (Switchable) (Optionmenu in GUI)
         Image name truncation so long names don't overflow the gridbox, causing misalignment (Set "textlength" in prefs that works for your preferred thumbnailsize) (I couldn't automate it)
         Removed validation from add page button (It prevented removing all the text which was annoying, now if left empty, defaults to 1 or something)
+        Added autodisplaying (Config option + Checkbox in GUI) (If you right click an image in the grid, it will turn blue, and any image that enters that index, will be automatically displayed in the imageviewer window.)
+        It will also check the checkbox of the image framed in blue, so it works just like singleimageview.
+        Destwindow and imageviewer windows use .transient to stay atop main window.
         
         
       Tweaks to canvasimage (The window that opens a big picture like a real imageviewer) (Zooming broken/not implemented):
@@ -30,7 +33,6 @@ Below is a mostly complete changelog:
         Better imageviewer window. (Correct scaling and Centering, removed scrollbars)
         Unlocked imageviewer panning (Allows panning and zooming while cursor not hovering over the image)
         Option to change where it centers (Config option, "viewer_y_centering")
-        Added autodisplaying (Config option + Checkbox in GUI) (If you right click an image in the grid, it will turn blue, and any image that enters that index, will be automatically displayed in the imageviewer window.)
         Changed Imageviewer window to always be on top.
         
       Tweaks to destination window:
