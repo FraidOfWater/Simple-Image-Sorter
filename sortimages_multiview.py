@@ -253,6 +253,11 @@ class SortImages:
 
     def moveall(self):
         logging.info("Moving items")
+        flag = False
+        check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
+        if check_if_window_open and len(self.gui.assigned_squarelist) > 0:
+            self.gui.saveimagewindowgeo()
+            flag = True
         loglist = []
         temp1 = list(self.gui.assigned_squarelist)
         ref = self.gui.assigned_squarelist
@@ -270,6 +275,8 @@ class SortImages:
                     logfile.writelines(loglist)
         except Exception as e:
             logging.error(f"Failed to write filelog.txt: {e}")
+        if len(self.gui.displayedlist) > 0 and flag:
+            self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj)
 
     
     def walk(self, src):
@@ -443,9 +450,14 @@ class SortImages:
             try:
                 if self.gui.current_selection: # If something is blue as recorded by current_selection append, try to restore its border colour.
                     self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
-                
+
                 # always add colour to the selected indexe's gridsquare.
                 self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
+                self.gui.displayedlist[self.gui.last_viewed_image_pos].obj.checked.set(True) #automatically check the opened image.
+                self.gui.templist = []
+                print("checkbox set by this func is recorded to templist")
+                self.gui.templist.append(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # records square that's checkbox was set by this function
+
                 #if gridsquare is same as gridsquare from current_selection, dont run this
                 if not self.gui.current_selection[0] == self.gui.displayedlist[self.gui.last_viewed_image_pos]:
                     self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
