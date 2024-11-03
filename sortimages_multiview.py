@@ -1,6 +1,18 @@
 import os
 #Zooming for gif and webp? should we use pyramid?
-#Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!.
+#Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!
+#Consolidate autodisplay functions into a single function.
+#help text under the sort things.
+# Button to clear selection, no "button", but a key.
+#show unassigned has a white box around it it is activation tihngie
+#switching view, center the last selected.
+
+#when switching view, display last selected. DONE
+
+#BUTTON to change the side of the integrated viewer
+#button to center optinos.
+
+#
 import time
 #""" #comment when building
 import ctypes
@@ -184,6 +196,8 @@ class SortImages:
                     self.autosave = jprefs['autosave']
                 if "toppane_width" in jprefs:
                     self.gui.toppane_width = jprefs['toppane_width']
+                if "middlepane_width" in jprefs:
+                    self.gui.middlepane_width = jprefs['middlepane_width']
                 if "destinationwindow" in jprefs:
                     self.gui.save = jprefs['destinationwindow']
                 if "background_colour" in jprefs:
@@ -221,6 +235,7 @@ class SortImages:
 
         #This remembers the size of the leftgui (updated on close or in prefs))
         self.gui.leftui.configure(width=self.gui.toppane_width)
+        self.gui.image_display_frame.configure(width = self.gui.middlepane_width)
 
         logging.info("Checking data folder")
         #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (User changed thumbnails, generate thumbnails again)
@@ -351,6 +366,13 @@ class SortImages:
             pass
         else:
             marked = [x for x in current_list if x.obj.checked.get()]
+            #if self.gui.auto_show.get():
+            if self.gui.current_selection_obj and self.gui.current_selection_obj_flag: # to see if we have clicked elsewhere as to not move the displayed image anymore.
+                for x in current_list:
+                    if self.gui.current_selection_obj.id == x.obj.id:
+                        if x not in marked:
+                            marked.append(x)
+                            
             for x in marked:
                 x.obj.setdest(dest)
                 x.obj.guidata["frame"]['background'] = dest['color']
@@ -445,7 +467,11 @@ class SortImages:
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
-        if hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists() and self.gui.auto_display.get():
+        
+        # This attempts to display the item in the current index after setdestination has completed.
+        #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
+        image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
+        if (image_viewer_is_open or self.gui.dock_view) and self.gui.auto_show.get():
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             try:
                 if self.gui.current_selection: # If something is blue as recorded by current_selection append, try to restore its border colour.
@@ -453,7 +479,6 @@ class SortImages:
 
                 # always add colour to the selected indexe's gridsquare.
                 self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
-                self.gui.displayedlist[self.gui.last_viewed_image_pos].obj.checked.set(True) #automatically check the opened image.
                 self.gui.templist = []
                 print("checkbox set by this func is recorded to templist")
                 self.gui.templist.append(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # records square that's checkbox was set by this function
@@ -467,7 +492,7 @@ class SortImages:
 
                 self.gui.leftui.focus_set()
             except Exception as e:
-                logging.error(f"Error auto_display: {e}")
+                logging.error(f"Error auto_show: {e}")
         #if not moved current id, dont refresh displayimage. Just get new index for it instead.
 
     def savesession(self,asksavelocation):
