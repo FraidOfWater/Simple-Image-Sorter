@@ -21,6 +21,9 @@ Below is a mostly up-to-date changelog:
         Added Default speed - Overrides animation speed - (Toggle) in GUI, (Toggle) In Prefs.json
         Added theme customization - Main theme is now darkmode, use hex codes - In Prefs.json
         Added last window positions - Saves most positions and size adjustments by user - In Prefs.json
+        Added dock view - Choose between docked and standalone image viewer- In Prefs.json, In GUI
+        Added dock side button - Change the side the viewer uses! - In prefs, In GUI
+        Added centering options - Determine the way images center in the viewer - In prefs, In GUI (Toggle "extra_buttons")
         
         Removed squaresperpage entryfield annoying validation
 
@@ -62,12 +65,11 @@ Warnings and other info:
   2. Sounds easy, but there is a lot of cropping and other logic involved, so its very confusing at times.
 
   Other things to add?
-  1. Button to change the side which dock view appears
-  2. Button to change centering modes
-  3. Switching from standalone viewer to dock, scroll the last selection to center
-  4. View button has a white border, get rid of it (Most likely activation related)
-  5. Help text under destination buttons?
-  6. Consolidate code into methods. Alot of spaghetti out there, cowboy
+  1. Switching from standalone viewer to dock, scroll the last selection to center - not implemetned - location -> the button
+  2. View button has a white border, get rid of it (Most likely activation related)
+  3. Navigation using arrow keys?
+  4. Help text under destination buttons?
+  5. Consolidate code into methods. Alot of spaghetti out there, cowboy
   
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
 
