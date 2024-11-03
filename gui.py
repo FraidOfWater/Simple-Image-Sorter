@@ -708,8 +708,7 @@ class GUIManager(tk.Tk):
             second_window.bind("<Button-3>", self.saveimagewindowgeo)
             second_window.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
             second_window.obj = imageobj
-            second_window.wm_attributes("-topmost", 1)
-            second_window.focus_force()
+            second_window.transient(self)
             # Create the initial Image_frame
             geometry = self.imagewindowgeometry.split('+')[0]
             pass_fast_render_size = int(self.fast_render_size)
@@ -1276,7 +1275,7 @@ class GUIManager(tk.Tk):
             self.destwindow.bind("<Button-3>", self.close_destination_window)
             self.destwindow.protocol("WM_DELETE_WINDOW", self.close_destination_window)        
             self.destwindow.geometry(str(int(self.winfo_screenwidth() * 0.80)) + "x" + str(self.winfo_screenheight() - 120) + "+365+60")
-            self.destwindow.wm_attributes("-topmost", 1)
+            self.destwindow.transient(self)
             if self.save != 0:
                 try:
                     self.destwindow.geometry(self.save)
