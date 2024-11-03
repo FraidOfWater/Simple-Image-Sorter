@@ -1,37 +1,4 @@
 import os
-#Zooming for gif and webp? should we use pyramid?
-#Just replace the picture with configure, dont create new? hmm? or make the main show use my pic to create a new one! yeah!
-#Consolidate autodisplay functions into a single function.
-#help text under the sort things.
-# Button to clear selection, no "button", but a key.
-#show unassigned has a white box around it it is activation tihngie
-#switching view, center the last selected.
-
-#when switching view, display last selected. DONE
-
-#BUTTON to change the side of the integrated viewer
-#button to center optinos.
-
-#
-import time
-#""" #comment when building
-import ctypes
-try: #presumably for building only?
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
-    dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
-    dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
-    dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
-except FileNotFoundError:
-    logging.error("The file was not found. (You are missing .dlls)")
-    
-ctypes.CDLL(dll_path1)
-ctypes.CDLL(dll_path2)
-ctypes.CDLL(dll_path3)
-ctypes.CDLL(dll_path4)
-#"""
-    
-
 import sys
 from shutil import move as shmove
 import tkinter as tk
@@ -48,6 +15,25 @@ from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
 
+""" # This can/should be commented if you build.
+import ctypes
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
+    dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
+    dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
+    dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
+except FileNotFoundError:
+    logging.error("The file was not found. (You are missing .dlls)")
+ctypes.CDLL(dll_path1)
+ctypes.CDLL(dll_path2)
+ctypes.CDLL(dll_path3)
+ctypes.CDLL(dll_path4)
+"""
+
+
+
+# The imagefile class. It holds all information about the image and the state its container is in.
 class Imagefile:
     path = ""
     dest = ""
@@ -73,53 +59,51 @@ class Imagefile:
         self.index = 0
         self.delay = 100 #Default delay
         self.id = None
-        
-    def move(self, x, ref, ref2) -> str:
+    
+    def move(self, x, assigned, moved) -> str:
         destpath = self.dest
-        do_not_move_if_exists = True
+        do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
 
         if destpath != "" and os.path.isdir(destpath):
-            temp = os.path.join(destpath, self.name.get())
-            exists_in_dest = False
-
-            if os.path.exists(temp):
+            file_name = self.name.get()
+            exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
+            if exists_already_in_destination:
                 if do_not_move_if_exists:
                     logging.error(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
-                    return ("")
-                
-                self.guidata["frame"].configure(
-                highlightbackground="red", highlightthickness=2)
-                ext = os.path.splitext(self.name.get())[1][1:].lower()
-                file_name = self.id+ "." +ext
-                exists_in_dest = True
-            else:
-                file_name = self.name.get()
+                    return ("") # Returns if 1. Would overwrite someone
             try:
-                a = os.path.join(destpath, file_name)
-                shmove(self.path, a)
-                temp = os.path.join(self.path, file_name)
-                ref.remove(x) #if already in dest, or if image locked this shouldnt happen.
-                ref2.append(x)
+                new_path = os.path.join(destpath, file_name)
+                old_path = os.path.join(self.path, file_name)
+
+                shmove(self.path, new_path) # Try to move, fails if 1. Locked
+
+                # If above functons and checks fail, these below won't get set. As designed
+                assigned.remove(x)
+                moved.append(x) # Moves from assigned to moved ?
+                
                 self.moved = True
                 self.show = False
+
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-                self.path = os.path.join(destpath, self.name.get())
+                
+                self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
                 destpath = ""
-                if exists_in_dest:
-                    logging.error(f"File {self.name.get()} already exists at destination, file renamed to it's ID {file_name} and moved to destination.")
-                self.dest = "" #not if move fails
+                self.dest = ""
                 self.assigned = False
                 self.moved = True
                 return returnstr
+            
             except Exception as e:
                 logging.error("Error moving/deleting: %s . File: %s",
                               e, self.name.get())
-                if os.path.exists(a) and os.path.exists(temp):
-                    os.remove(a)
+                
+                if os.path.exists(new_path) and os.path.exists(old_path): # Shmove has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
+                    os.remove(new_path)
                     print("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
+
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
@@ -136,6 +120,8 @@ class Imagefile:
                       self.name.get(), self.dest)
 
 
+
+
 class SortImages:
     imagelist = []
     destinations = []
@@ -150,18 +136,20 @@ class SortImages:
         self.gui = GUIManager(self)
         
         logging.info("Loading preferences")
+
         # Determine the correct directory for prefs.json
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
             prefs_path = os.path.join(script_dir, "prefs.json")
-        else:
+        else: # Assumes we are running from script
             script_dir = os.path.dirname(os.path.abspath(__file__))
             prefs_path = os.path.join(script_dir, "prefs.json") 
+            self.data_dir = os.path.join(script_dir, "data")
+            data_dir = self.data_dir
             
-        #script_dir = os.path.dirname(os.path.abspath(__file__))
-        #prefs_path = os.path.join(script_dir, "prefs.json")
         self.threads = os.cpu_count()
         hotkeys = ""
+        # Loads preferences
         try:
             with open(prefs_path, "r") as prefsfile:
                 jdata = prefsfile.read()
@@ -233,28 +221,30 @@ class SortImages:
             logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
             logging.error(e)
 
-        #This remembers the size of the leftgui (updated on close or in prefs))
+        # Adjusts some window positions and sizes to user preferred after creation
         self.gui.leftui.configure(width=self.gui.toppane_width)
         self.gui.image_display_frame.configure(width = self.gui.middlepane_width)
 
         logging.info("Checking data folder")
-        #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (User changed thumbnails, generate thumbnails again)
-        self.data_dir = os.path.join(script_dir, "data")
-        if(os.path.exists(self.data_dir) and os.path.isdir(self.data_dir)):
-            temp = os.listdir(self.data_dir)
+
+        #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+        
+        if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
+            temp = os.listdir(data_dir)
             image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', 'webp', '.bmp', '.tiff', '.pcx', 'psd'))]
             if image_files:
-                first_image_path = os.path.join(self.data_dir, image_files[0])
+                first_image_path = os.path.join(data_dir, image_files[0])
                 try:
                     image = pyvips.Image.new_from_file(first_image_path)
                     
                     width = image.width
                     height = image.height
                     
+                    # The size doesnt match what is wanted in prefs
                     if max(width, height) != self.thumbnailsize:
-                        shutil.rmtree(self.data_dir)
+                        shutil.rmtree(data_dir)
                         logging.info(f"Removing data folder, thumbnailsize changed")
-                        os.mkdir(self.data_dir)
+                        os.mkdir(data_dir)
                         logging.info(f"Re-created data folder.")
                 except Exception as e:
                     logging.error(f"Couldn't load first image in data folder")
@@ -268,37 +258,49 @@ class SortImages:
 
     def moveall(self):
         logging.info("Moving items")
+
         flag = False
         check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
+
+        # If an imageviewer window is open, close it. (It locks move operations)
         if check_if_window_open and len(self.gui.assigned_squarelist) > 0:
             self.gui.saveimagewindowgeo()
+            # This is needed ? testing
+            #self.gui.Image_frame.closing = False
+            #self.gui.Image_frame.close_window()
+            #del self.gui.Image_frame
             flag = True
+
         loglist = []
-        temp1 = list(self.gui.assigned_squarelist)
-        ref = self.gui.assigned_squarelist
-        ref2 = self.gui.moved_squarelist
-        for x in temp1: #gridsquare
-            out = x.obj.move(x, ref, ref2)
+
+        assigned = self.gui.assigned_squarelist
+        moved = self.gui.moved_squarelist
+
+        for x in self.gui.assigned_squarelist:
+            out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shmove fails.
             
-            if isinstance(out, str):
+            if isinstance(out, str): # May report images that were failed ?
                 loglist.append(out)
+
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
+
         try:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
+
         except Exception as e:
             logging.error(f"Failed to write filelog.txt: {e}")
-        if len(self.gui.displayedlist) > 0 and flag:
+
+        if len(self.gui.displayedlist) > 0 and flag: # Reopen image viewer now that moves are completed
             self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj)
 
-    
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
         supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd"}
-        animation_support = {"gif", "webp"}
+        animation_support = {"gif", "webp"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
@@ -314,12 +316,11 @@ class SortImages:
                         existing.add(name)
                     self.imagelist.append(imgfile)
                     
-        #Default sorting is based on name. This sorts by date modified.
+        # Sort by date modificated
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
         return self.imagelist
-    
-                 
+       
     def checkdupefilenames(self, imagelist):
         duplicates: list[Imagefile] = []
         existing: set[str] = set()
@@ -332,9 +333,7 @@ class SortImages:
                 existing.add(item.name)
         return duplicates
     
-    #This tells the setDestination method the current list being viewed.
-    #Picture selection checkboxes aren't cleared when switching views
-    #Assigning will only happen to selected in the current view, or in the focused destination window.
+    # Communicates what list is selected
     def get_current_list(self):
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
@@ -357,13 +356,14 @@ class SortImages:
         marked = []
         current_list = []
         current_list = self.get_current_list()
-        temp2 = []   
+
         try:
             wid = args[1].widget
         except AttributeError:
             wid = args[1]["widget"]
         if isinstance(wid, tk.Entry):
             pass
+        # Return all images whose checkbox is checked (And currently in view by image viewer, so you can just press a hotkey and not have to check a checkbox everytime) (If interacting with other squares, it will cancel itself out. This is so user wont accidentally move anything.)
         else:
             marked = [x for x in current_list if x.obj.checked.get()]
             #if self.gui.auto_show.get():
@@ -378,12 +378,15 @@ class SortImages:
                 x.obj.guidata["frame"]['background'] = dest['color']
                 x.obj.guidata["canvas"]['background'] = dest['color']
                 x.obj.checked.set(False)
-                #If we have the unassigned view, we want to move images from unassigned list to assigned list.
-                if self.gui.show_unassigned.get(): #Unassigned list to Assigned list, Assigned True
+                
+                # Move from unasssigned to assigned
+                if self.gui.show_unassigned.get():
                     x.obj.assigned = True
                     if x.obj.assigned and x not in self.gui.assigned_squarelist:
                         self.gui.unassigned_squarelist.remove(x)
                         self.gui.assigned_squarelist.append(x) 
+
+                        # Destination view different behaviour
                         if x.obj.dest == dest['path']:
                             if hasattr(self.gui, 'destwindow'): # if we have new assigned.
                                 if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
@@ -391,13 +394,16 @@ class SortImages:
                                      #imageobject eventually
                                     self.gui.queue.append(x)
 
+                        # Stop animations
                         if x in self.gui.running:
                             self.gui.running.remove(x)
                         if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
 
-                ##this is not enabled because we dont want placement to change here, it is too distracting.
-                elif self.gui.show_assigned.get(): #Assigned to Assigned, Assigned True, moved false
+                # Moving from assigned to assigned
+                elif self.gui.show_assigned.get():
+
+                    # Different behaviour for destination view
                     if hasattr(self.gui, 'destwindow'): # if we have the dest window open
                         if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
                             if x.obj not in self.gui.filtered_images:
@@ -411,8 +417,8 @@ class SortImages:
                             if x.obj in self.gui.filtered_images:
                                 self.gui.filtered_images.remove(x.obj)
 
-                #If we have the moved view, we want to move images from moved list to assigned list.
-                elif self.gui.show_moved.get(): #Moved to Assigned, Assigned True, moved False
+                # Moving from moved to assigned
+                elif self.gui.show_moved.get():
                     x.obj.assigned = True
                     x.obj.moved = True
                     if x.obj.assigned and x not in self.gui.assigned_squarelist:
@@ -424,22 +430,30 @@ class SortImages:
                                     self.gui.filtered_images.append(x.obj)
                                     self.gui.queue.append(x)
 
+                        # Stop animations
                         if x in self.gui.running:
                             self.gui.running.remove(x)
                         if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
-                        
+        
+        # Check for destination view changes separately. Note, We use destchecked here, not checked.
         marked = []
         marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
         temp = self.gui.assigned_squarelist.copy()
+
+        # Returns all images that are marked, but who are already assigned
+        # Why? IDK. It has to do with the behaviour of how items add to the list.
+        # Likely so we can update their positions in the list!
         for square in marked:
             if self.gui.show_assigned.get():
-                for gridsquare in self.gui.assigned_squarelist: ##OPTIMIZE change to the current displayedlist, but that has to not be dictionary.
+                for gridsquare in self.gui.assigned_squarelist:
                     if gridsquare.obj.id == square.obj.id:
                         if not(square.obj.destchecked.get() and square.obj.checked.get()):
-                            self.gui.render_refresh.append(gridsquare) #need the other record.
+                            self.gui.render_refresh.append(gridsquare)
                             break
-             #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
+        
+            #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
+            # What the fuck is this? I think it had something to do with how I couldnt use the same gridsquare for dest and imagegrid, so this has to match them.
             for item in temp:
                 if item.obj.id == square.obj.id and dest['path'] == square.obj.dest:
                     if not (square.obj.destchecked.get() and square.obj.checked.get()):
@@ -462,8 +476,9 @@ class SortImages:
             square.obj.guidata["canvas"]['background'] = dest['color']
             square.obj.destchecked.set(False) #Not .checked for purposes of having different actions take place independent of current view. So
             #For example... I dont remember
+            #Very helpful!
+
         #Updates main and destination windows.
-        
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
@@ -474,13 +489,12 @@ class SortImages:
         if (image_viewer_is_open or self.gui.dock_view) and self.gui.auto_show.get():
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             try:
-                if self.gui.current_selection: # If something is blue as recorded by current_selection append, try to restore its border colour.
+                if self.gui.current_selection: # try to restore old's border colour.
                     self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
 
                 # always add colour to the selected indexe's gridsquare.
                 self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
                 self.gui.templist = []
-                print("checkbox set by this func is recorded to templist")
                 self.gui.templist.append(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # records square that's checkbox was set by this function
 
                 #if gridsquare is same as gridsquare from current_selection, dont run this
@@ -493,10 +507,9 @@ class SortImages:
                 self.gui.leftui.focus_set()
             except Exception as e:
                 logging.error(f"Error auto_show: {e}")
-        #if not moved current id, dont refresh displayimage. Just get new index for it instead.
 
     def savesession(self,asksavelocation):
-        logging.info("Saving session")
+        logging.info("Saving session, Goodbye!")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
@@ -598,8 +611,6 @@ class SortImages:
         logging.info(f"Using source: {self.gui.sdpEntry.get()}, and destination: {self.ddp}")
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
 
-            
-            #logging.info("main class setup")
             logging.info("Setting up GUI")
             self.setup(self.ddp)
             gui.guisetup(self.destinations)
@@ -678,7 +689,8 @@ class SortImages:
         if askokcancel("Confirm", "Really clear your selection?"):
             for x in self.imagelist:
                 x.checked.set(False)
-    #creates thumbnail gif frames and other data for grid and canvasimage.
+
+    # Creates frames and frametimes for gifs and webps
     def load_frames(self, gridsquare):
         logging.info("Loading frames")
         try:            
