@@ -76,6 +76,7 @@ def saveprefs(manager, gui):
         "squaresperpage": gui.squaresperpage.get(), 
         "sortbydate": gui.sortbydatevar.get(),
         "default_delay": gui.default_delay.get(),
+        "viewer_x_centering": gui.viewer_x_centering,
         "viewer_y_centering": gui.viewer_y_centering,
         "filter_mode": gui.filter_mode,
         "fast_render_size": gui.fast_render_size,
@@ -90,6 +91,7 @@ def saveprefs(manager, gui):
         "imagewindowgeometry": gui.imagewindowgeometry, 
         "destinationwindow":gui.save,
         "toppane_width":gui.leftui.winfo_width(),
+        "middlepane_width":gui.image_display_frame.winfo_width(),
         
         #Window colours
         "canvas_colour":gui.canvas_colour,
@@ -119,7 +121,8 @@ def saveprefs(manager, gui):
         "autosave":manager.autosave,
         "hideonassign": gui.hideonassignvar.get(), 
         "hidemoved": gui.hidemovedvar.get(),
-        "auto_display": gui.auto_display.get(),
+        "auto_show": gui.auto_show.get(),
+        "dock_view": gui.dock_view.get(),
 
         }
     
@@ -174,12 +177,16 @@ class GUIManager(tk.Tk):
         
         self.default_delay = tk.BooleanVar()    # Whether to use global delay from a gif or a per frame delay.
         self.default_delay.set(True)
+        self.viewer_x_centering = False
         self.viewer_y_centering = False
-        self.auto_display = tk.BooleanVar()
-        self.auto_display.set(False)
+        self.auto_show = tk.BooleanVar()
+        self.dock_view = tk.BooleanVar()
+        self.dock_view.set(True)
+        self.auto_show.set(False)
         self.fast_render_size = 5 # Size at which we start to buffer the image to load the displayimage faster. We use NEAREST, then when LANCZOS is ready, we swap it to that.
         self.filter_mode = "BILINEAR"
         self.fix_flag = True
+        self.started_not_integrated = False
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
             prefs_path = os.path.join(script_dir, "prefs.json")
@@ -237,12 +244,17 @@ class GUIManager(tk.Tk):
                     self.image_border_colour = jprefs['image_border_colour']
                 if "default_delay" in jprefs:
                     self.default_delay.set(jprefs['default_delay'])
+                if "viewer_x_centering" in jprefs:
+                    self.viewer_x_centering = jprefs['viewer_x_centering']
                 if "viewer_y_centering" in jprefs:
                     self.viewer_y_centering = jprefs['viewer_y_centering']
                 if "fast_render_size" in jprefs:
                     self.fast_render_size = jprefs['fast_render_size']
-                if "auto_display" in jprefs:
-                    self.auto_display.set(jprefs['auto_display'])
+                if "auto_show" in jprefs:
+                    self.auto_show.set(jprefs['auto_show'])
+                if "dock_view" in jprefs:
+                    self.dock_view.set(jprefs['dock_view'])
+                    self.started_not_integrated = not self.dock_view.get()
                 if "filter_mode" in jprefs:
                     self.filter_mode = jprefs['filter_mode']
 
@@ -270,6 +282,8 @@ class GUIManager(tk.Tk):
         self.last_viewed_image_pos = 0
         self.destgrid_updateslist = []
         self.current_selection = []
+        self.current_selection_obj = None
+        self.current_selection_obj_flag = False
         self.templist = []
         #Main window sorted lists
         self.unassigned_squarelist = []
@@ -308,6 +322,7 @@ class GUIManager(tk.Tk):
 
         #Default toppane width
         self.toppane_width = 363
+        self.middlepane_width = 363
         
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
@@ -349,7 +364,7 @@ class GUIManager(tk.Tk):
 
         self.buttonframe = tk.Frame(master=self.leftui,bg=self.background_colour)
         self.buttonframe.grid(
-            column=0, row=1, sticky="NSEW")
+            column=0, row=3, sticky="NSEW")
         self.buttonframe.columnconfigure(0, weight=1)
         
         
@@ -439,23 +454,28 @@ class GUIManager(tk.Tk):
         
         # Finish setup for the left hand bar.
         # Start the grid setup
+        self.image_display_frame = tk.Frame(self.toppane, bg=self.background_colour, width = self.middlepane_width)
+        self.toppane.add(self.image_display_frame, weight=0)
         imagegridframe = tk.Frame(self.toppane,bg=self.background_colour)
-        imagegridframe.grid(row=0, column=1, sticky="NSEW")
+        imagegridframe.grid(row=0, column=2, sticky="NSEW") #this is in second so content frame inside this.
+        self.imagegridframe = imagegridframe
         
         # Replacing Text widget with Canvas for image grid
         self.imagegrid = tk.Text(
-            imagegridframe, wrap ='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.grid_background_colour)
+            self.imagegridframe, wrap ='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.grid_background_colour)
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',command=lambda *args: throttled_yview(self.imagegrid, *args))
         vbar.grid(row=0, column=1, sticky='ns')
         
         self.imagegrid.configure(yscrollcommand=vbar.set)
-        self.imagegrid.grid(row=0, column=0, sticky="NSEW")
+        self.imagegrid.grid(row=0, column=0, sticky="NSEW")        
+
         imagegridframe.rowconfigure(0, weight=1)
         imagegridframe.columnconfigure(0, weight=1)
+
         style11 = ttk.Style()
         style11.configure('Custom.TPanedwindow', background=self.divider_colour)  # No border for the PanedWindow
-        
-        self.toppane.add(imagegridframe, weight=3)
+        self.imagegridframe = imagegridframe
+        self.toppane.add(imagegridframe, weight=1)
         self.toppane.grid(row=0, column=0, sticky="NSEW")
         self.toppane.configure(style='Custom.TPanedwindow')
         self.columnconfigure(0, weight=10)
@@ -610,9 +630,9 @@ class GUIManager(tk.Tk):
             
             #Create different dest for destinations to control view better.
             if not dest:
-                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False,style="darkmode.TCheckbutton")
+                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_auto_show(imageobj)), style="darkmode.TCheckbutton")
             else:
-                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.destchecked, onvalue=True, offvalue=False,style="darkmode.TCheckbutton")
+                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.destchecked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_auto_show(imageobj)), style="darkmode.TCheckbutton")
             check.grid(sticky="NSEW")
             
             canvas.grid(column=0, row=0, sticky="NSEW")
@@ -678,7 +698,9 @@ class GUIManager(tk.Tk):
             self.displayimage(imageobj, None)  # You can pass the appropriate second argument if needed
             self.current_image_obj = imageobj
         """
-    
+    def uncheck_auto_show(self, imageobj):
+        self.current_selection_obj_flag = False
+            
     #max_length must be over 3+extension or negative indexes happen.
     def truncate_text(self, frame, imageobj, max_length):
         """Truncate the text to fit within the specified max_length."""
@@ -692,11 +714,55 @@ class GUIManager(tk.Tk):
     #Create secondary window for image viewing
     
     def displayimage(self, imageobj):
+        self.middlepane_width = self.image_display_frame.winfo_width()
         path = imageobj.path
 
-        if hasattr(self, 'second_window') and self.second_window and not self.auto_display.get(): #if already open, save and close. Unless auto_display is on
+        # Close already open windows, IF: integrated viewer option is on, BUT KEEP OPEN IF auto display is on.
+        if hasattr(self, 'second_window') and self.second_window and not self.auto_show.get():
+            self.saveimagewindowgeo()
+        elif hasattr(self, 'second_window') and self.second_window and self.dock_view.get():
             self.saveimagewindowgeo()
 
+        # This handles the middlepane viewer. This block runs if there already is something there.
+        if self.dock_view.get():
+            if hasattr(self, 'Image_frame'):
+                #scrub the middlepane, we would do this regardless.
+                if self.Image_frame:
+                    self.Image_frame.closing = False
+                    self.Image_frame.close_window()
+                    del self.Image_frame
+            geometry = str(self.middlepane_width) + "x" + str(self.winfo_height())
+            pass_fast_render_size = int(self.fast_render_size)
+            logging.debug(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
+            
+
+            self.Image_frame = CanvasImage(self.image_display_frame, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_x_centering, self.viewer_y_centering, self.filter_mode)
+            self.Image_frame.grid(row = 0, column = 0, sticky = "NSEW")
+            self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
+            self.Image_frame.rescale(min(self.middlepane_width / self.Image_frame.imwidth, self.winfo_height() / self.Image_frame.imheight))  # Scales to the window
+            self.Image_frame.center_image()
+            logging.info("Rescaled and Centered")          
+            self.displayedimage = imageobj.id
+            self.current_selection_obj = imageobj
+            self.current_selection_obj_flag = True
+            if self.auto_show.get():
+                for index in self.displayedlist:
+                    logging.debug(f"{index.obj.id} vs {imageobj.id}")
+                    if index.obj.id == imageobj.id:
+                        logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
+                        self.last_viewed_image_pos = self.displayedlist.index(index)
+                        logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
+                        if self.current_selection: # restore old?
+                            self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
+                            if self.templist and not self.templist[-1] == imageobj:
+                                self.templist = []
+                            self.current_selection = []
+                        self.displayedlist[self.last_viewed_image_pos].canvas.configure(highlightbackground = self.text_box_selection_colour, highlightcolor = self.text_box_selection_colour)
+                        self.current_selection.append(self.displayedlist[self.last_viewed_image_pos])
+                        break
+            return
+
+        # Then, if imageviewer is a standalone window, we use this
         if not hasattr(self, 'second_window') or not self.second_window or not self.second_window.winfo_exists():
             self.second_window = tk.Toplevel() #create a new window
             second_window = self.second_window
@@ -710,68 +776,44 @@ class GUIManager(tk.Tk):
             second_window.obj = imageobj
             second_window.transient(self)
             # Create the initial Image_frame
-            geometry = self.imagewindowgeometry.split('+')[0]
-            pass_fast_render_size = int(self.fast_render_size)
-            
-            logging.debug(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
-            
-            self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_y_centering, self.filter_mode)
-            self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
-            self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
-            self.Image_frame.rescale(min(second_window.winfo_width() / self.Image_frame.imwidth, second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
-            self.Image_frame.center_image()
-            logging.info("Rescaled and Centered")
-            self.displayedimage = imageobj.id
-            if self.auto_display.get():
-                for index in self.displayedlist:
-                    logging.debug(f"{index.obj.id} vs {imageobj.id}")
-                    if index.obj.id == imageobj.id:
-                        logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
-                        self.last_viewed_image_pos = self.displayedlist.index(index)
-                        logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
-                        if self.current_selection:
-                            self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
-                            self.current_selection = []
+        else:
+            if self.auto_show.get(): #just refresh the window.
+                self.second_window.title("Image: " + path)
+                if self.Image_frame:
+                    self.Image_frame.closing = False
+                    self.Image_frame.close_window()
+                    del self.Image_frame
+    
+        geometry = self.imagewindowgeometry.split('+')[0]
+        pass_fast_render_size = int(self.fast_render_size)
+        logging.debug(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
 
-                        self.displayedlist[self.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
-                        self.current_selection.append(self.displayedlist[self.last_viewed_image_pos])
-                        break
-        elif hasattr(self, 'second_window') or self.second_window or self.second_window.winfo_exists():
-            if self.auto_display.get(): #just refresh the window.
-                    self.second_window.title("Image: " + path)
-                    if self.Image_frame:
-                        self.Image_frame.closing = False
-                        self.Image_frame.close_window()
-                        
-                        del self.Image_frame
-                    self.second_window.focus_force()
-                    # Create the initial Image_frame
-                    geometry = self.imagewindowgeometry.split('+')[0]
-                    pass_fast_render_size = int(self.fast_render_size)
-                    self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, pass_fast_render_size, self.viewer_y_centering, self.filter_mode)
-                    self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
-                    self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
-                    self.Image_frame.rescale(min(self.second_window.winfo_width() / self.Image_frame.imwidth, self.second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
-                    self.Image_frame.center_image()
-                    self.displayedimage = imageobj.id
-                    if self.auto_display.get():
-                        for index in self.displayedlist:
-                            logging.debug(f"{index.obj.id} vs {imageobj.id}")
-                            if index.obj.id == imageobj.id:
-                                logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
-                                self.last_viewed_image_pos = self.displayedlist.index(index)
-                                logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
-                                if self.current_selection:
-                                    self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
-                                    if self.templist and not self.templist[-1] == imageobj:
-                                        print("test2")
-                                        self.templist[-1].checked.set(False)
-                                        self.templist = []
-                                    self.current_selection = []
+        self.Image_frame = CanvasImage(self.second_window, path, geometry, self.canvas_colour, imageobj, int(pass_fast_render_size), self.viewer_x_centering, self.viewer_y_centering, self.filter_mode)
+        self.Image_frame.default_delay.set(self.default_delay.get()) #tell imageframe if animating, what delays to use
+        self.Image_frame.grid(sticky='nswe')  # Initialize Frame grid statement in canvasimage, Add to main window grid
+        self.Image_frame.rescale(min(self.second_window.winfo_width() / self.Image_frame.imwidth, self.second_window.winfo_height() / self.Image_frame.imheight))  # Scales to the window
+        self.Image_frame.center_image()
+        logging.info("Rescaled and Centered")
+        self.displayedimage = imageobj.id
+        self.current_selection_obj = imageobj
+        self.current_selection_obj_flag = True
+        
+        if self.auto_show.get():
+            for index in self.displayedlist:
+                logging.debug(f"{index.obj.id} vs {imageobj.id}")
+                if index.obj.id == imageobj.id:
+                    logging.debug(f"victory for {index.obj.id} vs {imageobj.id}")
+                    self.last_viewed_image_pos = self.displayedlist.index(index)
+                    logging.debug(f"testing index {self.last_viewed_image_pos}, name {self.displayedlist[self.last_viewed_image_pos]} true imageframe name {imageobj.name.get()}")
+                    if self.current_selection:
+                        self.current_selection[0].canvas.configure(highlightcolor=self.image_border_selection_colour, highlightbackground = self.image_border_colour)
+                        if self.templist and not self.templist[-1] == imageobj:
+                            self.templist = []
+                        self.current_selection = []
+                    self.displayedlist[self.last_viewed_image_pos].canvas.configure(highlightbackground = self.text_box_selection_colour, highlightcolor = self.text_box_selection_colour)
+                    self.current_selection.append(self.displayedlist[self.last_viewed_image_pos])
+                    break
 
-                                self.displayedlist[self.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
-                                self.current_selection.append(self.displayedlist[self.last_viewed_image_pos])
-                                break
     def saveimagewindowgeo(self, event=None):
         if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
             self.Image_frame.closing = False #warns threads that they must close
@@ -918,11 +960,19 @@ class GUIManager(tk.Tk):
         style3 = ttk.Style()
         style3.configure("darkmode1.TCheckbutton", background=self.background_colour, foreground=self.text_colour, highlightthickness = 0)
 
+        custom_buttons_frame  = tk.Frame(self.leftui,bg=self.background_colour)
+        custom_buttons_frame.grid(row = 1, column = 0, sticky = "ew")
+        custom_buttons_frame.columnconfigure(0, weight = 1)
+        custom_buttons_frame.columnconfigure(1, weight = 1)
+        custom_buttons_frame.columnconfigure(2, weight = 1)
 
-        self.default_delay_button = ttk.Checkbutton(optionsframe, text="Default delay", variable=self.default_delay, onvalue=True, offvalue=False, command=lambda: (self.default_delay_buttonpress(), self.default_delay) ,style="darkmode1.TCheckbutton")
-        self.default_delay_button.grid(row=3, column=0, sticky="w", padx=25)      
-        self.auto_display_button = ttk.Checkbutton(optionsframe, text="Auto display", variable=self.auto_display, onvalue=True, offvalue=False, command=lambda: self.auto_display ,style="darkmode1.TCheckbutton")
-        self.auto_display_button.grid(row=3, column=1, sticky="w", padx=25)  
+        self.default_delay_button = ttk.Checkbutton(custom_buttons_frame, text="Default speed", variable=self.default_delay, onvalue=True, offvalue=False, command=lambda: (self.default_delay_buttonpress(), self.default_delay) ,style="darkmode1.TCheckbutton")
+        self.default_delay_button.grid(row=0, column=0, sticky="ew")      
+        self.auto_show_button = ttk.Checkbutton(custom_buttons_frame, text="Show next", variable=self.auto_show, onvalue=True, offvalue=False, command=lambda: self.auto_show ,style="darkmode1.TCheckbutton")
+        self.auto_show_button.grid(row=0, column=1, sticky="ew")
+        self.dock_view_button = ttk.Checkbutton(custom_buttons_frame, text="Dock view", variable=self.dock_view, onvalue=True, offvalue=False, command=lambda: (self.dock_view_buttonpress()) ,style="darkmode1.TCheckbutton")
+        self.dock_view_button.grid(row=0, column=2, sticky="ew")
+
         # save button
         self.savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=self.button_colour, fg=self.text_colour)
         ToolTip(self.savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
@@ -988,6 +1038,47 @@ class GUIManager(tk.Tk):
     def default_delay_buttonpress(self):
         if hasattr(self, 'Image_frame') and self.Image_frame:
             self.Image_frame.default_delay.set(self.default_delay.get())
+    def dock_view_buttonpress(self):
+        self.current_selection_obj = None
+        self.current_selection_obj_flag = False
+        if self.started_not_integrated:
+            self.toppane.forget(self.image_display_frame)
+            self.started_not_integrated = False
+
+        if self.dock_view.get():
+            if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists(): #the button attempts to close the standalone viewer
+                self.saveimagewindowgeo()
+                print("This message only if second window has closed")
+                if self.auto_show.get():
+                    #if closing window and autodisplay on we want to pass the image to the integrated viewer
+                    imageobj = self.current_selection[-1].obj
+                    self.displayimage(imageobj)
+            self.toppane.forget(self.imagegridframe)
+            self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
+            self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
+
+            ### If we do have a frame displayed currently (the viewer is active.)
+            #if hasattr(self, 'Image_frame') and self.Image_frame:
+            #    self.toppane.forget(self.imagegridframe)
+            #    self.toppane.forget(self.image_display_frame)
+            #    self.toppane.add(self.image_display_frame, weight = 0)
+            #    self.toppane.add(self.imagegridframe, weight=1)
+        
+        # Forget, we want to use standalone viewer now.
+        else:
+            try:
+                self.toppane.forget(self.image_display_frame)
+                if hasattr(self, 'Image_frame'):
+                    #scrub the middlepane, we would do this regardless.
+                    if self.Image_frame:
+                        self.Image_frame.closing = False
+                        self.Image_frame.close_window()
+                        del self.Image_frame
+                        imageobj = self.current_selection[-1].obj
+                        self.displayimage(imageobj)
+            except Exception as e:
+                self.current_selection_obj = None
+                self.current_selection_obj_flag = False
     
 
     def squaresperpageentry_on_enter(self,event):
