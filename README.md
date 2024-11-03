@@ -24,6 +24,7 @@ Below is a mostly up-to-date changelog:
         Added dock view - Choose between docked and standalone image viewer- In Prefs.json, In GUI
         Added dock side button - Change the side the viewer uses! - In prefs, In GUI
         Added centering options - Determine the way images center in the viewer - In prefs, In GUI (Toggle "extra_buttons")
+        Added scrollbar override - Disable the white scrollbar - In prefs "Force_scrollbar = False"
         
         Removed squaresperpage entryfield annoying validation
 
