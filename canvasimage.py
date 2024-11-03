@@ -484,16 +484,15 @@ class CanvasImage:
                             self.manual_wheel()
                             logging.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
                             self.count += 1
-                    
+                    a = round(self.imageobj.file_size/1000000,2) #file size
+                    b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
+                    c = round(self.fast_render_size,2) #Prefs set limit in MB
                     if self.first:
                         self.first = False
                         
 
                         image = self.__pyramid[(max(0, self.__curr_img))]
-                        a = round(self.imageobj.file_size/1000000,2) #file size
-                        b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
-                        c = round(self.fast_render_size,2) #Prefs set limit in MB
-                        self.imageobj.file_size = b
+                        
 
                         if b < c: # if small render high quality
                             logging.info(f"Size: {b} MB/{c} MB. Buffered: False")
@@ -514,8 +513,8 @@ class CanvasImage:
                         self.pyramid_ready.set() #tell threading that second picture is allowed to render.
                         
 
-                    elif self.replace_await and self.imageobj.file_size > self.fast_render_size: # only render second time if needed.
-                        print(f"{self.imageobj.file_size} and {self.fast_render_size}")
+                    elif self.replace_await and b > self.fast_render_size: # only render second time if needed.
+                        print(f"{b} and {self.fast_render_size}")
                         self.replace_await = False
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
