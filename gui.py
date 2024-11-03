@@ -121,9 +121,11 @@ def saveprefs(manager, gui):
         "autosave":manager.autosave,
         "hideonassign": gui.hideonassignvar.get(), 
         "hidemoved": gui.hidemovedvar.get(),
-        "auto_show": gui.auto_show.get(),
+        "show_next": gui.show_next.get(),
         "dock_view": gui.dock_view.get(),
-
+        "dock_side": gui.dock_side.get(),
+        "extra_buttons": gui.extra_buttons,
+        "force_scrollbar": gui.force_scrollbar,
         }
     
     try: #Try to save the preference to prefs.json
@@ -179,14 +181,18 @@ class GUIManager(tk.Tk):
         self.default_delay.set(True)
         self.viewer_x_centering = False
         self.viewer_y_centering = False
-        self.auto_show = tk.BooleanVar()
+        self.show_next = tk.BooleanVar()
         self.dock_view = tk.BooleanVar()
+        self.dock_side = tk.BooleanVar()
+        self.dock_side.set(True)
+        self.extra_buttons = False
         self.dock_view.set(True)
-        self.auto_show.set(False)
+        self.show_next.set(False)
         self.fast_render_size = 5 # Size at which we start to buffer the image to load the displayimage faster. We use NEAREST, then when LANCZOS is ready, we swap it to that.
         self.filter_mode = "BILINEAR"
         self.fix_flag = True
         self.started_not_integrated = False
+        self.force_scrollbar = True
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
             script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
             prefs_path = os.path.join(script_dir, "prefs.json")
@@ -250,11 +256,17 @@ class GUIManager(tk.Tk):
                     self.viewer_y_centering = jprefs['viewer_y_centering']
                 if "fast_render_size" in jprefs:
                     self.fast_render_size = jprefs['fast_render_size']
-                if "auto_show" in jprefs:
-                    self.auto_show.set(jprefs['auto_show'])
+                if "show_next" in jprefs:
+                    self.show_next.set(jprefs['show_next'])
                 if "dock_view" in jprefs:
                     self.dock_view.set(jprefs['dock_view'])
                     self.started_not_integrated = not self.dock_view.get()
+                if "dock_side" in jprefs:
+                    self.dock_side.set(jprefs['dock_side'])
+                if "extra_buttons" in jprefs:
+                    self.extra_buttons = jprefs['extra_buttons']
+                if "force_scrollbar" in jprefs:
+                    self.force_scrollbar = jprefs['force_scrollbar']
                 if "filter_mode" in jprefs:
                     self.filter_mode = jprefs['filter_mode']
 
@@ -454,7 +466,7 @@ class GUIManager(tk.Tk):
         # Finish setup for the left hand bar.
         # Start the grid setup
         self.image_display_frame = tk.Frame(self.toppane, bg=self.background_colour, width = self.middlepane_width)
-        self.toppane.add(self.image_display_frame, weight=0)
+        
         imagegridframe = tk.Frame(self.toppane,bg=self.background_colour)
         imagegridframe.grid(row=0, column=2, sticky="NSEW") #this is in second so content frame inside this.
         self.imagegridframe = imagegridframe
@@ -463,18 +475,45 @@ class GUIManager(tk.Tk):
         self.imagegrid = tk.Text(
             self.imagegridframe, wrap ='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.grid_background_colour)
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',command=lambda *args: throttled_yview(self.imagegrid, *args))
-        vbar.grid(row=0, column=1, sticky='ns')
-        
-        self.imagegrid.configure(yscrollcommand=vbar.set)
-        self.imagegrid.grid(row=0, column=0, sticky="NSEW")        
 
-        imagegridframe.rowconfigure(0, weight=1)
-        imagegridframe.columnconfigure(0, weight=1)
+    
+        
+        self.imagegridframe = imagegridframe
+        if self.dock_side.get():
+            if self.force_scrollbar:
+                vbar.grid(row=0, column=1, sticky='ns')
+                self.imagegrid.configure(yscrollcommand=vbar.set)
+            self.imagegrid.grid(row=0, column=0, sticky="NSEW")  
+            imagegridframe.rowconfigure(1, weight=0)
+            imagegridframe.rowconfigure(0, weight=1)
+            imagegridframe.columnconfigure(1, weight=0)
+            imagegridframe.columnconfigure(0, weight=1)
+            self.toppane.add(self.image_display_frame, weight=0)
+            self.toppane.add(imagegridframe, weight=1)
+        else:
+            if self.force_scrollbar:
+                vbar.grid(row=0, column=0, sticky='ns')
+                self.imagegrid.configure(yscrollcommand=vbar.set)
+            self.imagegrid.grid(row=0, column=1, sticky="NSEW") 
+            imagegridframe.rowconfigure(1, weight=0)
+            imagegridframe.rowconfigure(0, weight=1)
+            imagegridframe.columnconfigure(0, weight=0)
+            imagegridframe.columnconfigure(1, weight=1)
+            self.toppane.add(imagegridframe, weight=1)
+            self.toppane.add(self.image_display_frame, weight=0)
+        
+        self.vbar = vbar
+        if not self.force_scrollbar:
+            vbar.grid(row=0, column=1, sticky='ns')
+            self.vbar.grid_forget()
+        
+        
+
 
         style11 = ttk.Style()
         style11.configure('Custom.TPanedwindow', background=self.divider_colour)  # No border for the PanedWindow
-        self.imagegridframe = imagegridframe
-        self.toppane.add(imagegridframe, weight=1)
+        
+        
         self.toppane.grid(row=0, column=0, sticky="NSEW")
         self.toppane.configure(style='Custom.TPanedwindow')
         self.columnconfigure(0, weight=10)
@@ -629,9 +668,9 @@ class GUIManager(tk.Tk):
             
             #Create different dest for destinations to control view better.
             if not dest:
-                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_auto_show(imageobj)), style="darkmode.TCheckbutton")
+                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_show_next(imageobj)), style="darkmode.TCheckbutton")
             else:
-                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.destchecked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_auto_show(imageobj)), style="darkmode.TCheckbutton")
+                check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.destchecked, onvalue=True, offvalue=False, command=lambda: (self.uncheck_show_next(imageobj)), style="darkmode.TCheckbutton")
             check.grid(sticky="NSEW")
             
             canvas.grid(column=0, row=0, sticky="NSEW")
@@ -669,35 +708,8 @@ class GUIManager(tk.Tk):
         except Exception as e:
             logging.error(e)
         return frame
-
-    """ # Code for closing image if clicked on grid square twice
-    def toggle_image_display(self, imageobj, e):
-    # Check if the second window exists and is open
-        if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
-
-            # If it is open, close it
-            if self.current_image_obj == imageobj:
-                print("event 1")
-                self.setfocus(e)
-                self.second_window.destroy()
-                self.second_window = None  # Reset the reference
-                self.current_image_obj = None
-            else:
-                
-                # If it is a different image, close the existing window
-                print("event 2")
-                self.setfocus(e)
-                self.second_window.destroy()
-                self.second_window = None  # Reset the reference
-                self.displayimage(imageobj, None)
-                self.current_image_obj = imageobj  # Update to the new 
-        else:
-            # If it is not open, create and display it
-            print("event 3")
-            self.displayimage(imageobj, None)  # You can pass the appropriate second argument if needed
-            self.current_image_obj = imageobj
-        """
-    def uncheck_auto_show(self, imageobj):
+    
+    def uncheck_show_next(self, imageobj):
         self.current_selection_obj_flag = False
             
     #max_length must be over 3+extension or negative indexes happen.
@@ -718,8 +730,8 @@ class GUIManager(tk.Tk):
         pass_fast_render_size = int(self.fast_render_size)
         logging.debug(f"{int(self.fast_render_size) * 1000000} converted {int(pass_fast_render_size)}")
 
-        # Close already open windows, IF: integrated viewer option is on, BUT KEEP OPEN IF auto display is on.
-        if hasattr(self, 'second_window') and self.second_window and not self.auto_show.get():
+        # Close already open windows, IF: integrated viewer option is on, BUT KEEP OPEN IF show next is on.
+        if hasattr(self, 'second_window') and self.second_window and not self.show_next.get():
             self.saveimagewindowgeo()
         elif hasattr(self, 'second_window') and self.second_window and self.dock_view.get():
             self.saveimagewindowgeo()
@@ -745,8 +757,8 @@ class GUIManager(tk.Tk):
             self.current_selection_obj = imageobj
             self.current_selection_obj_flag = True
 
-            # Logic for auto show
-            self.auto_show_method(imageobj)
+            # Logic for show next
+            self.show_next_method(imageobj)
             
             return
 
@@ -767,7 +779,7 @@ class GUIManager(tk.Tk):
 
             # Create the initial Image_frame
         else:
-            if self.auto_show.get(): #just refresh the window.
+            if self.show_next.get(): #just refresh the window.
                 self.second_window.title("Image: " + path)
                 if self.Image_frame:
                     self.Image_frame.closing = False
@@ -785,7 +797,7 @@ class GUIManager(tk.Tk):
         self.current_selection_obj = imageobj
         self.current_selection_obj_flag = True
         
-        if self.auto_show.get():
+        if self.show_next.get():
             for index in self.displayedlist:
                 logging.debug(f"{index.obj.id} vs {imageobj.id}")
                 if index.obj.id == imageobj.id:
@@ -801,8 +813,8 @@ class GUIManager(tk.Tk):
                     self.current_selection.append(self.displayedlist[self.last_viewed_image_pos])
                     break
 
-    def auto_show_method(self, imageobj):
-        if self.auto_show.get():
+    def show_next_method(self, imageobj):
+        if self.show_next.get():
                 for index in self.displayedlist:
                     logging.debug(f"{index.obj.id} vs {imageobj.id}")
                     if index.obj.id == imageobj.id:
@@ -903,11 +915,6 @@ class GUIManager(tk.Tk):
                     newbut = tk.Button(buttonframe, text=x['name'],command=partial(
                         self.fileManager.setDestination, x, {"widget": None}), anchor="w")
                 itern += 1
-            #elif x['name'] == "SKIP":
-            #    newbut = tk.Button(buttonframe, text="SKIP (Space)", command=skip, bg=self.button_colour, fg=self.text_colour)
-            #    tkroot.bind("<space>", skip)
-            #elif x['name'] == "BACK":
-            #    newbut = tk.Button(buttonframe, text="BACK", command=back, bg=self.button_colour, fg=self.text_colour)
 
             newbut.config(font=("Courier", 12), width=int(
                 (self.leftui.winfo_width()/12)/columns), height=1)
@@ -920,7 +927,6 @@ class GUIManager(tk.Tk):
                 guicol += 1
             newbut.grid(row=guirow, column=guicol, sticky="nsew")
             newbut.bind("<Button-3>", partial(self.showthisdest, x))
-            
 
             self.buttons.append(newbut)
             guirow += 1
@@ -956,11 +962,9 @@ class GUIManager(tk.Tk):
 
         self.squaresperpageentry.grid(row=1, column=0, sticky="EW",)
         
-        
         self.addpagebut.grid(row=1, column=1, sticky="EW")
         self.addpagebutton = self.addpagebut
-        
-
+    
         style3 = ttk.Style()
         style3.configure("darkmode1.TCheckbutton", background=self.background_colour, foreground=self.text_colour, highlightthickness = 0)
 
@@ -969,13 +973,40 @@ class GUIManager(tk.Tk):
         custom_buttons_frame.columnconfigure(0, weight = 1)
         custom_buttons_frame.columnconfigure(1, weight = 1)
         custom_buttons_frame.columnconfigure(2, weight = 1)
+        custom_buttons_frame.columnconfigure(3, weight = 1)
+        custom_buttons_frame.columnconfigure(4, weight = 1)
 
         self.default_delay_button = ttk.Checkbutton(custom_buttons_frame, text="Default speed", variable=self.default_delay, onvalue=True, offvalue=False, command=lambda: (self.default_delay_buttonpress(), self.default_delay) ,style="darkmode1.TCheckbutton")
         self.default_delay_button.grid(row=0, column=0, sticky="ew")      
-        self.auto_show_button = ttk.Checkbutton(custom_buttons_frame, text="Show next", variable=self.auto_show, onvalue=True, offvalue=False, command=lambda: self.auto_show ,style="darkmode1.TCheckbutton")
-        self.auto_show_button.grid(row=0, column=1, sticky="ew")
+        self.show_next_button = ttk.Checkbutton(custom_buttons_frame, text="Show next", variable=self.show_next, onvalue=True, offvalue=False, command=lambda: self.show_next ,style="darkmode1.TCheckbutton")
+        self.show_next_button.grid(row=0, column=1, sticky="ew")
         self.dock_view_button = ttk.Checkbutton(custom_buttons_frame, text="Dock view", variable=self.dock_view, onvalue=True, offvalue=False, command=lambda: (self.dock_view_buttonpress()) ,style="darkmode1.TCheckbutton")
         self.dock_view_button.grid(row=0, column=2, sticky="ew")
+        self.dock_side_button = ttk.Checkbutton(custom_buttons_frame, text="Dock side", variable=self.dock_side, onvalue=True, offvalue=False, command=lambda: (self.dock_side_buttonpress()) ,style="darkmode1.TCheckbutton")
+        self.dock_side_button.grid(row=0, column=3, sticky="ew")
+
+        if self.extra_buttons:
+            
+            self.centering_option = tk.StringVar()
+            self.centering_option.trace_add("write", self.centering_options_method)
+
+            if self.viewer_x_centering and self.viewer_y_centering:
+                self.centering_option.set("Center")
+            elif self.viewer_x_centering and not self.viewer_y_centering:
+                self.centering_option.set("Only x centering")
+            elif not self.viewer_x_centering and self.viewer_y_centering:
+                self.centering_option.set("Only y centering")
+            else:
+                self.centering_option.set("No centering")
+
+
+            options1 = ["Center", "Only x centering", "Only y centering", "No centering"]
+            self.centering_options_button = tk.OptionMenu(custom_buttons_frame, self.centering_option, *options1)
+            self.centering_options_button.config(bg=self.background_colour, fg=self.text_colour,activebackground=self.active_background_colour, activeforeground=self.active_foreground_colour)
+
+            self.centering_options_button.grid(row=0, column=4, sticky="ew")
+
+
 
         # save button
         self.savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=self.button_colour, fg=self.text_colour)
@@ -990,20 +1021,7 @@ class GUIManager(tk.Tk):
         ToolTip(self.clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
         self.clearallbutton.grid(row=0, column=1, sticky="EW")
         
-        #optional dedicated buttons for views instead of 1 for all.
-        #show_moved_button = tk.Button(optionsframe, text="Show moved", command=self.clicked_show_moved)
-        #show_moved_button.grid(row=3, column=0, sticky="EW")
-        #ToolTip(show_moved_button, msg="Shows moved images", delay=1)
-        
-        #show_assigned_button = tk.Button(optionsframe, text="Show assigned", command=self.clicked_show_assigned)
-        #show_assigned_button.grid(row=4, column=1, sticky="EW")
-        #ToolTip(show_moved_button, msg="Shows assigned images", delay=1)
-        
-        #show_unassigned_button = tk.Button(optionsframe, text="Show unassigned", command=self.clicked_show_unassigned)
-        #show_unassigned_button.grid(row=2, column=1, sticky="EW")
-        #ToolTip(show_moved_button, msg="Shows unassigned images", delay=1)
         style1 = ttk.Style()
-        #style1.theme_use('alt')  
         style1.configure('darkmode.TMenubutton', background=self.button_colour, foreground=self.text_colour, borderwidth = 2, arrowcolor = "grey")
 
         style1.map('darkmode.TMenubutton',
@@ -1042,6 +1060,7 @@ class GUIManager(tk.Tk):
     def default_delay_buttonpress(self):
         if hasattr(self, 'Image_frame') and self.Image_frame:
             self.Image_frame.default_delay.set(self.default_delay.get())
+
     def dock_view_buttonpress(self):
         self.current_selection_obj = None
         self.current_selection_obj_flag = False
@@ -1053,20 +1072,20 @@ class GUIManager(tk.Tk):
             if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists(): #the button attempts to close the standalone viewer
                 self.saveimagewindowgeo()
                 print("This message only if second window has closed")
-                if self.auto_show.get():
+                if self.show_next.get():
+                    print("This message only success")
                     #if closing window and autodisplay on we want to pass the image to the integrated viewer
                     imageobj = self.current_selection[-1].obj
                     self.displayimage(imageobj)
             self.toppane.forget(self.imagegridframe)
-            self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
-            self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
-
-            ### If we do have a frame displayed currently (the viewer is active.)
-            #if hasattr(self, 'Image_frame') and self.Image_frame:
-            #    self.toppane.forget(self.imagegridframe)
-            #    self.toppane.forget(self.image_display_frame)
-            #    self.toppane.add(self.image_display_frame, weight = 0)
-            #    self.toppane.add(self.imagegridframe, weight=1)
+            if self.dock_side.get():                    
+                self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
+                self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
+            else:
+                self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
+                self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
+                
+            
         
         # Forget, we want to use standalone viewer now.
         else:
@@ -1084,6 +1103,34 @@ class GUIManager(tk.Tk):
                 self.current_selection_obj = None
                 self.current_selection_obj_flag = False
     
+    def dock_side_buttonpress(self):
+        if self.dock_view.get():
+            self.toppane.forget(self.image_display_frame)
+            self.toppane.forget(self.imagegridframe)
+            if self.dock_side.get():
+                if self.force_scrollbar:
+
+                    self.vbar.grid(row=0, column=1, sticky='ns')
+                    self.imagegrid.configure(yscrollcommand=self.vbar.set)
+                    self.imagegrid.grid(row=0, column=0, sticky="NSEW")  
+
+                    self.imagegridframe.columnconfigure(1, weight=0)
+                    self.imagegridframe.columnconfigure(0, weight=1)
+                self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
+                self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
+            else:
+                if self.force_scrollbar:
+
+                    self.vbar.grid(row=0, column=0, sticky='ns')
+                    self.imagegrid.configure(yscrollcommand=self.vbar.set)
+                    self.imagegrid.grid(row=0, column=1, sticky="NSEW") 
+
+                    self.imagegridframe.columnconfigure(0, weight=0)
+                    self.imagegridframe.columnconfigure(1, weight=1)
+                                
+                self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
+                self.toppane.add(self.image_display_frame, weight = 0) #readd the middpane
+
 
     def squaresperpageentry_on_enter(self,event):
         self.squaresperpageentry.config(bg=self.active_background_colour, fg=self.active_foreground_colour)
@@ -1110,7 +1157,25 @@ class GUIManager(tk.Tk):
     def savebutton_on_leave(self, event):
         self.savebutton.config(bg=self.button_colour, fg=self.text_colour)
 
-        
+    
+    def centering_options_method(self, *args):
+        selected_option = self.centering_option.get()
+        "Center", "Only x centering", "Only y centering", "No centering"
+        if selected_option == "Center":
+            self.viewer_x_centering = True
+            self.viewer_y_centering = True
+        if selected_option == "Only x centering":
+            self.viewer_x_centering = True
+            self.viewer_y_centering = False
+        if selected_option == "Only y centering":
+            self.viewer_x_centering = False
+            self.viewer_y_centering = True
+        if selected_option == "No centering":
+            self.viewer_x_centering = False
+            self.viewer_y_centering = False
+        self.displayimage(self.current_selection_obj)
+
+
     def on_option_selected(self, *args):
         selected_option = self.variable.get()
         if selected_option == "Show Unassigned":
@@ -1337,16 +1402,7 @@ class GUIManager(tk.Tk):
             self.running = []
             self.refresh_rendered_list()
             self.start_gifs()
-    """    
-    def clicked_show_all(self):
-        if self.show_all.get() == False:
-            self.show_assigned.set(False)
-            self.show_unassigned.set(False)
-            self.show_moved.set(False)
-            self.show_animated.set(False)
-            self.show_all.set(True)
-            self.refresh_rendered_list()
-                """ 
+
     def clicked_show_animated(self):
         if self.show_animated.get() == False:
             self.show_assigned.set(False)
@@ -1387,8 +1443,6 @@ class GUIManager(tk.Tk):
         else:
             pass
             
-        
-
         # Refresh the destinations and set the active window
         self.filtered_images = []
         self.refresh_destinations()
