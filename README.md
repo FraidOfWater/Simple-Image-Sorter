@@ -1,61 +1,66 @@
 # Simple-Image-Sorter QOL fork
+Sorts images into destinations
 
-Sorts images into destination files.
+I have assumed the licence to be GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007. (Removed from author's source)
 
-Original author: Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter 
-(Assumed license is GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007., though there is no clear current license, as author removed it) (MY code is free to use, but I assumed the fork itself is still under Original author's lisence, assumed to be the GNU AFFERO)
+This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter.
 
-This fork attempts to add some new features like sorting by modification date, darkmode, and support for animated images. It also adds some other QOL stuff and experiments with threading and optimization.
-Below is a mostly complete changelog:
+This fork is a hobby, it adds new features and other tweaks, and removes some others. Light experimenting with threading and optimization. An introduction to python.
 
-    New main features:
-      Ability to display animations (.gif and .webp, in all views) (Lazy loading, zooming is broken/not implemented, panning works)
-      Ability to choose speed of animations (Config option + Checkbox in GUI) (The file's own frametimes or a "default_delay" (100 ms))
-      Ability to customize colours (Dark mode, or whatever you want, change from .prefs, use hex codes or tkinter defaults white,black...)
-      Better window handling (All windows save their position upon closing, also the divider in the main window saves it's position, too)
-      Changed Imagefile hash to hash from header data instead of binary imagedata for lower latency
-      If destination already has an identical image, it doesn't move it, otherwise it would OVERWRITE the one in destination! If image locked by image viewer or other processes, same thing.
-      Attempted threading to make some stuff faster
-      
+Below is a mostly up-to-date changelog:
+
       Tweaks to main GUI:
-        Ability to sort by date modified. (Toggleable) (Config option + Checkbox in GUI)
-        Better list view (Switchable) (Optionmenu in GUI)
-        Image name truncation so long names don't overflow the gridbox, causing misalignment (Set "textlength" in prefs that works for your preferred thumbnailsize) (I couldn't automate it)
-        Removed validation from add page button (It prevented removing all the text which was annoying, now if left empty, defaults to 1 or something)
-        Added autodisplaying (Config option + Checkbox in GUI) (If you right click an image in the grid, it will turn blue, and any image that enters that index, will be automatically displayed in the imageviewer window.)
-        It will also check the checkbox of the image framed in blue, so it works just like singleimageview.
-        Destwindow and imageviewer windows use .transient to stay atop main window.
+        Added "sort by date modified" - In GUI, In Prefs.json
+        Added View optionbox
+        Added Docked image viewer
+        Added Show next - Upon assigning the current image in view, shows the next one - In GUI, In Prefs.json
+        Added Assigning from viewer - You can view an image and press your hotkey to move it, less clicking, singleview style - Cancels automatically upon interacting with other images in the grid
+        Added name truncation - No longer overflows and misaligns the grid. - In prefs.json
+        Added transien windows - Windows spawned by main GUI now stay on top
+        Added support for .gif and .webp
+        Added Default speed - Overrides animation speed - (Toggle) in GUI, (Toggle) In Prefs.json
+        Added theme customization - Main theme is now darkmode, use hex codes - In Prefs.json
+        Added last window positions - Saves most positions and size adjustments by user - In Prefs.json
         
+        Removed squaresperpage entryfield annoying validation
+
+      Tweaks to performance:
+        Added imagefile header hashing - Faster than reading all of the binary imagedata, lowers latency
+        Added safeguards against overwrites - If image is locked or would overwrite someone else, it cancels
+        Added threading - Threads and lazy loads images and gifs/webps to image viewer
+        Added buffering - Images above a set size are buffered to lower latency - In prefs "filter_mode" and "fast_render_size" (MB) - Filter modes "NEAREST, "BILINEAR", "BICUBIC", "LANCZOS"
         
-      Tweaks to canvasimage (The window that opens a big picture like a real imageviewer) (Zooming broken/not implemented):
-        Larger images load faster by rendering a lower resolution image initially, then refreshes it to best quality. (Config option, default is "BILINEAR", so it isn't noticeable visually)
-        Fast rendering size limit (Config option, "fast_render_size", it uses the above only for images that are larger than x MB (default 5))
-        Better imageviewer window. (Correct scaling and Centering, removed scrollbars)
-        Unlocked imageviewer panning (Allows panning and zooming while cursor not hovering over the image)
-        Option to change where it centers (Config option, "viewer_y_centering")
-        Changed Imageviewer window to always be on top.
+      Tweaks to image viewer:
+        Added auto scaling - Scales to the window automatically
+        Added centering - Centers to the window automatically
+        Added centering options - Tweak how the image is centered - In prefs "viewer_x_centering" and "viewer_y_centering"
+        Added free imageviewer zooming - No longer have to hover over the picture to zoom
         
-      Tweaks to destination window:
-        Better view for destination views (Auto-refreshes upon changes, saves position) (Optionmenu in GUI)
+        Removed scrollbars - Messed with scaling and centering
+        Removed image renaming - Messed with scaling and centering - I was too noob at the start
+        
+        Caution: Zooming not implemented for gifs and webps
 
-      Small stuff:
-        You can run without compiling (Run sortimages_multiview.py, you need the .dll's, though. Take from a compiled copy, must be in same folder as the .py, check wiki for more info)
-        Made building easier. (.spec file now points the .dll's to _internal. Prefs, session and data now saves outside of _internal next to the .exe for easy access)
-        Some values changed in prefs
-        It should use as many cores/threads as cpu reports
+      Misc:
+        Added running without compiling - Just download the .dll's from compiled copy, put into same folder as .py, and run from main script "sortimages_multiview.py" - More info in wiki
+        Added dll's to .spec file - It knows to put them into _internal
+        Added Prefs, sessiondata and data folder outside _internal (These are user files, ease of access)
+        Added value tweaks for Prefs.json
+        Added automatic utilisation of cores based on cores reported by OS
 
-      Removed:
-        Image renaming (Sorry! I removed it to make coding easier, and never readded it)
+      Tweaks to singleview:
+        Added centering buttons - In Prefs.json, In GUI
+        Added last window positions - Saves most positions and size adjustments by user - In Prefs.json
 
-      For singleview:
-        Buttons for different styles of Centering. (Optionmenu in GUI)
-        Now remembers last location and size of the window.
-
-Warnings:
-  You may get duplicates, especially attempting to move pictures that are open in the image viewer. It will fail to remove the old one, but still move a copy to destination. You can use a tool like ANTIDUPL (github) to     remove them easily!
+Warnings and other info:
+  You can use a tool like ANTIDUPL (github) to remove duplicates easily!
   No quarantee of working as intended, you may lose images using this. (Better to backup first! I haven't noticed any accidental deletions though.)
-  Image zooming for animated images is not implemented. It could be done because we could lazy load image by image, but it's difficult to implement. Maybe someday.
-
+  Gifs and Webps fail to zoom, it is not implemented.
+    
+  Reason for this is because its complicated -,_,- How I'd do it is
+  1. Get the zoom pyramid to do it for me. It will do the zooming for us, then it will pass the image to the lazy frame loader, which loads slowly frame by frame, as to not slow down. It will pass it everytime we zoom.
+  2. Sounds easy, but there is a lot of cropping and other logic involved, so its very confusing at times.
+  
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
 
 End of file congratz!
