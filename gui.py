@@ -54,9 +54,6 @@ else:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     prefs_path = os.path.join(script_dir, "prefs.json") 
 
-#script_dir = os.path.dirname(os.path.abspath(__file__))
-#prefs_path = os.path.join(script_dir, "prefs.json")
-
 def saveprefs(manager, gui):
     
     sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
@@ -1104,6 +1101,7 @@ class GUIManager(tk.Tk):
                 self.current_selection_obj_flag = False
     
     def dock_side_buttonpress(self):
+        self.middlepane_width = self.image_display_frame.winfo_width()
         if self.dock_view.get():
             self.toppane.forget(self.image_display_frame)
             self.toppane.forget(self.imagegridframe)
@@ -1267,7 +1265,6 @@ class GUIManager(tk.Tk):
         self.lazy_load(i)
 
     #Post. animate a frame for each picture in the list and run this again.
-    
     def animation_loop(self, i,x, random_id = None): #frame by frame as to not freeze the main one XD
         #One time check
         if x == False:
