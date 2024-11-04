@@ -464,6 +464,7 @@ class GUIManager(tk.Tk):
         # Start the grid setup
         self.image_display_frame = tk.Frame(self.toppane, bg=self.background_colour, width = self.middlepane_width)
         
+        
         imagegridframe = tk.Frame(self.toppane,bg=self.background_colour)
         imagegridframe.grid(row=0, column=2, sticky="NSEW") #this is in second so content frame inside this.
         self.imagegridframe = imagegridframe
@@ -1059,6 +1060,8 @@ class GUIManager(tk.Tk):
             self.Image_frame.default_delay.set(self.default_delay.get())
 
     def dock_view_buttonpress(self):
+        self.middlepane_width = self.image_display_frame.winfo_width()
+        self.image_display_frame.configure(width = self.middlepane_width)
         self.current_selection_obj = None
         self.current_selection_obj_flag = False
         if self.started_not_integrated:
@@ -1102,6 +1105,7 @@ class GUIManager(tk.Tk):
     
     def dock_side_buttonpress(self):
         self.middlepane_width = self.image_display_frame.winfo_width()
+        self.image_display_frame.configure(width = self.middlepane_width)
         if self.dock_view.get():
             self.toppane.forget(self.image_display_frame)
             self.toppane.forget(self.imagegridframe)
