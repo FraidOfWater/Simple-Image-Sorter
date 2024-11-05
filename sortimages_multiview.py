@@ -15,7 +15,7 @@ from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
 
-#""" # This can/should be commented if you build.
+""" # This can/should be commented if you build.
 import ctypes
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,7 +29,7 @@ ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
-#"""
+"""
 
 
 
