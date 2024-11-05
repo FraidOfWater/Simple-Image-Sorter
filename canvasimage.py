@@ -29,7 +29,6 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logging.getLogger("pyvips").setLevel(logging.WARNING)
 class CanvasImage:
     """ Display and zoom image """
-
     def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode):
         self.imageobj = imageobj
         """ Initialize core attributes and lists"""
@@ -45,9 +44,6 @@ class CanvasImage:
         self.first = True           # Flag that turns off when the initial picture has been rendered.
         self.replace_first = True   # Flag that turns off when the pyramid has created the same picture in higher quality and rendered it.
         self.replace_await = False
-
-        # Image rendering defaults
-
         # The initial quality of placeholder image, used to display the image just a bit faster.
         accepted_modes = ["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]
         if filter_mode.upper() in accepted_modes:
@@ -57,7 +53,6 @@ class CanvasImage:
 
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
         self.fast_render_size = fast_render_size
-        #self.fast_render_size = 11500*11500 #use initial NEAREST rendering for pics exceeding this size. this loads already from prefs.
         # Lists, attributes and other flags.
         self.frames = []            # Stores loaded frames for .Gif, .Webp
         self.original_frames = []   # Could be used for zooming logic
@@ -138,10 +133,6 @@ class CanvasImage:
         self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
         self.pyramid = []
         if not imageobj.isanimated:
-
-
-            #self.__show_image()
-
             w, h = self.__pyramid[-1].size
             self.pyramid_ready = threading.Event()
             threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
@@ -176,14 +167,11 @@ class CanvasImage:
         # Create image pyramid
         #old place for image:
 
-
-
         # bind scrollbars to the canvas
         hbar.configure(command=self.__scroll_x)
         vbar.configure(command=self.__scroll_y)
 
         # Bind events to the Canvas
-
         self.canvas.bind('<ButtonPress-1>', self.__move_from)  # remember canvas position / panning
         self.canvas.bind('<B1-Motion>',     self.__move_to)  # move canvas to the new position / panning
         self.canvas.bind('<MouseWheel>', self.__wheel)  # zoom for Windows and MacOS, but not Linux / zoom pyramid.
@@ -192,8 +180,6 @@ class CanvasImage:
 
         # Handle keystrokes in idle mode, because program slows down on a weak computers,
         # when too many key stroke events in the same time
-
-        #self.canvas.focus_set()
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.__keystroke, event))
 
         try:
@@ -203,17 +189,14 @@ class CanvasImage:
         logging.info(f"{self.imageobj.name.get()}. Animated: {self.imageobj.isanimated}")
 
     def lazy_pyramid(self,w,h): # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
-
         if self.closing:
 
             self.pyramid = [Image.open(self.path)]
-
             self.replace_first = True
             while w > 512 and h > 512 and self.closing:
                 w /= self.__reduction
                 h /= self.__reduction
                 self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter))
-
                 if self.replace_first and self.closing:
                     self.replace_first = False
                     self.replace_await = True
@@ -270,18 +253,6 @@ class CanvasImage:
                 self.lazy_loading = False # Lower the lazy_loading flag so animate can take over.
                 self.timeit()             # Tell time it took to load all.
                 return
-            #resize
-
-          #  else:
-               # w,h = self.new_size
-               # w *= self.imscale * self.__ratio
-                #h *= self.imscale * self.__ratio
-                #self.new_size = (int(w),int(h))
-               # threading.Thread(target=self.runa()).start()
-
-
-                    #time.sleep(self.obj.delay)
-                #return
 
         except Exception as e:
             if hasattr(self, 'frames'): # This wont let the error display if the window is being closed.
