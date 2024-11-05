@@ -45,5 +45,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='sortimages_multiview',
+    name='Sortimages_MW_QOL',
 )
