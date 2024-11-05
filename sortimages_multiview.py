@@ -610,7 +610,7 @@ class SortImages:
     def update_show_next(self): # This attempts to display the item in the current index after setdestination has completed.
         #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
         image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
-        if (image_viewer_is_open or self.gui.dock_view) and self.gui.show_next.get():
+        if (image_viewer_is_open or self.gui.dock_view) and self.gui.show_next.get() and self.gui.current_selection:
             #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
             try:
                 if self.gui.current_selection: # try to restore old's border colour.
@@ -630,7 +630,7 @@ class SortImages:
 
                 self.gui.leftui.focus_set()
             except Exception as e:
-                logging.error(f"Error show_next: {e}")
+                logging.debug(f"Error show_next: {e}")
 
     def savesession(self,asksavelocation):
         logging.info("Saving session, Goodbye!")
