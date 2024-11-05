@@ -126,109 +126,24 @@ class SortImages:
     imagelist = []
     destinations = []
     exclude = []
-    thumbnailsize = 256
 
     def __init__(self) -> None:
-        logging.info("Starting main program")
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
-        self.gui = GUIManager(self)
-        
-        logging.info("Loading preferences")
-
-        # Determine the correct directory for prefs.json
-        if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
-            script_dir = os.path.dirname(sys.executable)  # Get the directory of the executable
-            prefs_path = os.path.join(script_dir, "prefs.json")
-        else: # Assumes we are running from script
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            prefs_path = os.path.join(script_dir, "prefs.json") 
-        self.data_dir = os.path.join(script_dir, "data")
-        data_dir = self.data_dir
-            
         self.threads = os.cpu_count()
-        hotkeys = ""
-        # Loads preferences
-        try:
-            with open(prefs_path, "r") as prefsfile:
-                jdata = prefsfile.read()
-                jprefs = json.loads(jdata)
-                if 'hotkeys' in jprefs:
-                    hotkeys = jprefs["hotkeys"]
-                if 'thumbnailsize' in jprefs:
-                    self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
-                    self.thumbnailsize = int(jprefs["thumbnailsize"])
-                if 'threads' in jprefs:
-                    self.threads = jprefs['threads']
-                if "hideonassign" in jprefs:
-                    self.gui.hideonassignvar.set(jprefs["hideonassign"])
-                if "hidemoved" in jprefs:
-                    self.gui.hidemovedvar.set(jprefs["hidemoved"])
-                if "sortbydate" in jprefs:
-                    self.gui.sortbydatevar.set(jprefs["sortbydate"])
-                self.exclude = jprefs["exclude"]
-                self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
-                self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
-                self.gui.sdpEntry.insert(0, jprefs["srcpath"])
-                self.gui.ddpEntry.insert(0, jprefs["despath"])
-                if "squaresperpage" in jprefs:
-                    self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
-                if "imagewindowgeometry" in jprefs:
-                    self.gui.imagewindowgeometry = jprefs["imagewindowgeometry"]
-                if "geometry" in jprefs:
-                    self.gui.geometry(jprefs["geometry"])
-                if "lastsession" in jprefs:
-                    self.gui.sessionpathvar.set(jprefs['lastsession'])
-                if "autosavesession" in jprefs:
-                    self.autosave = jprefs['autosave']
-                if "toppane_width" in jprefs:
-                    self.gui.toppane_width = jprefs['toppane_width']
-                if "middlepane_width" in jprefs:
-                    self.gui.middlepane_width = jprefs['middlepane_width']
-                if "destinationwindow" in jprefs:
-                    self.gui.save = jprefs['destinationwindow']
-                if "background_colour" in jprefs:
-                    self.gui.background_colour = jprefs['background_colour']
-                if "button_colour" in jprefs:
-                    self.gui.button_colour = jprefs['button_colour']
-                if "text_colour" in jprefs:
-                    self.gui.text_colour = jprefs['text_colour']
-                if "canvas_colour" in jprefs:
-                    self.gui.canvas_colour = jprefs['canvas_colour']
-                if "active_background_colour" in jprefs:
-                    self.gui.active_background_colour = jprefs['active_background_colour']
-                if "grid_background_colour" in jprefs:
-                    self.gui.grid_background_colour = jprefs['grid_background_colour']
-                if "active_foreground_colour" in jprefs:
-                    self.gui.active_foreground_colour = jprefs['active_foreground_colour']
-                if "selectcolour" in jprefs:
-                    self.gui.selectcolour = jprefs['selectcolour']
-                if "divider_colour" in jprefs:
-                    self.gui.divider_colour = jprefs['divider_colour']
-                if "textlength" in jprefs:
-                    self.gui.textlength = jprefs['textlength']
-                if "gridsquare_padx" in jprefs:
-                    self.gui.gridsquare_padx = jprefs['gridsquare_padx']
-                if "gridsquare_pady" in jprefs:
-                    self.gui.gridsquare_pady = jprefs['gridsquare_pady']
-                if "checkbox_height" in jprefs:
-                    self.gui.checkbox_height = jprefs['checkbox_height']
-                    
-            if len(hotkeys) > 1:
-                self.gui.hotkeys = hotkeys
-        except Exception as e:
-            logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
-            logging.error(e)
+        self.gui = GUIManager(self)
 
-        # Adjusts some window positions and sizes to user preferred after creation
-        self.gui.leftui.configure(width=self.gui.toppane_width)
-        self.gui.image_display_frame.configure(width = self.gui.middlepane_width)
-
-        logging.info("Checking data folder")
-
-        #This deletes the data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+        logging.info("Loading preferences")
+        self.loadprefs()
+        self.gui.initialize()
+        self.validate_data_dir_thumbnailsize()
         
+        self.gui.mainloop()
+
+    def validate_data_dir_thumbnailsize(self):
+        #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+        data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
             image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', 'webp', '.bmp', '.tiff', '.pcx', 'psd'))]
@@ -241,7 +156,7 @@ class SortImages:
                     height = image.height
                     
                     # The size doesnt match what is wanted in prefs
-                    if max(width, height) != self.thumbnailsize:
+                    if max(width, height) != self.gui.thumbnailsize:
                         shutil.rmtree(data_dir)
                         logging.info(f"Removing data folder, thumbnailsize changed")
                         os.mkdir(data_dir)
@@ -253,8 +168,219 @@ class SortImages:
                 pass
             pass
         else:
-            os.mkdir(self.data_dir)
-        self.gui.mainloop()
+            os.mkdir(data_dir)
+
+    def loadprefs(self):
+        # Figure out script and data directory locations
+        if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+            script_dir = os.path.dirname(sys.executable) 
+            self.prefs_path = os.path.join(script_dir, "prefs.json")
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
+            self.prefs_path = os.path.join(script_dir, "prefs.json") 
+        data_dir = os.path.join(script_dir, "data")
+        self.data_dir = data_dir
+
+        hotkeys = ""
+        try:
+            with open(self.prefs_path, "r") as prefsfile:
+
+                jdata = prefsfile.read()
+                jprefs = json.loads(jdata)
+
+                
+                #paths
+                if "source" in jprefs:
+                    self.gui.source_folder = jprefs["source"]
+                if "destination" in jprefs:
+                    self.gui.destination_folder = jprefs["destination"]
+                if "lastsession" in jprefs:
+                    self.gui.sessionpathvar.set(jprefs['lastsession'])
+                if "exclude" in jprefs:
+                    self.exclude = jprefs["exclude"]
+                #Preferences
+                if 'thumbnailsize' in jprefs:
+                    self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
+                if 'max_text_length' in jprefs:
+                    self.gui.max_text_length = int(jprefs["max_text_length"])
+                if 'hotkeys' in jprefs:
+                    hotkeys = jprefs["hotkeys"]
+                if "extra_buttons" in jprefs:
+                    self.gui.extra_buttons = jprefs["extra_buttons"]
+                if "force_scrollbar" in jprefs:
+                    self.gui.force_scrollbar = jprefs["force_scrollbar"]
+                if "interactive_buttons" in jprefs:
+                    self.gui.interactive_buttons = jprefs["interactive_buttons"]          
+                #Technical preferences
+                if "filter_mode" in jprefs:
+                    self.gui.filter_mode = jprefs["filter_mode"]
+                if "fast_render_size" in jprefs:
+                    self.gui.fast_render_size = int(jprefs["fast_render_size"])
+                if 'threads' in jprefs:
+                    self.threads = jprefs['threads']
+                if 'autosave' in jprefs:
+                    self.autosave = jprefs['autosave']          
+                #Customization
+                if "checkbox_height" in jprefs:
+                    self.gui.checkbox_height = int(jprefs["checkbox_height"])
+                if "gridsquare_padx" in jprefs:
+                    self.gui.gridsquare_padx = int(jprefs["gridsquare_padx"])
+                if "gridsquare_pady" in jprefs:
+                    self.gui.gridsquare_pady = int(jprefs["gridsquare_pady"])
+                if "text_box_thickness" in jprefs:
+                    self.gui.text_box_thickness = int(jprefs["text_box_thickness"])
+                if "image_border_thickness" in jprefs:
+                    self.gui.image_border_thickness = int(jprefs["image_border_thickness"])
+                if "text_box_selection_colour" in jprefs:
+                    self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
+                if "image_border_selection_colour" in jprefs:
+                    self.gui.image_border_selection_colour = jprefs["image_border_selection_colour"]
+                if "text_box_colour" in jprefs:
+                    self.gui.text_box_colour = jprefs["text_box_colour"]
+                if "image_border_colour" in jprefs:
+                    self.gui.image_border_colour = jprefs["image_border_colour"]            
+                #Window colours
+                if "colour_on_selection" in jprefs:
+                    self.gui.colour_on_selection = jprefs["colour_on_selection"]
+                if "background_colour" in jprefs:
+                    self.gui.background_colour = jprefs["background_colour"]
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs["text_colour"]
+                if "canvas_colour" in jprefs:
+                    self.gui.canvas_colour = jprefs["canvas_colour"]
+                if "grid_background_colour" in jprefs:
+                    self.gui.grid_background_colour = jprefs["grid_background_colour"]
+                if "active_background_colour" in jprefs:
+                    self.gui.active_background_colour = jprefs["active_background_colour"]
+                if "active_background_colour" in jprefs:
+                    self.gui.active_background_colour = jprefs["active_background_colour"]
+                if "button_colour" in jprefs:
+                    self.gui.button_colour = jprefs["button_colour"]
+                if "pane_divider_colour" in jprefs:
+                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]            
+                #GUI CONTROLLED PREFRENECES
+                if "squaresperpage" in jprefs:
+                    self.gui.squaresperpage.set(jprefs["squaresperpage"])
+                if "sortbydate" in jprefs:
+                    self.gui.sortbydatevar.set(jprefs["sortbydate"])
+                if "default_delay" in jprefs:
+                    self.gui.default_delay.set(jprefs["default_delay"])
+                if "viewer_x_centering" in jprefs:
+                    self.gui.viewer_x_centering = jprefs["viewer_x_centering"]
+                if "viewer_y_centering" in jprefs:
+                    self.gui.viewer_y_centering = jprefs["viewer_y_centering"]
+                if "show_next" in jprefs:
+                    self.gui.show_next.set(jprefs["show_next"])
+                if "dock_view" in jprefs:
+                    self.gui.dock_view.set(jprefs["dock_view"])
+                if "dock_side" in jprefs:
+                    self.gui.dock_side.set(jprefs["dock_side"])            
+                #Window positions
+                if "main_geometry" in jprefs:
+                    self.gui.main_geometry = jprefs["main_geometry"]
+                if "viewer_geometry" in jprefs:
+                    self.gui.viewer_geometry = jprefs["viewer_geometry"]
+                if "destpane_geometry" in jprefs:
+                    self.gui.destpane_geometry = jprefs["destpane_geometry"]
+                if "leftpane_width" in jprefs:
+                    self.gui.leftpane_width = int(jprefs["leftpane_width"])
+                if "middlepane_width" in jprefs:
+                    self.gui.middlepane_width = int(jprefs["middlepane_width"])
+            if len(hotkeys) > 1:
+                self.gui.hotkeys = hotkeys
+        except Exception as e:
+            logging.error(f"Error loading prefs.json: {e}")
+    
+    def saveprefs(self, gui):
+        if gui.middlepane_frame.winfo_width() == 1:
+            pass
+        else:
+            gui.middlepane_width = gui.middlepane_frame.winfo_width()
+        sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
+        ddp = gui.ddpEntry.get() if os.path.exists(gui.ddpEntry.get()) else ""
+
+        save = {
+
+            #paths
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PATHS": "--#--",
+            "source": sdp,
+            "destination": ddp,
+            "lastsession": gui.sessionpathvar.get(),
+            "exclude": self.exclude,
+
+            #Preferences
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--USER PREFERENCES":"--#--",
+            "thumbnailsize": gui.thumbnailsize,
+            "max_text_length":gui.max_text_length,
+            "hotkeys": gui.hotkeys,
+            "extra_buttons": gui.extra_buttons,
+            "force_scrollbar": gui.force_scrollbar,
+            "interactive_buttons":gui.interactive_buttons,
+
+            #Technical preferences
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
+            "filter_mode": gui.filter_mode,
+            "fast_render_size": gui.fast_render_size,
+            "threads": self.threads, 
+            "autosave":self.autosave,
+
+            #Customization
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PADDING AND COLOR FOR IMAGE CONTAINER": "--#--",
+            "checkbox_height":gui.checkbox_height,
+            "gridsquare_padx":gui.gridsquare_padx,
+            "gridsquare_pady":gui.gridsquare_pady,
+            "text_box_thickness":gui.text_box_thickness,
+            "image_border_thickness":gui.image_border_thickness,
+            "text_box_selection_colour":gui.text_box_selection_colour,
+            "image_border_selection_colour":gui.image_border_selection_colour,
+            "text_box_colour":gui.text_box_colour,
+            "image_border_colour":gui.image_border_colour,
+
+            #Window colours
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
+            "colour_on_selection":gui.colour_on_selection,
+            "background_colour":gui.background_colour,
+            "text_colour":gui.text_colour,
+            "canvas_colour":gui.canvas_colour,
+            "grid_background_colour":gui.grid_background_colour,
+            "active_background_colour":gui.active_background_colour,
+            "active_text_colour":gui.active_text_colour,
+            "button_colour":gui.button_colour,
+            "pane_divider_colour":gui.pane_divider_colour,
+
+            #GUI CONTROLLED PREFRENECES
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
+            "squaresperpage": gui.squaresperpage.get(), 
+            "sortbydate": gui.sortbydatevar.get(),
+            "default_delay": gui.default_delay.get(),
+            "viewer_x_centering": gui.viewer_x_centering,
+            "viewer_y_centering": gui.viewer_y_centering,
+            "show_next": gui.show_next.get(),
+            "dock_view": gui.dock_view.get(),
+            "dock_side": gui.dock_side.get(),
+
+            #Window positions
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
+            "main_geometry": gui.winfo_geometry(),
+            "viewer_geometry": gui.viewer_geometry, 
+            "destpane_geometry":gui.destpane_geometry,
+            "leftpane_width":gui.leftui.winfo_width(),
+            "middlepane_width":gui.middlepane_width,
+
+            }
+
+        try: #Try to save the preference to prefs.json
+            with open(self.prefs_path, "w+") as savef:
+                json.dump(save, savef,indent=4, sort_keys=False)
+                logging.debug(save)
+        except Exception as e:
+            logging.warning(("Failed to save prefs:", e))
+
+        try: #Attempt to save the session if autosave is enabled
+            if self.autosave:
+                self.savesession(False)
+        except Exception as e:
+            logging.warning(("Failed to save session:", e))
 
     def moveall(self):
         logging.info("Moving items")
@@ -493,7 +619,7 @@ class SortImages:
                     self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
 
                 # always add colour to the selected indexe's gridsquare.
-                self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = "blue", highlightcolor = "blue") #Modify new pics border colour in the index.
+                self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = self.gui.colour_on_selection, highlightcolor =  self.gui.colour_on_selection) #Modify new pics border colour in the index.
                 self.gui.templist = []
                 self.gui.templist.append(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # records square that's checkbox was set by this function
 
@@ -561,7 +687,7 @@ class SortImages:
                         "dupename": obj.dupename,
                 })
             save = {"dest": self.ddp, "source": self.sdp,
-                    "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
+                    "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef, indent=4)
       
@@ -581,20 +707,20 @@ class SortImages:
             for line in savedata['imagelist']:
                 if os.path.exists(line['path']):
                     obj = Imagefile(line['name'], line['path'])
-                    obj.checked.set(line['checked'])
-                    obj.moved = line['moved']
                     obj.thumbnail = line['thumbnail']
-                    obj.dupename=line['dupename']
                     obj.dest=line['dest']
                     obj.id=line['id']
                     obj.file_size=line['file_size']
+                    obj.checked.set(line['checked'])
+                    obj.moved = line['moved']
+                    obj.dupename=line['dupename']
+                    
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
                         logging.debug(f"No value isanimated: {e}")
                     self.imagelist.append(obj)
             
-            self.thumbnailsize=savedata['thumbnailsize']
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
@@ -671,7 +797,7 @@ class SortImages:
                 return            
             
             try:      
-                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
+                im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
                 logging.debug("Generated a thumbnail")
@@ -708,7 +834,7 @@ class SortImages:
                     if frame_frametime == 0:
                         frame_frametime = gridsquare.obj.delay # Replace with default_delay
                     gridsquare.obj.frametimes.append(frame_frametime)
-                    frame.thumbnail((self.thumbnailsize, self.thumbnailsize), Image.Resampling.LANCZOS)
+                    frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
                 gridsquare.obj.lazy_loading = False
