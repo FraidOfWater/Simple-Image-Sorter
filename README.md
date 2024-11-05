@@ -96,7 +96,7 @@ Building:
 
 Running without building:
 
-      Run the script from sortimages_multiview.py
+      Run the script from via python sortimages_multiview.py
 
 However, you must uncomment this block of code at the very start:
 
