@@ -141,8 +141,8 @@ class SortImages:
         
         self.gui.mainloop()
 
-    def validate_data_dir_thumbnailsize(self):
-        #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+    def validate_data_dir_thumbnailsize(self): #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+        
         data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
@@ -455,8 +455,8 @@ class SortImages:
                 existing.add(item.name)
         return duplicates
     
-    def get_current_list(self):
-    # Communicates what list is selected
+    def get_current_list(self): # Communicates to setdestination what list is selected
+    
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
@@ -607,8 +607,7 @@ class SortImages:
 
         self.update_show_next()
         
-    def update_show_next(self):
-        # This attempts to display the item in the current index after setdestination has completed.
+    def update_show_next(self): # This attempts to display the item in the current index after setdestination has completed.
         #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
         image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
         if (image_viewer_is_open or self.gui.dock_view) and self.gui.show_next.get():
@@ -728,7 +727,6 @@ class SortImages:
             logging.error("No Last Session!")
       
     def validate(self, gui):
-
         self.sdp = self.gui.sdpEntry.get()
         self.ddp = self.gui.ddpEntry.get()
         samepath = (self.sdp == self.ddp)
@@ -762,8 +760,7 @@ class SortImages:
             self.gui.sdpEntry.insert(0, "ERROR INVALID PATH")
             self.gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
-    def setup(self, dest):
-        # scan the destination
+    def setup(self, dest): # scan the destination
         self.destinations = []
         self.destinationsraw = []
         with os.scandir(dest) as it:
@@ -808,8 +805,7 @@ class SortImages:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
 
-    def load_frames(self, gridsquare):
-        # Creates frames and frametimes for gifs and webps
+    def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
         logging.info("Loading frames")
         try:            
             with Image.open(gridsquare.obj.path) as img:
