@@ -5,7 +5,7 @@ I have assumed the licence to be GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19
 
 This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter.
 
-This fork is a hobby, it adds new features and other tweaks, and removes some others. Light experimenting with threading and optimization. An introduction to python.
+This fork is a hobby, it adds new features and other tweaks, and removes some others. Light experimenting with threading and optimization. Adding animatinos and customizations. An introduction to python.
 
 Below is a mostly up-to-date changelog:
 
