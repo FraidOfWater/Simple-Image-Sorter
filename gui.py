@@ -430,6 +430,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         frame.obj = imageobj
         truncated_filename = self.truncate_text(imageobj)
         truncated_name_var = tk.StringVar(frame, value=truncated_filename)
+        frame.obj2 = truncated_name_var # This is needed or it is garbage collected I guess
         frame.grid_propagate(True)
         
         try:
