@@ -43,8 +43,7 @@ def randomColor():
         color += hexletters[floor(random.random()*16)]
     return color
 
-def darken_color(color, factor=0.5):
-        """Darken a given color by a specified factor."""
+def darken_color(color, factor=0.5): #Darken a given color by a specified factor
         # Convert hex color to RGB
         r = int(color[1:3], 16)
         g = int(color[3:5], 16)
@@ -168,8 +167,8 @@ class GUIManager(tk.Tk):
         #Buttons list
         self.buttons = []
 
-    def initialize(self):
-        #Initializating GUI
+    def initialize(self): #Initializating GUI
+        
         self.geometry(self.main_geometry)
         #Styles
 
@@ -510,8 +509,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
     def uncheck_show_next(self):
         self.current_selection_obj_flag = False
             
-    def truncate_text(self, imageobj):
-         #max_length must be over 3+extension or negative indexes happen.
+    def truncate_text(self, imageobj): #max_length must be over 3+extension or negative indexes happen.
+         
         """Truncate the text to fit within the specified thumbnailsized gridbox."""
         filename = imageobj.name.get()
         base_name, ext = os.path.splitext(filename)
@@ -521,8 +520,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             return base_name
         return base_name + ext
     
-    def displayimage(self, imageobj):
-        #Create secondary window for image viewing
+    def displayimage(self, imageobj): #Create secondary window for image viewing
         items_per_row = int(max(1, self.imagegrid.winfo_width() / self.thumbnailsize))
         row, col = map(int, self.imagegrid.index(tk.INSERT).split('.'))
         logging.debug(f"Row: {items_per_row}, Column: {col}, and {self.thumbnailsize} and {self.imagegrid.winfo_width()}")
@@ -897,8 +895,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 self.toppane.add(self.imagegridframe, weight = 1) #readd imagegrid
                 self.toppane.add(self.middlepane_frame, weight = 0) #readd the middpane
 
-    def change_centering(self, selected_option):
-        # "Center", "Only x centering", "Only y centering", "No centering"
+    def change_centering(self, selected_option): # "Center", "Only x centering", "Only y centering", "No centering"
+        
         if selected_option == "Center":
             self.viewer_x_centering = True
             self.viewer_y_centering = True
@@ -913,7 +911,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.viewer_y_centering = False
         if self.current_selection_obj:
             self.displayimage(self.current_selection_obj)
-
 
     def on_option_selected(self, selected_option):
         if selected_option == "Show Unassigned":
@@ -979,10 +976,10 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
 
                     if self.default_delay.get():
                         logging.debug(f"{i.obj.name.get()}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
-                        i.canvas.after(i.obj.delay, lambda: self.run_multiple(i)) #run again.
+                        i.canvas.after(i.obj.delay, lambda: self.lazy_load_loop(i)) #run again.
                     else:
                         logging.debug(f"{i.obj.name.get()}: {i.obj.index}/{len(i.obj.frames)}, default: {i.obj.delay}: frametime : {i.obj.frametimes[i.obj.index]} ")
-                        i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple(i)) #or a.obj.delay
+                        i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.lazy_load_loop(i)) #or a.obj.delay
 
                 else: #wait for frame to load.
                     logging.debug("Buffering")
@@ -991,19 +988,18 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 if not i.obj.lazy_loading and i.obj.frames: #if all loaded
                     logging.debug("Moving to animate_loop method")
                     x = False
-                    self.animation_loop(i, x)
+                    self.animate(i, x)
                 else: # 0 frames?
                     logging.debug("0 frames")
                     i.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
         except Exception as e:
             logging.error(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
 
-    def run_multiple(self, i):
+    def lazy_load_loop(self, i):
         i.obj.index = (i.obj.index + 1) % i.obj.framecount
         self.lazy_load(i)
-
-    #Post. animate a frame for each picture in the list and run this again.
-    def animation_loop(self, i,x, random_id = None): #frame by frame as to not freeze the main one XD
+    
+    def animate(self, i,x, random_id = None): #frame by frame as to not freeze the main one XD #Post. animate a frame for each picture in the list and run this again.
         #One time check
         if x == False:
             if i not in self.running:
@@ -1017,21 +1013,21 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             x = True
             if self.default_delay.get():
                 logging.debug(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.delay}")
-                i.canvas.after(i.obj.delay, lambda: self.run_multiple2(i,x, random_id)) #run again.
+                i.canvas.after(i.obj.delay, lambda: self.animation_loop(i,x, random_id)) #run again.
             else:
                 logging.debug(f"Loop frame to canvas {i.obj.index}/{len(i.obj.frames)} ms: {i.obj.frametimes[i.obj.index]}")
-                i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.run_multiple2(i,x, random_id)) #run again.""
+                i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.animation_loop(i,x, random_id)) #run again.""
         else:
             logging.debug(f"ended animation for {i.obj.name.get()}")
             pass
 
-    def run_multiple2(self, i, x, random_id):
+    def animation_loop(self, i, x, random_id):
         i.obj.index = (i.obj.index + 1) % i.obj.framecount
 
         self.animation_loop(i, x, random_id)
     
-    #This renders the given squarelist.
-    def render_squarelist(self, squarelist):
+    def render_squarelist(self, squarelist): #This renders the given squarelist.
+        
         current_squares = self.displayedlist.copy()
 
         if self.clear_all:
@@ -1101,7 +1097,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         #print(f"C:{len(current_list)}:G:{len(self.gridsquarelist)}:U:{a1}:A:{a2}:M:{a3}:D:{len(self.displayedlist)}")
         #print(f"U:{self.show_unassigned.get()}:A:{self.show_assigned.get()}:M:{self.show_moved.get()}")
     
-    def clicked_show_unassigned(self): #Turn you on.
+    def clicked_show_unassigned(self): #Turns you on~
         if not self.fix_flag:
             if self.show_unassigned.get() == False:
                 self.show_assigned.set(False)
@@ -1149,8 +1145,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.running = []
             self.start_gifs()
 
-    def showthisdest(self, dest, *args):
-        #If a destination window is already open, just update it.
+    def showthisdest(self, dest, *args): #If a destination window is already open, just update it.
+        
         self.dest = dest['path']
         if not hasattr(self, 'destwindow') or not self.destwindow or not self.destwindow.winfo_exists():
             #Make new window
@@ -1206,8 +1202,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         except Exception as e:
             logging.debug(f"Destination window was not open: {e}")
     
-    def refresh_destinations(self):
-        #so when view changes, squarelist is updated, the 
+    def refresh_destinations(self): #so when view changes, squarelist is updated, the 
+        
         if hasattr(self, 'destgrid') and self.destgrid: #If a destination window is open
             destgrid = self.destgrid
             dest_path = self.dest            
@@ -1292,8 +1288,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 gridsquare.obj.isvisibleindestination = False
             self.start_gifs_indestinations()
 
-    def start_gifs_indestinations(self):
-        # Check if images in the current destination view are animated or not. 
+    def start_gifs_indestinations(self): # Check if images in the current destination view are animated or not. 
         current_index = 0
         for i in self.dest_squarelist:
             if i.obj.isanimated and i.obj.isvisibleindestination: # This prevents the same .gif or .webp having two or more loops at the same time, causing the index counting to double in speed.  
@@ -1339,6 +1334,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.displaygrid(self.fileManager.imagelist, ran)            
         else:
             self.addpagebutton.configure(text="No More Images!",background="#DD3333")
+
 last_scroll_time = None
 def throttled_yview(widget, *args):
     """Throttle scroll events for both MouseWheel and Scrollbar slider"""
@@ -1350,12 +1346,12 @@ def throttled_yview(widget, *args):
         last_scroll_time = now
         widget.yview(*args)
 
-# Throttled scrollbar callback
-def throttled_scrollbar(*args):
+def throttled_scrollbar(*args): # Throttled scrollbar callback
+
     throttled_yview(args[0], 'yview', *args[1:])
-# Fixes moving from dock view back to standalone view
+
 last_row_length = 0
-def bindhandler_1(widget):
+def bindhandler_1(widget): # Fixes moving from dock view back to standalone view
     global last_row_length
     if last_row_length == 0:
         last_row_length = 1
