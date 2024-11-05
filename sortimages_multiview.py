@@ -59,7 +59,7 @@ class Imagefile:
         self.index = 0
         self.delay = 100 #Default delay
         self.id = None
-
+    
     def move(self, x, assigned, moved) -> str:
         destpath = self.dest
         do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
@@ -80,13 +80,13 @@ class Imagefile:
                 # If above functons and checks fail, these below won't get set. As designed
                 assigned.remove(x)
                 moved.append(x) # Moves from assigned to moved ?
-
+                
                 self.moved = True
                 self.show = False
 
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-
+                
                 self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
@@ -95,11 +95,11 @@ class Imagefile:
                 self.assigned = False
                 self.moved = True
                 return returnstr
-
+            
             except Exception as e:
                 logging.error("Error moving/deleting: %s . File: %s",
                               e, self.name.get())
-
+                
                 if os.path.exists(new_path) and os.path.exists(old_path): # Shmove has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
                     os.remove(new_path)
                     print("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
@@ -138,11 +138,11 @@ class SortImages:
         self.loadprefs()
         self.gui.initialize()
         self.validate_data_dir_thumbnailsize()
-
+        
         self.gui.mainloop()
 
     def validate_data_dir_thumbnailsize(self): #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
-
+        
         data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
@@ -151,10 +151,10 @@ class SortImages:
                 first_image_path = os.path.join(data_dir, image_files[0])
                 try:
                     image = pyvips.Image.new_from_file(first_image_path)
-
+                    
                     width = image.width
                     height = image.height
-
+                    
                     # The size doesnt match what is wanted in prefs
                     if max(width, height) != self.gui.thumbnailsize:
                         shutil.rmtree(data_dir)
@@ -173,11 +173,11 @@ class SortImages:
     def loadprefs(self):
         # Figure out script and data directory locations
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
-            script_dir = os.path.dirname(sys.executable)
+            script_dir = os.path.dirname(sys.executable) 
             self.prefs_path = os.path.join(script_dir, "prefs.json")
         else:
             script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
-            self.prefs_path = os.path.join(script_dir, "prefs.json")
+            self.prefs_path = os.path.join(script_dir, "prefs.json") 
         data_dir = os.path.join(script_dir, "data")
         self.data_dir = data_dir
 
@@ -188,7 +188,7 @@ class SortImages:
                 jdata = prefsfile.read()
                 jprefs = json.loads(jdata)
 
-
+                
                 #paths
                 if "source" in jprefs:
                     self.gui.source_folder = jprefs["source"]
@@ -210,7 +210,7 @@ class SortImages:
                 if "force_scrollbar" in jprefs:
                     self.gui.force_scrollbar = jprefs["force_scrollbar"]
                 if "interactive_buttons" in jprefs:
-                    self.gui.interactive_buttons = jprefs["interactive_buttons"]
+                    self.gui.interactive_buttons = jprefs["interactive_buttons"]          
                 #Technical preferences
                 if "filter_mode" in jprefs:
                     self.gui.filter_mode = jprefs["filter_mode"]
@@ -219,7 +219,7 @@ class SortImages:
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
                 if 'autosave' in jprefs:
-                    self.autosave = jprefs['autosave']
+                    self.autosave = jprefs['autosave']          
                 #Customization
                 if "checkbox_height" in jprefs:
                     self.gui.checkbox_height = int(jprefs["checkbox_height"])
@@ -238,7 +238,7 @@ class SortImages:
                 if "text_box_colour" in jprefs:
                     self.gui.text_box_colour = jprefs["text_box_colour"]
                 if "image_border_colour" in jprefs:
-                    self.gui.image_border_colour = jprefs["image_border_colour"]
+                    self.gui.image_border_colour = jprefs["image_border_colour"]            
                 #Window colours
                 if "colour_on_selection" in jprefs:
                     self.gui.colour_on_selection = jprefs["colour_on_selection"]
@@ -257,7 +257,7 @@ class SortImages:
                 if "button_colour" in jprefs:
                     self.gui.button_colour = jprefs["button_colour"]
                 if "pane_divider_colour" in jprefs:
-                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]
+                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]            
                 #GUI CONTROLLED PREFRENECES
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(jprefs["squaresperpage"])
@@ -274,7 +274,7 @@ class SortImages:
                 if "dock_view" in jprefs:
                     self.gui.dock_view.set(jprefs["dock_view"])
                 if "dock_side" in jprefs:
-                    self.gui.dock_side.set(jprefs["dock_side"])
+                    self.gui.dock_side.set(jprefs["dock_side"])            
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -290,7 +290,7 @@ class SortImages:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
             logging.error(f"Error loading prefs.json: {e}")
-
+    
     def saveprefs(self, gui):
         if gui.middlepane_frame.winfo_width() == 1:
             pass
@@ -321,7 +321,7 @@ class SortImages:
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
             "filter_mode": gui.filter_mode,
             "fast_render_size": gui.fast_render_size,
-            "threads": self.threads,
+            "threads": self.threads, 
             "autosave":self.autosave,
 
             #Customization
@@ -350,7 +350,7 @@ class SortImages:
 
             #GUI CONTROLLED PREFRENECES
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
-            "squaresperpage": gui.squaresperpage.get(),
+            "squaresperpage": gui.squaresperpage.get(), 
             "sortbydate": gui.sortbydatevar.get(),
             "default_delay": gui.default_delay.get(),
             "viewer_x_centering": gui.viewer_x_centering,
@@ -362,7 +362,7 @@ class SortImages:
             #Window positions
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
             "main_geometry": gui.winfo_geometry(),
-            "viewer_geometry": gui.viewer_geometry,
+            "viewer_geometry": gui.viewer_geometry, 
             "destpane_geometry":gui.destpane_geometry,
             "leftpane_width":gui.leftui.winfo_width(),
             "middlepane_width":gui.middlepane_width,
@@ -400,7 +400,7 @@ class SortImages:
 
         for x in self.gui.assigned_squarelist:
             out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shmove fails.
-
+            
             if isinstance(out, str): # May report images that were failed ?
                 loglist.append(out)
 
@@ -437,12 +437,12 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
-
+                    
         # Sort by date modificated
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
         return self.imagelist
-
+       
     def checkdupefilenames(self, imagelist):
         duplicates: list[Imagefile] = []
         existing: set[str] = set()
@@ -454,9 +454,9 @@ class SortImages:
             else:
                 existing.add(item.name)
         return duplicates
-
+    
     def get_current_list(self): # Communicates to setdestination what list is selected
-
+    
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
@@ -464,15 +464,15 @@ class SortImages:
                 return unassigned_animated
             else:
                 return unassign
-
+        
         elif self.gui.show_assigned.get():
             assign = self.gui.assigned_squarelist
             return assign
-
+        
         elif self.gui.show_moved.get():
             moved = self.gui.moved_squarelist
             return moved
-
+        
     def setDestination(self, *args):
         dest = args[0]
         marked = []
@@ -494,19 +494,19 @@ class SortImages:
                     if self.gui.current_selection_obj.id == x.obj.id:
                         if x not in marked:
                             marked.append(x)
-
+                            
             for x in marked:
                 x.obj.setdest(dest)
                 x.obj.guidata["frame"]['background'] = dest['color']
                 x.obj.guidata["canvas"]['background'] = dest['color']
                 x.obj.checked.set(False)
-
+                
                 # Move from unasssigned to assigned
                 if self.gui.show_unassigned.get():
                     x.obj.assigned = True
                     if x.obj.assigned and x not in self.gui.assigned_squarelist:
                         self.gui.unassigned_squarelist.remove(x)
-                        self.gui.assigned_squarelist.append(x)
+                        self.gui.assigned_squarelist.append(x) 
 
                         # Destination view different behaviour
                         if x.obj.dest == dest['path']:
@@ -533,7 +533,7 @@ class SortImages:
                                 self.gui.queue.append(x)
                             else:
                                 x.obj.checked.set(True)
-                                x.obj.destchecked.set(True)
+                                x.obj.destchecked.set(True)                                    
 
                         else:
                             if x.obj in self.gui.filtered_images:
@@ -557,10 +557,10 @@ class SortImages:
                             self.gui.running.remove(x)
                         if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
-
+        
         # Check for destination view changes separately. Note, We use destchecked here, not checked.
         marked = []
-        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]
+        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
         temp = self.gui.assigned_squarelist.copy()
 
         # Returns all images that are marked, but who are already assigned
@@ -573,7 +573,7 @@ class SortImages:
                         if not(square.obj.destchecked.get() and square.obj.checked.get()):
                             self.gui.render_refresh.append(gridsquare)
                             break
-
+        
             #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
             # What the fuck is this? I think it had something to do with how I couldnt use the same gridsquare for dest and imagegrid, so this has to match them.
             for item in temp:
@@ -590,9 +590,9 @@ class SortImages:
                     self.gui.assigned_squarelist.remove(item)
                     self.gui.assigned_squarelist.append(item)
                     self.gui.filtered_images.remove(square.obj)
-
+                    
                     break
-
+            
             square.obj.setdest(dest)
             square.obj.guidata["frame"]['background'] = dest['color']
             square.obj.guidata["canvas"]['background'] = dest['color']
@@ -606,7 +606,7 @@ class SortImages:
             self.gui.refresh_destinations()
 
         self.update_show_next()
-
+        
     def update_show_next(self): # This attempts to display the item in the current index after setdestination has completed.
         #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
         image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
@@ -654,9 +654,9 @@ class SortImages:
                         "checked": obj.checked.get(),
                         "moved": obj.moved,
                         "thumbnail": thumb,
-                        "isanimated": obj.isanimated,
+                        "isanimated": obj.isanimated, 
                         "dupename": obj.dupename,
-
+                        
                     })
                     else:
                         imagesavedata.append({
@@ -669,7 +669,7 @@ class SortImages:
                         "moved": obj.moved,
                         "thumbnail": thumb,
                         "dupename": obj.dupename,
-
+                        
                     })
                 else:
                     thumb = ""
@@ -688,7 +688,7 @@ class SortImages:
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef, indent=4)
-
+      
     def loadsession(self):
         logging.info("Loading session")
         sessionpath = self.gui.sessionpathvar.get()
@@ -712,20 +712,20 @@ class SortImages:
                     obj.checked.set(line['checked'])
                     obj.moved = line['moved']
                     obj.dupename=line['dupename']
-
+                    
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
                         logging.debug(f"No value isanimated: {e}")
                     self.imagelist.append(obj)
-
+            
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
             gui.guisetup(self.destinations)
         else:
             logging.error("No Last Session!")
-
+      
     def validate(self, gui):
         self.sdp = self.gui.sdpEntry.get()
         self.ddp = self.gui.ddpEntry.get()
@@ -753,7 +753,7 @@ class SortImages:
             self.gui.ddpEntry.delete(0, tk.END)
             self.gui.sdpEntry.insert(0, "PATHS CANNOT BE SAME")
             self.gui.ddpEntry.insert(0, "PATHS CANNOT BE SAME")
-
+            
         else:
             self.gui.sdpEntry.delete(0, tk.END)
             self.gui.ddpEntry.delete(0, tk.END)
@@ -770,7 +770,7 @@ class SortImages:
                     self.destinations.append(
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
                     self.destinationsraw.append(entry.path)
-
+      
     def makethumb(self, imagefile):
             file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
             if not imagefile.file_size or not imagefile.mod_time:
@@ -782,22 +782,22 @@ class SortImages:
             #dramatically faster hashing.
             hash = md5()
             hash.update(id.encode('utf-8'))
-
+            
             imagefile.setid(hash.hexdigest())
 
             thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
             if(os.path.exists(thumbpath)):
                 imagefile.thumbnail = thumbpath
-                return
-
-            try:
+                return            
+            
+            try:      
                 im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
                 logging.debug("Generated a thumbnail")
             except Exception as e:
                 logging.error("Error in thumbnail generation: %s", e)
-
+    
     def generatethumbnails(self, images):
         #logging.info("md5 hashing %s files", len(images))
         max_workers = max(1,self.threads)
@@ -807,13 +807,13 @@ class SortImages:
 
     def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
         logging.info("Loading frames")
-        try:
+        try:            
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
 
                 if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
                     raise Exception(f"Found static: {gridsquare.obj.name.get()}")
-
+                                
                 logging.debug(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames. {gridsquare.obj.delay}")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
