@@ -1,4 +1,3 @@
-
 import os
 from sys import exit
 from tkinter import messagebox
@@ -124,7 +123,7 @@ class CanvasImage:
         self.canvas.focus_set()  # set focus on the canvas
         self.canvas.update_idletasks() # Fixes the brief appearance of the scrollbars before hiding them.
         self.__imframe.rowconfigure(0, weight=1)  # make canvas expandable ####weight to 0 for no schock
-        self.__imframe.columnconfigure(0, weight=1) 
+        self.__imframe.columnconfigure(0, weight=1)
 
     def smaller(self):
         """ Resize image proportionally and return smaller image """
@@ -319,26 +318,26 @@ class CanvasImage:
         del self.__pyramid  # delete pyramid variable
         self.canvas.destroy()
         self.__imframe.destroy()
-    
+
     def rescale(self, scale):
         """ Rescale the Image without doing anything else """
         self.__scale=scale
         self.imscale=scale
-        
+
         self.canvas.scale('all', self.canvas.winfo_width(), 0, scale, scale)  # rescale all objects
         self.redraw_figures()
         self.__show_image()
-  
+
     def center_image(self):
         global selected_option
         """ Center the image on the canvas """
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
-  
+
         # Calculate scaled image dimensions
         scaled_image_width = self.imwidth * self.imscale
         scaled_image_height = self.imheight * self.imscale
-  
+
         # Calculate offsets to center the image
         #["Corner", "y-Center", "xy-Center", ""]
         if selected_option == "y-Center":  # Corner but center y
@@ -356,13 +355,13 @@ class CanvasImage:
         else:  # Corner
             x_offset = 0
             y_offset = 0
-        
-  
+
+
         # Update the position of the image container
         self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
 
         #print(f"Centered")
-  
+
         self.__show_image()
 
 
@@ -387,12 +386,12 @@ try:
         if "selected_option" in jprefs:
             selected_option = jprefs["selected_option"]
 
-        
+
 except Exception as e:
     print(f"Failed to load prefs.json: {e}")
     tkroot.geometry(str(tkroot.winfo_screenwidth())+"x"+str(tkroot.winfo_screenheight()-120))
     tkroot.geometry("+0+60")
-    pass 
+    pass
 
 
 
@@ -657,7 +656,7 @@ def guisetup():
 
 
 
-    
+
 
 def displayimage():
     if len(imagelist) > 0: # Prevents functions designed to refresh the image after a change from running if there are no images.
@@ -733,16 +732,16 @@ def saveonexit():
     ddp = ddpEntry.get() if os.path.exists(ddpEntry.get()) else ""
 
     save = {
-        "srcpath": sdp, 
-        "despath": ddp, 
-        "exclude": exclude, 
+        "srcpath": sdp,
+        "despath": ddp,
+        "exclude": exclude,
         "hotkeys": hotkeys,
-        #"sortbydate": sortbydatevar.get(), 
+        #"sortbydate": sortbydatevar.get(),
         "rescalemode":rescalemode.get(),
         "selected_option":selected_option,
         "geometry":tkroot.winfo_geometry()
         }
-        
+
     try: #Try to save the preference to prefs.json
         with open(prefs_path, "w+") as savef:
             json.dump(save, savef,indent=4, sort_keys=False)
@@ -753,30 +752,30 @@ def saveonexit():
 #gui setup
 def active_on_enter(event):
     activebutton.config(bg=text_colour, fg=button_colour)
-    
+
 def active_on_leave(event):
     activebutton.config(bg=button_colour, fg=text_colour)
 
 def sdpEntry_on_enter(event):
     sdpEntry.config(bg=text_colour, fg=button_colour)
-    
+
 def sdpEntry_on_leave(event):
     sdpEntry.config(bg=button_colour, fg=text_colour)
 
 def ddpEntry_on_enter(event):
     ddpEntry.config(bg=text_colour, fg=button_colour)
-    
+
 def ddpEntry_on_leave(event):
     ddpEntry.config(bg=button_colour, fg=text_colour)
 
 def sdplabel_on_enter(event):
     sdplabel.config(bg=text_colour, fg=button_colour)
-    
+
 def sdplabel_on_leave(event):
     sdplabel.config(bg=button_colour, fg=text_colour)
 def ddplabel_on_enter(event):
     ddplabel.config(bg=text_colour, fg=button_colour)
-    
+
 def ddplabel_on_leave(event):
     ddplabel.config(bg=button_colour, fg=text_colour)
 sdpEntry = tk.Entry(guiframe,bg=button_colour, fg=text_colour,disabledbackground=button_colour, disabledforeground=text_colour) #scandirpathEntry
@@ -809,7 +808,7 @@ ddplabel.bind("<Leave>", ddplabel_on_leave)
 
 def exclude_on_enter(event):
     excludebutton.config(bg=text_colour, fg=background_colour)
-    
+
 def exclude_on_leave(event):
     excludebutton.config(bg=background_colour, fg=text_colour)
 
@@ -859,7 +858,7 @@ try:
         exclude=jprefs["exclude"]
     if hotkeys=="":
         hotkeys="123456qwerty7890uiop[asdfghjkl;zxcvbnm,.!@#$%^QWERT&*()_UIOPASDFGHJKLZXCVBNM<>"
-    
+
 except Exception:
     pass
 #textout.config(state=tk.DISABLED)
