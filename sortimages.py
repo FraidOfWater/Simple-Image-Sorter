@@ -8,13 +8,11 @@ from PIL import Image,ImageTk
 from functools import partial
 from math import floor
 import json
-import atexit
 import random
 from math import floor,sqrt
 from tkinter import filedialog as tkFileDialog
 import tkinter.font as tkfont
 from collections import deque
-from tkinter import PanedWindow
 
 #I am aware this code is fingerpaint-tier
 
