@@ -510,7 +510,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         self.current_selection_obj_flag = False
             
     def truncate_text(self, imageobj): #max_length must be over 3+extension or negative indexes happen.
-         
         """Truncate the text to fit within the specified thumbnailsized gridbox."""
         filename = imageobj.name.get()
         base_name, ext = os.path.splitext(filename)
@@ -1024,7 +1023,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
     def animation_loop(self, i, x, random_id):
         i.obj.index = (i.obj.index + 1) % i.obj.framecount
 
-        self.animation_loop(i, x, random_id)
+        self.animate(i, x, random_id)
     
     def render_squarelist(self, squarelist): #This renders the given squarelist.
         
@@ -1286,9 +1285,9 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             for gridsquare in to_remove:
                 self.dest_squarelist.remove(gridsquare)
                 gridsquare.obj.isvisibleindestination = False
-            self.start_gifs_indestinations()
+            self.start_gifs_destination()
 
-    def start_gifs_indestinations(self): # Check if images in the current destination view are animated or not. 
+    def start_gifs_destination(self): # Check if images in the current destination view are animated or not. 
         current_index = 0
         for i in self.dest_squarelist:
             if i.obj.isanimated and i.obj.isvisibleindestination: # This prevents the same .gif or .webp having two or more loops at the same time, causing the index counting to double in speed.  
@@ -1296,7 +1295,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 x = False
                 self.animation_loop_indestinations(i, current_index, x)
     
-    def animation_loop_indestinations(self, i, index, x):  # Frame by frame animation
+    def animate_destination(self, i, index, x):  # Frame by frame animation
         if x == False:
             if i not in self.track_animated:
                 self.track_animated.append(i)
@@ -1311,17 +1310,17 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             x = True
             if self.default_delay.get():
                 logging.debug(f"{i.obj.name.get()}: {index}/{len(i.obj.frames)}, delay: {i.obj.delay}")
-                i.canvas.after(i.obj.delay, lambda: self.run_multiple3(i,index,x)) #run again.
+                i.canvas.after(i.obj.delay, lambda: self.destination_loop(i,index,x)) #run again.
             else:
                 logging.debug(f"{i.obj.name.get()}: {index}/{len(i.obj.frames)}, delay: {i.obj.frametimes[index]}")
-                i.canvas.after(i.obj.frametimes[index], lambda: self.run_multiple3(i,index,x)) #run again.
+                i.canvas.after(i.obj.frametimes[index], lambda: self.destination_loop(i,index,x)) #run again.
         else:
             logging.debug("dest animations ended")
             pass
     
-    def run_multiple3(self, i, index, x):
+    def destination_loop(self, i, index, x):
         index = (index + 1) % i.obj.framecount
-        self.animation_loop_indestinations(i,index,x)
+        self.animate_destination(i,index,x)
 
     def load_more_images(self, *args):
         filelist = self.fileManager.imagelist
