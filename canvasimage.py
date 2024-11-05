@@ -186,9 +186,8 @@ class CanvasImage:
         except Exception as e:
             logging.error(f"Error in destroy displayimage: {e}")
         logging.info(f"{self.imageobj.name.get()}. Animated: {self.imageobj.isanimated}")
-
-    # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
-    def lazy_pyramid(self,w,h):
+ 
+    def lazy_pyramid(self,w,h): # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
         
         if self.closing:
 
@@ -209,8 +208,7 @@ class CanvasImage:
 
             self.__pyramid = self.pyramid # pass the whole zoom pyramid when it is ready.
 
-    # This loads the frames for gif and webp lazily
-    def load_frames(self): 
+    def load_frames(self): # This loads the frames for gif and webp lazily
         try:
             #Happy ending, all frames found, return.
             if not self.closing:
@@ -307,15 +305,13 @@ class CanvasImage:
 
         self.destroy()
     
-    # Returns how fast the image was loaded to canvas.  
-    def timeit(self):
+    def timeit(self): # Returns how fast the image was loaded to canvas.  
         time_it_time = time.time()
         elapsed_time = time_it_time - self.creation_time
         logging.info(f"L:  {elapsed_time}")
         del time_it_time
     
-    # Lazily loads the frames
-    def lazy_load(self):
+    def lazy_load(self): # Lazily loads the frames
 
         if not self.lazy_loading: #If lazy no longer needed and must pass on to main animation thread.
             logging.debug("Moving to animate_image method")
@@ -343,9 +339,8 @@ class CanvasImage:
         else:
             logging.error("Error in lazy load, take a look")
             self.canvas.after(self.imageobj.delay, self.lazy_load)
-
-    # Switches the frames to make it animated
-    def animate_image(self):
+ 
+    def animate_image(self): # Switches the frames to make it animated
         self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
         if self.default_delay.get():
             logging.debug(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.delay}")
@@ -354,19 +349,16 @@ class CanvasImage:
         else:
             logging.debug(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
             self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple2)
-
-    # Helper function to run lazy_load again
-    def run_multiple(self): #make it handle going over.
+ 
+    def run_multiple(self): # Helper function to run lazy_load again #make it handle going over.
         self.lazy_index += 1
         self.lazy_load()
-
-    # Helper function to run animate_image again
-    def run_multiple2(self):
+ 
+    def run_multiple2(self): # Helper function to run animate_image again
         self.lazy_index = (self.lazy_index + 1) % len(self.frames)
         self.animate_image()
        
-    def smaller(self):
-        """ Resize image proportionally and return smaller image """
+    def smaller(self): # Resize image proportionally and return smaller image
         w1, h1 = float(self.imwidth), float(self.imheight)
         w2, h2 = float(self.__huge_size), float(self.__huge_size)
         aspect_ratio1 = w1 / h1
@@ -419,20 +411,17 @@ class CanvasImage:
         """ Exception: cannot use place with this widget """
         raise Exception('Cannot use place with the widget ' + self.__class__.__name__)
 
-    # noinspection PyUnusedLocal
-    def __scroll_x(self, *args, **kwargs):
+    def __scroll_x(self, *args, **kwargs): # noinspection PyUnusedLocal
         """ Scroll canvas horizontally and redraw the image """
         self.canvas.xview(*args)  # scroll horizontally
         self.__show_image()  # redraw the image
 
-    # noinspection PyUnusedLocal
-    def __scroll_y(self, *args, **kwargs):
+    def __scroll_y(self, *args, **kwargs): # noinspection PyUnusedLocal
         """ Scroll canvas vertically and redraw the image """
         self.canvas.yview(*args)  # scroll vertically
         self.__show_image()  # redraw the image
     
-    # Heavily modified to support gif
-    def __show_image(self):
+    def __show_image(self): # Heavily modified to support gif
         if self.imageobj.isanimated: #Let another function handle if animated
             if self.frames:
                 pass
@@ -541,26 +530,21 @@ class CanvasImage:
                         self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
 
-    def __move_from(self, event):
-        """ Remember previous coordinates for scrolling with the mouse """
+    def __move_from(self, event): # Remember previous coordinates for scrolling with the mouse
         self.canvas.scan_mark(event.x, event.y)
 
-    def __move_to(self, event):
-        """ Drag (move) canvas to the new position """
+    def __move_to(self, event): # Drag (move) canvas to the new position
         self.canvas.scan_dragto(event.x, event.y, gain=1)
         self.__show_image()  # zoom tile and show it on the canvas
 
-    def outside(self, x, y):
-        """ Checks if the point (x,y) is outside the image area """
+    def outside(self, x, y): # Checks if the point (x,y) is outside the image area
         bbox = self.canvas.coords(self.container)  # get image area
         if bbox[0] < x < bbox[2] and bbox[1] < y < bbox[3]:
             return False  # point (x,y) is inside the image area
         else:
             return True  # point (x,y) is outside the image area
 
-    def __wheel(self, event):
-
-        """ Zoom with mouse wheel """
+    def __wheel(self, event): # Zoom with mouse wheel
         x = self.canvas.canvasx(event.x)
         y = self.canvas.canvasy(event.y)
   
@@ -592,17 +576,15 @@ class CanvasImage:
         self.__show_image()
 
         logging.debug(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
-
-    # Unused?
-    def rescale_gif_frames(self, scale):
+    
+    def rescale_gif_frames(self, scale): # Unused logic for now. Should be used for zooming
         if self.imageobj.isanimated:
             new_size = (int(self.new_size[0] * scale), int(self.new_size[1] * scale))
             for i in range(self.imageobj.framecount):
                 self.frames[i] = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])  # Update the current frame on canvas
 
-    # Fixes laggy panning on first picture
-    def manual_wheel(self):
+    def manual_wheel(self): # Fixes laggy panning on first picture
         x = self.canvas_width
         y = self.canvas_height
         scale = 1.0
@@ -612,9 +594,8 @@ class CanvasImage:
         self.__scale = k * math.pow(self.__reduction, max(0, self.__curr_img)) #positioning dont change
         self.canvas.scale('all', x, y, scale, scale)  # rescale all objects
 
-    def __keystroke(self, event):
-        """ Scrolling with the keyboard.
-            Independent from the language of the keyboard, CapsLock, <Ctrl>+<key>, etc. """
+    def __keystroke(self, event): # Scrolling with the keyboard
+        # Independent from the language of the keyboard, CapsLock, <Ctrl>+<key>, etc.
         if event.state - self.__previous_state == 4:  # means that the Control key is pressed
             pass  # do nothing if Control key is pressed
         else:
@@ -629,8 +610,7 @@ class CanvasImage:
             elif event.keycode in [83, 40, 98]:    # scroll down, keys 's' or 'Down'
                 self.__scroll_y('scroll',  1, 'unit', event=event)
     
-    def crop(self, bbox):
-        """ Crop rectangle from the image and return it """
+    def crop(self, bbox): # Crop rectangle from the image and return it
         if self.__huge:    # image is huge and not totally in RAM
             band = bbox[3] - bbox[1]    # width of the tile band
             self.__tile[1][3] = band    # set the tile height
@@ -643,14 +623,12 @@ class CanvasImage:
         else:    # image is totally in RAM
             return self.__pyramid[0].crop(bbox)
     
-    def destroy(self):
-        """ ImageFrame destructor """
+    def destroy(self): # ImageFrame destructor
 
         self.canvas.destroy()
         self.__imframe.destroy()
     
-    # Rescales the image to fit image viewer
-    def rescale(self, scale):
+    def rescale(self, scale): # Rescales the image to fit image viewer
         """ Rescale the Image without doing anything else """
         if  not self.imageobj.isanimated:
             self.__scale=scale
@@ -658,8 +636,7 @@ class CanvasImage:
 
             self.canvas.scale('all', self.canvas_width, 0, scale, scale)  # rescale all objects
 
-    # Centers the iamge in the image viewer
-    def center_image(self):
+    def center_image(self): # Centers the iamge in the image viewer
         """ Center the image on the canvas """
         if not self.imageobj.isanimated:
             canvas_width = self.canvas_width
