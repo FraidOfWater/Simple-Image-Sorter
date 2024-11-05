@@ -385,17 +385,13 @@ class SortImages:
     def moveall(self):
         logging.info("Moving items")
 
-        flag = False
+        locked = False
         check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
 
         # If an imageviewer window is open, close it. (It locks move operations)
         if check_if_window_open and len(self.gui.assigned_squarelist) > 0:
-            self.gui.saveimagewindowgeo()
-            # This is needed ? testing
-            #self.gui.Image_frame.closing = False
-            #self.gui.Image_frame.close_window()
-            #del self.gui.Image_frame
-            flag = True
+            self.gui.save_viewer_geometry()
+            locked = True
 
         loglist = []
 
@@ -419,7 +415,7 @@ class SortImages:
         except Exception as e:
             logging.error(f"Failed to write filelog.txt: {e}")
 
-        if len(self.gui.displayedlist) > 0 and flag: # Reopen image viewer now that moves are completed
+        if len(self.gui.displayedlist) > 0 and locked: # Reopen image viewer now that moves are completed
             self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj)
 
     def walk(self, src):
@@ -459,8 +455,8 @@ class SortImages:
                 existing.add(item.name)
         return duplicates
     
-    # Communicates what list is selected
     def get_current_list(self):
+    # Communicates what list is selected
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
@@ -608,7 +604,10 @@ class SortImages:
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
+
+        self.update_show_next()
         
+    def update_show_next(self):
         # This attempts to display the item in the current index after setdestination has completed.
         #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
         image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
@@ -763,7 +762,6 @@ class SortImages:
             self.gui.sdpEntry.insert(0, "ERROR INVALID PATH")
             self.gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
-
     def setup(self, dest):
         # scan the destination
         self.destinations = []
@@ -782,7 +780,6 @@ class SortImages:
                 file_stats = os.stat(imagefile.path)
                 imagefile.file_size = file_stats.st_size
                 imagefile.mod_time = file_stats.st_mtime
-
             id = file_name1 + " " +str(imagefile.file_size)+ " " + str(imagefile.mod_time)
 
             #dramatically faster hashing.
@@ -811,13 +808,8 @@ class SortImages:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
 
-    def clear(self, *args):
-        if askokcancel("Confirm", "Really clear your selection?"):
-            for x in self.imagelist:
-                x.checked.set(False)
-
-    # Creates frames and frametimes for gifs and webps
     def load_frames(self, gridsquare):
+        # Creates frames and frametimes for gifs and webps
         logging.info("Loading frames")
         try:            
             with Image.open(gridsquare.obj.path) as img:
@@ -843,8 +835,12 @@ class SortImages:
         except Exception as e: #fallback to static.
             logging.error(f"Error in load_frames: {e}")
             gridsquare.obj.isanimated = False
-            
-            
+
+    def clear(self, *args):
+        if askokcancel("Confirm", "Really clear your selection?"):
+            for x in self.imagelist:
+                x.checked.set(False)
+
 # Run Program
 if __name__ == '__main__':
     format = "%(asctime)s: %(message)s"
