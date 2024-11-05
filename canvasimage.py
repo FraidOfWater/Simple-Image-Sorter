@@ -187,6 +187,7 @@ class CanvasImage:
             logging.error(f"Error in destroy displayimage: {e}")
         logging.info(f"{self.imageobj.name.get()}. Animated: {self.imageobj.isanimated}")
 
+    # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
     def lazy_pyramid(self,w,h):
         
         if self.closing:
@@ -208,6 +209,7 @@ class CanvasImage:
 
             self.__pyramid = self.pyramid # pass the whole zoom pyramid when it is ready.
 
+    # This loads the frames for gif and webp lazily
     def load_frames(self): 
         try:
             #Happy ending, all frames found, return.
@@ -272,13 +274,6 @@ class CanvasImage:
             if hasattr(self, 'frames'): # This wont let the error display if the window is being closed.
                 logging.error(f"Error loading frames: {e}")
 
-    #def runa(self):
-    #    for i in range(self.obj.framecount):
-    #                self.image.seek(i)
-    ##                zoomed_frame = self.image.resize(self.new_size, self.__filter)
-    #                frame = ImageTk.PhotoImage(zoomed_frame)
-    #                self.frames[i] = frame
-    #                self.canvas.itemconfig(self.imageid, image=frame)
     def close_window(self):
         if self.imageobj.isanimated:
             del self.frames
@@ -312,14 +307,14 @@ class CanvasImage:
 
         self.destroy()
     
-    """Logic to calculate time it took to call this since method was called."""        
+    # Returns how fast the image was loaded to canvas.  
     def timeit(self):
-        
         time_it_time = time.time()
         elapsed_time = time_it_time - self.creation_time
         logging.info(f"L:  {elapsed_time}")
         del time_it_time
     
+    # Lazily loads the frames
     def lazy_load(self):
 
         if not self.lazy_loading: #If lazy no longer needed and must pass on to main animation thread.
@@ -349,7 +344,7 @@ class CanvasImage:
             logging.error("Error in lazy load, take a look")
             self.canvas.after(self.imageobj.delay, self.lazy_load)
 
-    
+    # Switches the frames to make it animated
     def animate_image(self):
         self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
         if self.default_delay.get():
@@ -360,12 +355,12 @@ class CanvasImage:
             logging.debug(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
             self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple2)
 
-        
-
+    # Helper function to run lazy_load again
     def run_multiple(self): #make it handle going over.
         self.lazy_index += 1
         self.lazy_load()
 
+    # Helper function to run animate_image again
     def run_multiple2(self):
         self.lazy_index = (self.lazy_index + 1) % len(self.frames)
         self.animate_image()
@@ -436,6 +431,7 @@ class CanvasImage:
         self.canvas.yview(*args)  # scroll vertically
         self.__show_image()  # redraw the image
     
+    # Heavily modified to support gif
     def __show_image(self):
         if self.imageobj.isanimated: #Let another function handle if animated
             if self.frames:
@@ -545,9 +541,6 @@ class CanvasImage:
                         self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
 
-                
-   
-
     def __move_from(self, event):
         """ Remember previous coordinates for scrolling with the mouse """
         self.canvas.scan_mark(event.x, event.y)
@@ -557,7 +550,6 @@ class CanvasImage:
         self.canvas.scan_dragto(event.x, event.y, gain=1)
         self.__show_image()  # zoom tile and show it on the canvas
 
-    
     def outside(self, x, y):
         """ Checks if the point (x,y) is outside the image area """
         bbox = self.canvas.coords(self.container)  # get image area
@@ -601,13 +593,15 @@ class CanvasImage:
 
         logging.debug(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
 
+    # Unused?
     def rescale_gif_frames(self, scale):
         if self.imageobj.isanimated:
             new_size = (int(self.new_size[0] * scale), int(self.new_size[1] * scale))
             for i in range(self.imageobj.framecount):
                 self.frames[i] = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])  # Update the current frame on canvas
-    
+
+    # Fixes laggy panning on first picture
     def manual_wheel(self):
         x = self.canvas_width
         y = self.canvas_height
@@ -655,6 +649,7 @@ class CanvasImage:
         self.canvas.destroy()
         self.__imframe.destroy()
     
+    # Rescales the image to fit image viewer
     def rescale(self, scale):
         """ Rescale the Image without doing anything else """
         if  not self.imageobj.isanimated:
@@ -663,6 +658,7 @@ class CanvasImage:
 
             self.canvas.scale('all', self.canvas_width, 0, scale, scale)  # rescale all objects
 
+    # Centers the iamge in the image viewer
     def center_image(self):
         """ Center the image on the canvas """
         if not self.imageobj.isanimated:
