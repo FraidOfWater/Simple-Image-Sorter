@@ -92,6 +92,8 @@ Building:
 
       #Note, if you edit any source files, you must delete build and dist folders, otherwise you will build from outdated files.
 
+      You can also add --noconsole and --onefile in fron ot pyinstaller to disable console or to not have _internal folder
+
 Running without building:
 
       Run the script from sortimages_multiview.py
