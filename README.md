@@ -69,5 +69,49 @@ Warnings and other info:
   1. Navigation using arrow keys?
   
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class. Thank you for using this program.
+# Requirements #
+SW = Singleview
+MW = Multiview
 
+
+Building SW/MW:
+Install Python
+You need to pip install like this:
+
+      (pip install pyvips, tkinter-tooltip, pillow, pyinstaller)
+
+Building MW:
+You need these dlls in this folder:
+(Take from a compiled copy, in _internal)
+
+      libglib-2.0, libgobject-2.0, libvips-42, libvips-cpp-42
+
+Building:
+
+      Finished copy can hopefully be found in "dist" folder.
+
+      #Note, if you edit any source files, you must delete build and dist folders, otherwise you will build from outdated files.
+
+Running without building:
+
+      Run the script from sortimages_multiview.py
+
+However, you must uncomment this block of code at the very start:
+
+      #""" # This can/should be commented if you build.
+      import ctypes
+      try:
+          script_dir = os.path.dirname(os.path.abspath(__file__))
+          dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
+          dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
+          dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
+          dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
+      except FileNotFoundError:
+          logging.error("The file was not found. (You are missing .dlls)")
+      ctypes.CDLL(dll_path1)
+      ctypes.CDLL(dll_path2)
+      ctypes.CDLL(dll_path3)
+      ctypes.CDLL(dll_path4)
+      #"""
+      
 End of file congratz!
