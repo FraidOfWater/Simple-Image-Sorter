@@ -342,7 +342,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
     def initial_dock_setup(self):
         #Left
         if self.dock_side.get() and self.dock_view.get():
-            print("only 1")
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=1, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
@@ -355,7 +354,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.toppane.add(self.imagegridframe, weight=1)
         #Right
         elif self.dock_view.get():
-            print("only 2")
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=0, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
@@ -368,7 +366,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.toppane.add(self.middlepane_frame, weight=0)
         else:
             self.imagegridframe.grid_forget()
-            print("only 3")
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=1, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
