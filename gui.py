@@ -74,7 +74,7 @@ class GUIManager(tk.Tk):
         self.max_text_length = 34 # Maximum length allowed for filenames. #must use square or canvas to limit text length.
         self.hotkeys = "123456qwerty7890uiopasdfghjklzxcvbnm"
         self.extra_buttons = False
-        self.interactive_buttons = False # Color change on hover
+        self.interactive_buttons = True # Color change on hover
         self.force_scrollbar = True
 
         #Technical preferences
@@ -116,7 +116,7 @@ class GUIManager(tk.Tk):
         self.dock_side = tk.BooleanVar()
         self.squaresperpage.set(120)
         self.default_delay.set(True)
-        self.show_next.set(False)
+        self.show_next.set(True)
         self.dock_view.set(True)
         self.dock_side.set(True)
         
