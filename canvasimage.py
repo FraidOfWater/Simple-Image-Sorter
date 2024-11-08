@@ -9,6 +9,18 @@ from PIL import Image, ImageTk
 import threading
 import time
 import logging
+from math import floor
+
+logger = logging.getLogger("Canvasimage")
+logger.setLevel(logging.INFO)  # Set to the lowest level you want to handle
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
 
 class AutoScrollbar(ttk.Scrollbar):
 	""" A scrollbar that hides itself if it's not needed. Works only for grid geometry manager """
@@ -25,27 +37,34 @@ class AutoScrollbar(ttk.Scrollbar):
 	def place(self, **kw):
 		raise tk.TclError('Cannot use place with the widget ' + self.__class__.__name__)
     
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
-logging.getLogger("pyvips").setLevel(logging.WARNING)
 class CanvasImage:
     """ Display and zoom image """
-    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode):
+    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode, gui):
         self.imageobj = imageobj
+        self.obj = imageobj
+        self.gui = gui
+
+        logger.info("")
+        logger.info(f"{self.imageobj.name.get()[:30]}. Frames: {self.obj.framecount}")
+
         """ Initialize core attributes and lists"""
-        print("")
-        # Import needed objects and values from GUI
         self.background_colour = background_colour
         self.path = path  # path to the image, should be public for outer classes
-        self.obj = imageobj
+        
         geometry_width, geometry_height = imagewindowgeometry.split('x',1)
+
+        # Fix for lag in first image that is placed!
         self.count = 0
         self.count1 = 3
+
         # Logic for quick displaying of first frame.
         self.first = True           # Flag that turns off when the initial picture has been rendered.
         self.replace_first = True   # Flag that turns off when the pyramid has created the same picture in higher quality and rendered it.
         self.replace_await = False
+
         # The initial quality of placeholder image, used to display the image just a bit faster.
         accepted_modes = ["NEAREST", "BILINEAR", "BICUBIC", "LANCZOS"]
+
         if filter_mode.upper() in accepted_modes:
             self.__first_filter = getattr(Image.Resampling, filter_mode.upper())
         else:
@@ -64,6 +83,11 @@ class CanvasImage:
         self.lazy_index = 0
         self.lazy_loading = True    # Flag that turns off when all frames have been loaded to frames.
         self.closing = True        # Flag that turn on when the window shuts down, so that open threads know to shutdown.
+        
+        # Navigator locking mechanism
+        self.og_posx = 0
+        self.og_posy = 0
+        self.last_state = ""
 
         # Image scaling defaults
         self.imscale = 1.0  # Scale for the canvas image zoom
@@ -71,15 +95,16 @@ class CanvasImage:
 
         # Misc
         self.__previous_state = 0  # previous state of the keyboard
+
         """Opening the image"""
         try:
             self.image = Image.open(path) #redundant
 
         except FileNotFoundError:
-            logging.error(f"File not found: {path}")
+            logger.error(f"File not found: {path}")
             return
         except Exception as e:
-            logging.error(f"An error occurred: {e}")
+            logger.error(f"An error occurred: {e}")
             return
 
         """ Initialization of image data shorcuts """
@@ -116,8 +141,8 @@ class CanvasImage:
         # Vertical and horizontal scrollbars for __imframe
         hbar = AutoScrollbar(self.__imframe, orient='horizontal')
         vbar = AutoScrollbar(self.__imframe, orient='vertical')
-        hbar.grid(row=1, column=0, sticky='we')
-        vbar.grid(row=0, column=1, sticky='ns')
+        #hbar.grid(row=1, column=0, sticky='we')
+        #vbar.grid(row=0, column=1, sticky='ns')
 
         # Create canvas and bind it with scrollbars. Public for outer classes
         self.canvas = tk.Canvas(self.__imframe, bg=self.background_colour,
@@ -156,7 +181,7 @@ class CanvasImage:
                 self.lazy_load() #could change this to do itself before the threding, this loads the first picture, then waits for new ones. no buffering message
 
             except Exception as e:
-                logging.error(f"Can't access imageinfo. {e}")
+                logger.error(f"Can't access imageinfo. {e}")
 
         self.canvas.update()  # Wait until the canvas has finished creating.
 
@@ -168,25 +193,91 @@ class CanvasImage:
         #old place for image:
 
         # bind scrollbars to the canvas
-        hbar.configure(command=self.__scroll_x)
-        vbar.configure(command=self.__scroll_y)
+        #hbar.configure(command=self.__scroll_x)
+        #vbar.configure(command=self.__scroll_y)
 
         # Bind events to the Canvas
         self.canvas.bind('<ButtonPress-1>', self.__move_from)  # remember canvas position / panning
+        self.canvas.bind('<ButtonRelease-1>', lambda event: self.time_set(event))  # remember canvas position / panning
+
         self.canvas.bind('<B1-Motion>',     self.__move_to)  # move canvas to the new position / panning
         self.canvas.bind('<MouseWheel>', self.__wheel)  # zoom for Windows and MacOS, but not Linux / zoom pyramid.
         self.canvas.bind('<Button-5>',   self.__wheel)  # zoom for Linux, wheel scroll down
         self.canvas.bind('<Button-4>',   self.__wheel)  # zoom for Linux, wheel scroll up
-
+        #if not hasattr(self.gui, "second_window"): # right click close dock view
+        #    self.canvas.bind("<Button-3>", self.close_window)
         # Handle keystrokes in idle mode, because program slows down on a weak computers,
         # when too many key stroke events in the same time
-        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.__keystroke, event))
+        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.key_listener, event))
+
+        self.canvas.bind('<KeyPress-Control_L>', lambda event: self.on_control_press(event))
+        self.canvas.bind('<KeyRelease-Control_L>', lambda event: self.on_control_release(event))
+        self.canvas.bind('<KeyPress-Control_R>', lambda event: self.on_control_press(event))
+        self.canvas.bind('<KeyRelease-Control_R>', lambda event: self.on_control_release(event))
+
+        self.canvas.bind('<KeyPress-Shift_L>', lambda event: self.on_control_press_s(event))
+        self.canvas.bind('<KeyRelease-Shift_L>', lambda event: self.on_control_release_s(event))
+        self.canvas.bind('<KeyPress-Shift_R>', lambda event: self.on_control_press_s(event))
+        self.canvas.bind('<KeyRelease-Shift_R>', lambda event: self.on_control_release_s(event))
 
         try:
             self.__image.close()
         except Exception as e:
-            logging.error(f"Error in destroy displayimage: {e}")
-        logging.info(f"{self.imageobj.name.get()}. Animated: {self.imageobj.isanimated}")
+            logger.error(f"Error in destroy displayimage: {e}")
+
+    def on_control_press(self, event):
+        self.control_pressed = True
+        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+        self.canvas.focus_set()
+        #logger.debug(self.control_pressed)
+    
+    def on_control_release(self, event):
+        self.control_pressed = False
+        logger.debug(self.control_pressed)
+        #self.last_state = "quickzoom"
+
+    def on_control_press_s(self, event):
+        self.control_pressed = True
+        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+        self.canvas.focus_set()
+        #logger.debug(self.control_pressed)
+    
+    def on_control_release_s(self, event):
+        self.control_pressed = False
+        #logger.debug(self.control_pressed)
+        self.last_state = "quickscroll"
+            
+    def key_listener(self, event):
+        # 1. When moving, we want to be unimpeded until we click enter. If show next and caps lock is OFF, give it to navigator.
+        # 2. This sets the initial one. In keystroke we must recognize if the flag is tripped. To return control.
+        flag = False
+        if event.keysym == "Return":
+            self.gui.enter_toggle = not self.gui.enter_toggle
+            self.last_state = "Return"
+        if event.state & 0x4:
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+            self.canvas.after_idle(self.keystroke, event)
+            self.canvas.focus_set()
+            self.last_state = "ctrl+event"
+            flag = True
+        if event.state & 0x1:
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+            self.canvas.after_idle(self.keystroke, event)
+            self.canvas.focus_set()
+            self.last_state = "shift+event"
+            flag = True
+        if flag:
+            flag = False
+            return
+
+        if self.gui.show_next.get() and not self.gui.enter_toggle: # Enter wasnt pressed
+            self.canvas.after_idle(self.gui.navigator, event)
+        elif self.gui.show_next.get() and self.gui.enter_toggle: # Enter was pressed, focus on image viewer.
+            self.focus_canvasimage()
+        elif not self.gui.show_next.get():
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+            self.canvas.after_idle(self.keystroke, event)
+
 
     def lazy_pyramid(self,w,h): # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
         if self.closing:
@@ -210,10 +301,8 @@ class CanvasImage:
         try:
             #Happy ending, all frames found, return.
             if not self.closing:
-                self.close_window()
                 return
             if not self.frames:
-                logging.info(f"{self.obj.framecount} frames")
                 #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
                 # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
                 #centering of frames and rescaling?
@@ -232,18 +321,17 @@ class CanvasImage:
 
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
-                logging.info(f"F:  {elapsed_time}")
+                logger.info(f"F:  {elapsed_time}")
                 del end_time2
                 self.first = False # Flags that the first has been created
 
                 for i in range(1, self.imageobj.framecount):
                     if self.closing:
                         self.image.seek(i)
-                        logging.debug(f"{len(self.frames)}/{self.imageobj.framecount} Delay: {self.imageobj.frametimes[i]}")
+                        logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
                         frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
                         self.frames.append(frame)
                     else: # If the closing flag is raised, we try to close and disregard loading.
-                        self.close_window()
                         return
 
 
@@ -256,56 +344,60 @@ class CanvasImage:
 
         except Exception as e:
             if hasattr(self, 'frames'): # This wont let the error display if the window is being closed.
-                logging.error(f"Error loading frames: {e}")
+                logger.error(f"Error loading frames: {e}")
 
-    def close_window(self):
+    def close_window(self, x=None):
+        self.closing = False
         if self.imageobj.isanimated:
+            self.frames.clear()
+            self.original_frames.clear()
             del self.frames
             del self.original_frames
-
         try:
             for img in self.pyramid:
                 img.close()
+            self.pyramid.clear()
             del self.pyramid
         except Exception as e:
-            logging.error(f"Error in closing pyramid : {e}")
+            logger.error(f"Error in closing pyramid : {e}")
 
         try:
             for img in self.__pyramid:
                 img.close()
+            self.__pyramid.clear()
             del self.__pyramid
         except Exception as e:
-            logging.error(f"Error in closing __pyramid: {e}")
+            logger.error(f"Error in closing __pyramid: {e}")
 
         try:
             self.image.close()
             del self.image
         except Exception as e:
-            logging.error(f"Error in closing image: {e}")
+            logger.error(f"Error in closing image: {e}")
 
         try:
             self.__image.close()
             del self.__image
         except Exception as e:
-            logging.error(f"Error in closing __image: {e}")
+            logger.error(f"Error in closing __image: {e}")
 
         self.destroy()
 
     def timeit(self): # Returns how fast the image was loaded to canvas.
         time_it_time = time.time()
         elapsed_time = time_it_time - self.creation_time
-        logging.info(f"L:  {elapsed_time}")
+        logger.info(f"L:  {elapsed_time}")
         del time_it_time
 
     def lazy_load(self): # Lazily loads the frames
 
         if not self.lazy_loading: #If lazy no longer needed and must pass on to main animation thread.
-            logging.debug("Moving to animate_image method")
+            logger.debug("All frames loaded, stopping lazy_load")
             self.animate_image()
             return
 
         elif not self.frames or not len(self.frames) > self.lazy_index: #if the list is still empty. Wait.
-            logging.debug("Buffering") #Ideally 0 buffering, update somethng so frames is initialzied quaranteed.
+            logger.debug("Buffering") #Ideally 0 buffering, update somethng so frames is initialzied quaranteed.
             self.canvas.after(self.imageobj.delay, self.lazy_load)
             return
 
@@ -314,26 +406,26 @@ class CanvasImage:
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
 
             if self.default_delay.get():
-                logging.debug(f"Lazy frame to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.delay}")
+                logger.debug(f"Lazy: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.delay}) ###")
                 self.canvas.after(self.imageobj.delay, self.run_multiple)
                 return
             else:
-                logging.debug(f"Lazy frame to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
+                logger.debug(f"Lazy: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]}) ###")
                 self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple)
                 return
 
         else:
-            logging.error("Error in lazy load, take a look")
+            logger.error("Error in lazy load, take a look")
             self.canvas.after(self.imageobj.delay, self.lazy_load)
 
     def animate_image(self): # Switches the frames to make it animated
         self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
         if self.default_delay.get():
-            logging.debug(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.delay}")
+            logger.debug(f"{self.lazy_index+1}/{self.obj.framecount} ({self.obj.delay})")
             self.canvas.after(self.imageobj.delay, self.run_multiple2)
 
         else:
-            logging.debug(f"Animate image to canvas {self.lazy_index+1}/{self.obj.framecount} with {self.obj.frametimes[self.lazy_index]}")
+            logger.debug(f"{self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
             self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple2)
 
     def run_multiple(self): # Helper function to run lazy_load again #make it handle going over.
@@ -455,7 +547,7 @@ class CanvasImage:
                 else:  # show normal image
                     if self.count < self.count1: # fixes lag on movign rescaled picture.
                             self.manual_wheel()
-                            logging.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
+                            #logger.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
                             self.count += 1
                     a = round(self.imageobj.file_size/1000000,2) #file size
                     b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
@@ -468,10 +560,10 @@ class CanvasImage:
 
 
                         if b < c: # if small render high quality
-                            logging.info(f"Size: {b} MB/{c} MB. Buffered: False")
+                            logger.info(f"Size: {b} MB/{c} MB. Buffered: False")
                             imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
                         else:
-                            logging.info(f"Size: {b} MB/{c} MB. Buffered: True")
+                            logger.info(f"Size: {b} MB/{c} MB. Buffered: True")
                             imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
 
                         self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
@@ -480,14 +572,13 @@ class CanvasImage:
                         end_time = time.time()
                         elapsed_time = end_time - self.creation_time
                         del end_time
-                        logging.info(f"[F]:  {elapsed_time}")
+                        logger.info(f"[F]:  {elapsed_time}")
                         self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
                         self.pyramid_ready.set() #tell threading that second picture is allowed to render.
 
 
                     elif self.replace_await and b > self.fast_render_size: # only render second time if needed.
-                        print(f"{b} and {self.fast_render_size}")
                         self.replace_await = False
                         image = self.__pyramid[(max(0, self.__curr_img))]
                         imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
@@ -499,7 +590,7 @@ class CanvasImage:
                         elapsed_time = end_time - self.creation_time
                         #del self.creation_time
                         del end_time
-                        logging.info(f"[B]:  {elapsed_time}")
+                        logger.info(f"[B]:  {elapsed_time}")
                         self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
 
@@ -507,21 +598,79 @@ class CanvasImage:
                         image = self.__pyramid[(max(0, self.__curr_img))].crop(  # crop current img from pyramid
                                         (int(x1 / self.__scale), int(y1 / self.__scale),
                                          int(x2 / self.__scale), int(y2 / self.__scale)))
-
-                        imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
-                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                        if self.closing:
+                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
+                        if self.closing:
+                            self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                    max(box_canvas[1], box_img_int[1]),
                                                 anchor='nw', image=imagetk)
 
                         self.canvas.lower(self.imageid)  # set image into background
                         self.canvas.imagetk = imagetk
+    def time_set(self, event):
+        time1 = time.time()
+        press_time = time1 - self.time_from_click
+        flag = False
+        
+        if (self.og_posx == event.x or self.og_posy == event.y) and press_time < 0.2:
+            flag = True
+        if self.gui.show_next.get() and flag and not self.gui.enter_toggle:
+            self.gui.enter_toggle = True
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+        else:
+            self.gui.enter_toggle = False
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
 
     def __move_from(self, event): # Remember previous coordinates for scrolling with the mouse
+        self.time_from_click = time.time()
+        self.og_posx = event.x
+        self.og_posy = event.y
+        self.canvas.focus_set()
         self.canvas.scan_mark(event.x, event.y)
 
     def __move_to(self, event): # Drag (move) canvas to the new position
         self.canvas.scan_dragto(event.x, event.y, gain=1)
         self.__show_image()  # zoom tile and show it on the canvas
+
+    import tkinter as tk
+
+    def is_image_inside_viewport(self):
+        """ Check if the image is entirely within the visible canvas area """
+        # Get the image and canvas bounding boxes
+        img_bbox = self.canvas.coords(self.container)  # (x1, y1, x2, y2) for the image
+        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0), 
+                       self.canvas.canvasx(self.canvas_width), self.canvas.canvasy(self.canvas_height))
+        
+        # Check if the image is fully inside the canvas bounds
+        if (img_bbox[0] >= canvas_bbox[0] and img_bbox[1] >= canvas_bbox[1] and 
+            img_bbox[2] <= canvas_bbox[2] and img_bbox[3] <= canvas_bbox[3]):
+            return True  # Image is fully inside
+        return False  # Image is partially or fully outside
+
+    def is_image_cropped(self):
+        """ Check if the image is cropped and if so, determine the direction(s) """
+        img_bbox = self.canvas.coords(self.container)
+        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0), 
+                       self.canvas.canvasx(self.canvas_width), self.canvas.canvasy(self.canvas_height))
+        
+        # Initialize flags for each cropping direction
+        cropped_width = False
+        cropped_height = False
+
+        # Check if the image overflows horizontally
+        print(floor(img_bbox[0]), canvas_bbox[0], floor(img_bbox[2]), floor(canvas_bbox[2]))
+        if floor(img_bbox[0]) < canvas_bbox[0] or floor(img_bbox[2]) > canvas_bbox[2]:
+            cropped_width = True
+        
+        # Check if the image overflows vertically
+        print(floor(img_bbox[1]), floor(canvas_bbox[1]), floor(img_bbox[3]), floor(canvas_bbox[3]))
+        if floor(img_bbox[1]) < canvas_bbox[1] or floor(img_bbox[3]) > canvas_bbox[3]:
+            cropped_height = True
+
+        # Return whether the image is cropped, and in which direction(s)
+        return cropped_width, cropped_height
 
     def outside(self, x, y): # Checks if the point (x,y) is outside the image area
         bbox = self.canvas.coords(self.container)  # get image area
@@ -530,21 +679,24 @@ class CanvasImage:
         else:
             return True  # point (x,y) is outside the image area
 
-    def __wheel(self, event): # Zoom with mouse wheel
-        x = self.canvas.canvasx(event.x)
-        y = self.canvas.canvasy(event.y)
+    def __wheel(self, event=None, direction=None): # Zoom with mouse wheel
+        if event:
+            x = self.canvas.canvasx(event.x)
+            y = self.canvas.canvasy(event.y)
 
-        """ re-enable this if you dont want scrolling outside the image """
-        #if self.outside(x, y): return  # zoom only inside image area
-
+            """ re-enable this if you dont want scrolling outside the image """
+            #if self.outside(x, y): return  # zoom only inside image area
+        else: 
+            x = self.canvas.canvasx(self.canvas_width // 2)
+            y = self.canvas.canvasy(self.canvas_height // 2)
         scale = 1.0
 
         # Respond to Linux (event.num) or Windows (event.delta) wheel event
-        if event.num == 5 or event.delta == -120:  # scroll down, smaller
+        if (event and (event.num == 5 or event.delta == -120)) or direction == "down":  # scroll down, smaller
             if round(self.__min_side * self.imscale) < 30: return  # image is less than 30 pixels
             self.imscale /= self.__delta
             scale        /= self.__delta
-        if event.num == 4 or event.delta == 120:  # scroll up, bigger
+        elif (event and (event.num == 4 or event.delta == 120)) or direction == "up":  # scroll up, bigger
             i = min(self.canvas_width, self.canvas_height) >> 1
             if i < self.imscale: return  # 1 pixel is bigger than the visible area
             self.imscale *= self.__delta
@@ -561,7 +713,7 @@ class CanvasImage:
         self.redraw_figures()    # method for child classes
         self.__show_image()
 
-        logging.debug(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
+        #logger.debug(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
 
     def rescale_gif_frames(self, scale): # Unused logic for now. Should be used for zooming
         if self.imageobj.isanimated:
@@ -580,21 +732,92 @@ class CanvasImage:
         self.__scale = k * math.pow(self.__reduction, max(0, self.__curr_img)) #positioning dont change
         self.canvas.scale('all', x, y, scale, scale)  # rescale all objects
 
-    def __keystroke(self, event): # Scrolling with the keyboard
-        # Independent from the language of the keyboard, CapsLock, <Ctrl>+<key>, etc.
-        if event.state - self.__previous_state == 4:  # means that the Control key is pressed
-            pass  # do nothing if Control key is pressed
-        else:
-            self.__previous_state = event.state    # remember the last keystroke state
-            # Up, Down, Left, Right keystrokes
-            if event.keycode in [68, 39, 102]:    # scroll right, keys 'd' or 'Right'
-                self.__scroll_x('scroll',  1, 'unit', event=event)
-            elif event.keycode in [65, 37, 100]:    # scroll left, keys 'a' or 'Left'
-                self.__scroll_x('scroll', -1, 'unit', event=event)
-            elif event.keycode in [87, 38, 104]:    # scroll up, keys 'w' or 'Up'
-                self.__scroll_y('scroll', -1, 'unit', event=event)
-            elif event.keycode in [83, 40, 98]:    # scroll down, keys 's' or 'Down'
-                self.__scroll_y('scroll',  1, 'unit', event=event)
+    def focus_canvasimage(self):
+        self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+
+    
+
+    def keystroke(self, event): # Scrolling and zooming with the keyboard
+        print(self.is_image_inside_viewport())
+        print(self.is_image_cropped())
+        width, height = self.is_image_cropped()
+        if not width and not height:
+            right = -1
+            left = 1
+            up = 1
+            down = -1
+        elif width and height:
+            right = 1
+            left = -1
+            up = -1
+            down = 1
+        elif width:
+            right = 1
+            left = -1
+            up = 1
+            down = -1
+        elif height:
+            right = 1
+            left = -1
+            up = -1
+            down = 1
+
+        if event.keysym == "Return" and self.gui.show_next.get():
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.enter_toggle = not self.gui.enter_toggle
+            self.last_state = "Return"
+
+        if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
+            self.gui.current_selection.canvas.configure(highlightcolor="blue", highlightbackground = "blue")
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
+            if self.last_state == "quickzoom" or self.last_state == "quickscroll":
+                self.canvas.after_idle(self.gui.navigator, event)
+            return
+        # if press enter, focus on keystroke. If press enter again, focus on moving again. a switch.
+        check = ["w","a","s","d"]
+            #wasd = 87,65,83,68
+            #updownleftright = 38,40,37,39
+        for x in check:
+            if x in self.gui.hotkeys:
+                disable_wasd = True
+                break
+            else:
+                disable_wasd = False
+                break
+        if not event.keycode in [37,38,39,40] or (event.keycode in [65,68,83,87] and not disable_wasd):
+            return
+        
+        # Up, Down, Left, Right keystrokes
+        if not event.state & 0x4 and not event.state & 0x1:
+            if event.keycode in [68, 39]:    # scroll right, keys 'd' or 'Right'
+                self.__scroll_x('scroll', right, 'unit', event=event)
+            elif event.keycode in [65, 37]:    # scroll left, keys 'a' or 'Left'
+                self.__scroll_x('scroll', left, 'unit', event=event)
+            elif event.keycode in [87, 38]:    # scroll up, keys 'w' or 'Up'
+                self.__scroll_y('scroll', up, 'unit', event=event)
+            elif event.keycode in [83, 40]:    # scroll down, keys 's' or 'Down'
+                self.__scroll_y('scroll', down, 'unit', event=event)
+
+        if event.state & 0x4: # If ctrl pressed, use zoom
+            if event.keycode in [87, 38]:   # Up
+                self.__wheel(None,"up")
+            elif event.keycode in [83, 40]: # Down
+                self.__wheel(None,"down")
+            if event.keycode in [68, 39] and not event.state & 0x1:    # scroll right, keys 'd' or 'Right'
+                self.__scroll_x('scroll', right, 'unit', event=event)
+            elif event.keycode in [65, 37] and not event.state & 0x1:    # scroll left, keys 'a' or 'Left'
+                self.__scroll_x('scroll', left, 'unit', event=event)
+        if event.state & 0x1:
+            if event.keycode in [68, 39]:    # RIGHT
+                self.__scroll_x('scroll', right, 'unit', event=event)
+            elif event.keycode in [65, 37]:    # LEFT
+                self.__scroll_x('scroll', left, 'unit', event=event)
+            if not event.state & 0x4:
+                if event.keycode in [87, 38]:    # UP
+                    self.__scroll_y('scroll', up, 'unit', event=event)
+                elif event.keycode in [83, 40]:    # DOWN
+                    self.__scroll_y('scroll', down, 'unit', event=event)
 
     def crop(self, bbox): # Crop rectangle from the image and return it
         if self.__huge:    # image is huge and not totally in RAM
