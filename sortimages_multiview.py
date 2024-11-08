@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from shutil import move as shmove
 import tkinter as tk
 from tkinter.messagebox import askokcancel
@@ -15,7 +16,19 @@ from gui import GUIManager, randomColor
 import shutil
 from PIL import Image, ImageTk
 
+logger = logging.getLogger("Sortimages")
+logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.WARNING)
+
+formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
 """ # This can/should be commented if you build.
+
 import ctypes
 try:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,14 +37,12 @@ try:
     dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
     dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
 except FileNotFoundError:
-    logging.error("The file was not found. (You are missing .dlls)")
+    logger.error("The file was not found. (You are missing .dlls)")
 ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
 """
-
-
 
 # The imagefile class. It holds all information about the image and the state its container is in.
 class Imagefile:
@@ -69,7 +80,7 @@ class Imagefile:
             exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
             if exists_already_in_destination:
                 if do_not_move_if_exists:
-                    logging.error(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
+                    logger.warning(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
                     return ("") # Returns if 1. Would overwrite someone
             try:
                 new_path = os.path.join(destpath, file_name)
@@ -97,12 +108,11 @@ class Imagefile:
                 return returnstr
             
             except Exception as e:
-                logging.error("Error moving/deleting: %s . File: %s",
-                              e, self.name.get())
+                logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
                 
                 if os.path.exists(new_path) and os.path.exists(old_path): # Shmove has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
                     os.remove(new_path)
-                    print("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
+                    logger.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
 
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
@@ -116,7 +126,7 @@ class Imagefile:
 
     def setdest(self, dest):
         self.dest = dest["path"]
-        logging.debug("Set destination of %s to %s",
+        logger.info("Set destination of %s to %s",
                       self.name.get(), self.dest)
 
 
@@ -128,13 +138,14 @@ class SortImages:
     exclude = []
 
     def __init__(self) -> None:
+        self.last_call_time = 0
+        self.throttle_delay = 0.19
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
         self.threads = os.cpu_count()
         self.gui = GUIManager(self)
 
-        logging.info("Loading preferences")
         self.loadprefs()
         self.gui.initialize()
         self.validate_data_dir_thumbnailsize()
@@ -158,13 +169,13 @@ class SortImages:
                     # The size doesnt match what is wanted in prefs
                     if max(width, height) != self.gui.thumbnailsize:
                         shutil.rmtree(data_dir)
-                        logging.info(f"Removing data folder, thumbnailsize changed")
+                        logger.warning(f"Removing data folder, thumbnailsize changed")
                         os.mkdir(data_dir)
-                        logging.info(f"Re-created data folder.")
+                        logger.warning(f"Re-created data folder.")
                 except Exception as e:
-                    logging.error(f"Couldn't load first image in data folder")
+                    logger.warning(f"Couldn't load first image in data folder")
             else:
-                logging.info(f"Data folder is empty")
+                logger.warning(f"Data folder is empty")
                 pass
             pass
         else:
@@ -210,7 +221,11 @@ class SortImages:
                 if "force_scrollbar" in jprefs:
                     self.gui.force_scrollbar = jprefs["force_scrollbar"]
                 if "interactive_buttons" in jprefs:
-                    self.gui.interactive_buttons = jprefs["interactive_buttons"]          
+                    self.gui.interactive_buttons = jprefs["interactive_buttons"]
+                if "page_mode" in jprefs:
+                    self.gui.page_mode = jprefs["page_mode"]
+                if "flicker_free_dock_view" in jprefs:
+                    self.gui.flicker_free_dock_view = jprefs["flicker_free_dock_view"]
                 #Technical preferences
                 if "filter_mode" in jprefs:
                     self.gui.filter_mode = jprefs["filter_mode"]
@@ -231,17 +246,18 @@ class SortImages:
                     self.gui.text_box_thickness = int(jprefs["text_box_thickness"])
                 if "image_border_thickness" in jprefs:
                     self.gui.image_border_thickness = int(jprefs["image_border_thickness"])
-                if "text_box_selection_colour" in jprefs:
-                    self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
-                if "image_border_selection_colour" in jprefs:
-                    self.gui.image_border_selection_colour = jprefs["image_border_selection_colour"]
                 if "text_box_colour" in jprefs:
                     self.gui.text_box_colour = jprefs["text_box_colour"]
-                if "image_border_colour" in jprefs:
-                    self.gui.image_border_colour = jprefs["image_border_colour"]            
+                if "text_box_selection_colour" in jprefs:
+                    self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
+                if "imageborder_default_colour" in jprefs:
+                    self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]   
+                if "imageborder_selected_colour" in jprefs:
+                    self.gui.imageborder_selected_colour = jprefs["imageborder_selected_colour"]
+                if "imageborder_locked_colour" in jprefs:
+                    self.gui.imageborder_locked_colour = jprefs["imageborder_locked_colour"]
+
                 #Window colours
-                if "colour_on_selection" in jprefs:
-                    self.gui.colour_on_selection = jprefs["colour_on_selection"]
                 if "background_colour" in jprefs:
                     self.gui.background_colour = jprefs["background_colour"]
                 if "text_colour" in jprefs:
@@ -289,7 +305,7 @@ class SortImages:
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
-            logging.error(f"Error loading prefs.json: {e}")
+            logger.error(f"Error loading prefs.json: {e}")
     
     def saveprefs(self, gui):
         if gui.middlepane_frame.winfo_width() == 1:
@@ -316,6 +332,8 @@ class SortImages:
             "extra_buttons": gui.extra_buttons,
             "force_scrollbar": gui.force_scrollbar,
             "interactive_buttons":gui.interactive_buttons,
+            "page_mode": gui.page_mode,
+            "flicker_free_dock_view": gui.flicker_free_dock_view,
 
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
@@ -331,14 +349,14 @@ class SortImages:
             "gridsquare_pady":gui.gridsquare_pady,
             "text_box_thickness":gui.text_box_thickness,
             "image_border_thickness":gui.image_border_thickness,
-            "text_box_selection_colour":gui.text_box_selection_colour,
-            "image_border_selection_colour":gui.image_border_selection_colour,
             "text_box_colour":gui.text_box_colour,
-            "image_border_colour":gui.image_border_colour,
+            "text_box_selection_colour":gui.text_box_selection_colour,
+            "imageborder_default_colour":gui.imageborder_default_colour,
+            "imageborder_selected_colour":gui.imageborder_selected_colour,
+            "imageborder_locked_colour":gui.imageborder_locked_colour,
 
             #Window colours
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
-            "colour_on_selection":gui.colour_on_selection,
             "background_colour":gui.background_colour,
             "text_colour":gui.text_colour,
             "canvas_colour":gui.canvas_colour,
@@ -372,19 +390,17 @@ class SortImages:
         try: #Try to save the preference to prefs.json
             with open(self.prefs_path, "w+") as savef:
                 json.dump(save, savef,indent=4, sort_keys=False)
-                logging.debug(save)
+                logger.debug(save)
         except Exception as e:
-            logging.warning(("Failed to save prefs:", e))
+            logger.warning(("Failed to save prefs:", e))
 
         try: #Attempt to save the session if autosave is enabled
             if self.autosave:
                 self.savesession(False)
         except Exception as e:
-            logging.warning(("Failed to save session:", e))
+            logger.warning(("Failed to save session:", e))
 
     def moveall(self):
-        logging.info("Moving items")
-
         locked = False
         check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
 
@@ -413,10 +429,10 @@ class SortImages:
                     logfile.writelines(loglist)
 
         except Exception as e:
-            logging.error(f"Failed to write filelog.txt: {e}")
+            logger.error(f"Failed to write filelog.txt: {e}")
 
         if len(self.gui.displayedlist) > 0 and locked: # Reopen image viewer now that moves are completed
-            self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj)
+            self.gui.displayimage(self.gui.current_selection)
 
     def walk(self, src):
         duplicates = self.duplicatenames
@@ -456,7 +472,6 @@ class SortImages:
         return duplicates
     
     def get_current_list(self): # Communicates to setdestination what list is selected
-    
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
@@ -474,6 +489,25 @@ class SortImages:
             return moved
         
     def setDestination(self, *args):
+        current_time = time.time()
+        if not self.gui.key_pressed:
+            pass
+        elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
+            self.last_call_time = current_time
+        else:
+            print("Victim of throttling")
+            return
+        index_before_move = -1
+        # cant find displayedimag at index. remove frame colours.
+        if self.gui.current_selection in self.gui.displayedlist:
+            if self.gui.displayedlist.index(self.gui.current_selection) != self.gui.current_selection and not self.gui.show_next.get():
+                self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            else:
+                # If we have something selected, and if that someting is not the same picture as the one displayed
+                # We know the frame colour must be updated.
+                index_before_move = self.gui.displayedlist.index(self.gui.current_selection)
+            
+
         dest = args[0]
         marked = []
         current_list = []
@@ -488,10 +522,9 @@ class SortImages:
         # Return all images whose checkbox is checked (And currently in view by image viewer, so you can just press a hotkey and not have to check a checkbox everytime) (If interacting with other squares, it will cancel itself out. This is so user wont accidentally move anything.)
         else:
             marked = [x for x in current_list if x.obj.checked.get()]
-            #if self.gui.show_next.get():
-            if self.gui.current_selection_obj and self.gui.current_selection_obj_flag: # to see if we have clicked elsewhere as to not move the displayed image anymore.
+            if self.gui.current_selection and self.gui.focused_on_secondwindow: # to see if we have clicked elsewhere as to not move the displayed image anymore.
                 for x in current_list:
-                    if self.gui.current_selection_obj.id == x.obj.id:
+                    if self.gui.current_selection.obj.id == x.obj.id:
                         if x not in marked:
                             marked.append(x)
                             
@@ -604,36 +637,25 @@ class SortImages:
         self.gui.refresh_rendered_list()
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
-
-        self.update_show_next()
+        if index_before_move >= 0 and index_before_move+1 <= len(self.gui.displayedlist):
+            self.update_show_next(index_before_move)
         
-    def update_show_next(self): # This attempts to display the item in the current index after setdestination has completed.
-        #Should only run if something is already displayed. If nothing is displayed, user wouldn't want a new image displayed.
-        image_viewer_is_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
-        if (image_viewer_is_open or self.gui.dock_view) and self.gui.show_next.get() and self.gui.current_selection:
-            #If second window OPEN. We should display the next image in the displayed list. We should also reset the border colour to normal.
-            try:
-                if self.gui.current_selection: # try to restore old's border colour.
-                    self.gui.current_selection[0].canvas.configure(highlightcolor=self.gui.image_border_selection_colour, highlightbackground = self.gui.image_border_colour) #reset to default
+    def update_show_next(self, index_before_move): # Current_selection was in index x, after setdestination, it might not be in that index. We want that index to be "selected", this handles that.
+        
+        #check if moved from that index.
+        if self.gui.show_next.get() and self.gui.displayedlist[index_before_move] != self.gui.current_selection:
+            
+            previous_selection = self.gui.current_selection # Restore old frame's frame.
+            previous_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            
+            self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
+            self.gui.current_selection.canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
 
-                # always add colour to the selected indexe's gridsquare.
-                self.gui.displayedlist[self.gui.last_viewed_image_pos].canvas.configure(highlightbackground = self.gui.colour_on_selection, highlightcolor =  self.gui.colour_on_selection) #Modify new pics border colour in the index.
-                self.gui.templist = []
-                self.gui.templist.append(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # records square that's checkbox was set by this function
-
-                #if gridsquare is same as gridsquare from current_selection, dont run this
-                if not self.gui.current_selection[0] == self.gui.displayedlist[self.gui.last_viewed_image_pos]:
-                    self.gui.displayimage(self.gui.displayedlist[self.gui.last_viewed_image_pos].obj) # Open the new picture that has entered the index.
-                self.gui.current_selection = []
-
-                self.gui.current_selection.append(self.gui.displayedlist[self.gui.last_viewed_image_pos]) #adds modified to current list
-
-                self.gui.leftui.focus_set()
-            except Exception as e:
-                logging.debug(f"Error show_next: {e}")
+            self.gui.last_selection = self.gui.current_selection
+            self.gui.displayimage(self.gui.current_selection, False) # The flag solves a performance issue when auto loading images very very fast. I do not know why.
 
     def savesession(self,asksavelocation):
-        logging.info("Saving session, Goodbye!")
+        print("Saving session, Goodbye!")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
@@ -690,7 +712,6 @@ class SortImages:
                 json.dump(save, savef, indent=4)
       
     def loadsession(self):
-        logging.info("Loading session")
         sessionpath = self.gui.sessionpathvar.get()
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
             with open(sessionpath, "r") as savef:
@@ -716,7 +737,7 @@ class SortImages:
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
-                        logging.debug(f"No value isanimated: {e}")
+                        logger.debug(f"No value isanimated: {e}")
                     self.imagelist.append(obj)
             
             self.gui.thumbnailsize=savedata['thumbnailsize']
@@ -724,28 +745,24 @@ class SortImages:
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
             gui.guisetup(self.destinations)
         else:
-            logging.error("No Last Session!")
+            logger.warning("No Last Session!")
       
     def validate(self, gui):
         self.sdp = self.gui.sdpEntry.get()
         self.ddp = self.gui.ddpEntry.get()
         samepath = (self.sdp == self.ddp)
 
-        logging.info(f"Using source: {self.gui.sdpEntry.get()}, and destination: {self.ddp}")
+        print(f"Using source: {self.gui.sdpEntry.get()}, and destination: {self.ddp}")
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
 
-            logging.info("Setting up GUI")
             self.setup(self.ddp)
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
-            logging.info("Scanning folders")
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
-            logging.info("Generating thumbnails")
             self.generatethumbnails(sublist)
-            logging.info("Displaying images")
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
 
         elif samepath:
@@ -794,42 +811,45 @@ class SortImages:
                 im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
-                logging.debug("Generated a thumbnail")
             except Exception as e:
-                logging.error("Error in thumbnail generation: %s", e)
+                logger.error("Error in thumbnail generation: %s", e)
     
     def generatethumbnails(self, images):
-        #logging.info("md5 hashing %s files", len(images))
+        #logger.info("md5 hashing %s files", len(images))
         max_workers = max(1,self.threads)
         with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
-        logging.info("Finished making thumbnails")
 
     def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
-        logging.info("Loading frames")
         try:            
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
 
                 if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
-                    raise Exception(f"Found static: {gridsquare.obj.name.get()}")
-                                
-                logging.debug(f"Found animated: {gridsquare.obj.name.get()} with {gridsquare.obj.framecount} frames. {gridsquare.obj.delay}")
+                    raise Exception(f"Found static: {gridsquare.obj.name.get()[:30]}")
+                frame_frametime = img.info.get('duration',gridsquare.obj.delay)
+                if frame_frametime == 0:
+                    gridsquare.obj.delay = gridsquare.obj.delay
+                else:
+                    gridsquare.obj.delay = frame_frametime
+
+                logger.debug(f"Found animated: {gridsquare.obj.name.get()[:30]} with {gridsquare.obj.framecount} frames.")
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
                     frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
                     if frame_frametime == 0:
+                        print("Bugged animation frametimes. Using default_delay.")
                         frame_frametime = gridsquare.obj.delay # Replace with default_delay
                     gridsquare.obj.frametimes.append(frame_frametime)
                     frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
                 gridsquare.obj.lazy_loading = False
-                logging.debug(f"frametimes {gridsquare.obj.frametimes}")
-                logging.info(f"All frames loaded for: {gridsquare.obj.name.get()[:30]}")
+                logger.debug(f"frametimes {gridsquare.obj.frametimes}")
+                logger.info(f"All frames loaded for: {gridsquare.obj.name.get()[:30]}")
         except Exception as e: #fallback to static.
-            logging.error(f"Error in load_frames: {e}")
+            logger.error(f"Error in load_frames: {e}")
             gridsquare.obj.isanimated = False
 
     def clear(self, *args):
@@ -839,7 +859,4 @@ class SortImages:
 
 # Run Program
 if __name__ == '__main__':
-    format = "%(asctime)s: %(message)s"
-    logging.basicConfig(
-        format=format, level=logging.WARNING, datefmt="%H:%M:%S")
     mainclass = SortImages()
