@@ -43,11 +43,6 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     Fixed Bugs: That appeared in the original
     Logging: Added logging for better debugging.
 
-      Single View Enhancements
-
-    Centering Buttons: Added in Prefs.json and GUI.
-    Window Position Saving: Remembers user-adjusted positions and sizes.
-
 # Warnings #
 
     Use tools like ANTIDUPL to remove duplicates.
