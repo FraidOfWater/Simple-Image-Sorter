@@ -53,7 +53,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     Use tools like ANTIDUPL to remove duplicates.
     No guarantees of functionality; backup images before use.
     GIFs and WebPs do not support zooming due to implementation complexity.
-    
+    Image renaming and dupe checking removed/not supported.
 # Requirements For Building #
 
 ##  How to build: ##
