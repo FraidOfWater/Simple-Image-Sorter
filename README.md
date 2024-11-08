@@ -1,5 +1,5 @@
 # Simple-Image-Sorter QOL Fork
-This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter.
+This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter. If author reads this, feel free to merge this?
 I have assumed the licence to be GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007. (Removed from author's source)
 
 # Sorts images into destinations #
