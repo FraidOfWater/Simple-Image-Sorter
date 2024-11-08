@@ -50,55 +50,57 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     GIFs and WebPs do not support zooming due to implementation complexity.
     Image renaming and dupe checking removed/not supported.
 # Requirements For Building #
+### How to Build ###
 
-##  How to build: ##
-Install Python; You need pip, then install dependencies like this:
+1. Install Python: Ensure you have Python installed.
+2. Install Dependencies: Use pip to install the required dependencies:
 
-      pip install pyvips, tkinter-tooltip, pillow, pyinstaller
+       pip install pyvips tkinter-tooltip pillow pyinstaller
 
-You need these DLLs; (Take from a compiled copy, in _internal)
+3. Required DLLs: Obtain the following DLLs from a compiled copy in the _internal folder:
 
-      libglib-2.0, libgobject-2.0, libvips-42, libvips-cpp-42
+       libglib-2.0
+       libgobject-2.0
+       libvips-42
+       libvips-cpp-42
 
-Put the DLLs in the same folder as the .py and .bat scripts:
-Run the .bat file (try restarting if it doesn't work)
+      Place the DLLs in the same folder as the .py and .bat scripts.
 
-      Finished copy can hopefully be found in "dist" folder.
+4. Run the Batch File: Execute the .bat file.
 
-      #Note, if you edit any source files, you must delete build and dist folders, otherwise you will build from outdated files.
+      The finished copy can be found in the dist folder.
 
-      You can also add --noconsole and --onefile to the pyinstaller command to disable console or to not have the _internal folder.
+      Note: If you edit any source files, delete the build and dist folders to avoid building from outdated files.
 
-# How to run as a script#
-##Running without building:##
+      You can also add --noconsole and --onefile to the pyinstaller command to disable the console or to avoid having the _internal folder.
 
-Edit sortimages_multiview.py, delete this code, save:
+      If you get any errors, try restarting the computer, run the .exe with cmd so you see any errors. Ask chatGPT!
 
-      #""" # This can/should be commented if you build.
-      import ctypes
-      try:
-          script_dir = os.path.dirname(os.path.abspath(__file__))
-          dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
-          dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
-          dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
-          dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
-      except FileNotFoundError:
-          logging.error("The file was not found. (You are missing .dlls)")
-      ctypes.CDLL(dll_path1)
-      ctypes.CDLL(dll_path2)
-      ctypes.CDLL(dll_path3)
-      ctypes.CDLL(dll_path4)
-      #"""
+# How to run as a script #
+### Running Without Building ###
+
+   1. Edit sortimages_multiview.py and enable the following code block, then save:
+
+            #""" # This can/should be commented if you build.
+            import ctypes
+            try:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
+                dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
+                dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
+                dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
+            except FileNotFoundError:
+                logging
+            ctypes.CDLL(dll_path1)
+            ctypes.CDLL(dll_path2)
+            ctypes.CDLL(dll_path3)
+            ctypes.CDLL(dll_path4)
+            #"""
+   2. Shortcut
       
-Open terminal
-
-      python sortimages_multiview.py
-
-Or make a shortcut, this should work if all files are in the same folder. You can remove the pause, if there are no errors.
-
-      start.bat
-            cd %~dp0
-            python sortimages_multiview.py
-            pause
+            start.bat
+                  cd %~dp0
+                  python sortimages_multiview.py
+                  pause
       
 End of file congratz!
