@@ -84,7 +84,7 @@ class GUIManager(tk.Tk):
         self.thumbnailsize = 256
         self.max_text_length = 34 # Maximum length allowed for filenames. #must use square or canvas to limit text length.
         self.hotkeys = "123456qwerty7890uiopasdfghjklzxcvbnm"
-        self.extra_buttons = False
+        self.extra_buttons = True
         self.force_scrollbar = True
         self.interactive_buttons = True # Color change on hover
         self.page_mode = False # Scroll a whole page or no?
@@ -286,6 +286,12 @@ to see which images are assigned to them,
 on Thumbnails,
 to view a zoomable full-size image,
 (Note that you cannot zoom gifs or webps.)
+
+                Enter / Left-Click:
+on thumbnails or in viewer,
+to lock the image, so you can
+zoom and pan using navigation keys.
+(ctrl, shift)
 
                 Preferences:
 Choose preferences inside prefs.json,
@@ -961,6 +967,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         option_menu = tk.OptionMenu(optionsframe, optionmenuvar, *view_options)
         option_menu.config(bg=self.background_colour, fg=self.text_colour,activebackground=self.active_background_colour, activeforeground=self.active_text_colour, highlightbackground=self.background_colour, highlightcolor=self.active_text_colour, highlightthickness=1)
         option_menu.grid(row = 2, column = 0, sticky = "EW")
+        
 
         centering_options = ["Center", "Only x centering", "Only y centering", "No centering"]
         centering_preference = tk.StringVar()
@@ -969,9 +976,10 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         
         self.centering_options_button = tk.OptionMenu(custom_buttons_frame, centering_preference, *centering_options)
         self.centering_options_button.config(bg=self.background_colour, fg=self.text_colour,activebackground=self.active_background_colour, activeforeground=self.active_text_colour, highlightbackground=self.background_colour, highlightcolor=self.active_text_colour, highlightthickness=1)
-        self.centering_options_button.grid(row=0, column=4, sticky="ew")
+        
 
         if self.extra_buttons:
+            self.centering_options_button.grid(row=0, column=4, sticky="ew")
             # If extra buttons is true, we should load the correct text for the centering button.
             if self.viewer_x_centering and self.viewer_y_centering:
                 centering_preference.set("Center")
