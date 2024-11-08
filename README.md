@@ -18,6 +18,7 @@ Below is a mostly up-to-date changelog:
         Added name truncation - No longer overflows and misaligns the grid. - In prefs.json
         Added transien windows - Windows spawned by main GUI now stay on top
         Added support for .gif and .webp
+        Added a navigator - Use arrow keys or wasd to move around the grid. Press Enter to lock an image so you can zoom or scroll using shift and ctrl. Press Enter again to unlock. You can also click on an image in a viewer to lock it and unlock it.
         Added Default speed - Overrides animation speed - (Toggle) in GUI, (Toggle) In Prefs.json
         Added theme customization - Main theme is now darkmode, use hex codes - In Prefs.json
         Added last window positions - Saves most positions and size adjustments by user - In Prefs.json
