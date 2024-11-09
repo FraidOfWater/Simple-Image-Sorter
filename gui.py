@@ -786,11 +786,12 @@ Thank you for using this program!""")
 
     def addpage(self, *args):
         filelist = self.fileManager.imagelist
-        if len(self.gridsquarelist) < len(filelist)-1:
+        if len(self.gridsquarelist) < len(filelist):
             listmax = min(len(self.gridsquarelist) +
-                          self.squaresperpage.get(), len(filelist)-1)
+                          self.squaresperpage.get(), len(filelist))
             ran = range(len(self.gridsquarelist), listmax)
             sublist = filelist[ran[0]:listmax]
+            print(f"Loading: {len(sublist)}")
             self.fileManager.generatethumbnails(sublist)
             self.displaygrid(self.fileManager.imagelist, ran)
         else:
