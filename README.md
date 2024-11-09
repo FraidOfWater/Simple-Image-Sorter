@@ -18,7 +18,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     Transient Windows: Windows spawned by the main GUI now stay on top.
     File Format Support: Added support for .gif and .webp.
     Navigator: Use arrow keys or WASD to navigate the grid; lock images for zooming with enter or clicking.
-    Theme Customization: Main theme is now dark mode; customize using hex codes; prefs.json.
+    Theme Customization: Main theme is now "Midnight Blue"; customize using hex codes; prefs.json.
     Window Position Saving: Remembers user-adjusted positions and sizes.
     Scrollbar Override: Option to disable the white scrollbar.
 
