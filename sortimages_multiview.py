@@ -259,6 +259,12 @@ class SortImages:
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
+                if "viewer_geometry" in jprefs:
+                    self.gui.viewer_geometry = jprefs["viewer_geometry"]
+                if "destpane_geometry" in jprefs:
+                    self.gui.destpane_geometry = jprefs["destpane_geometry"]
+                if "leftpane_width" in jprefs:
+                    self.gui.leftpane_width = int(jprefs["leftpane_width"])
 
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
@@ -283,6 +289,7 @@ class SortImages:
             "hotkeys": gui.hotkeys,
             "hideonassign": gui.hideonassignvar.get(),
             "hidemoved": gui.hidemovedvar.get(),
+            "interactive_buttons":gui.interactive_buttons,
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
             "threads": self.threads, 
@@ -331,6 +338,9 @@ class SortImages:
             #Window positions
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
             "main_geometry": gui.winfo_geometry(),
+            "viewer_geometry": gui.viewer_geometry, 
+            "destpane_geometry":gui.destpane_geometry,
+            "leftpane_width":gui.leftui.winfo_width(),
 
             }
 

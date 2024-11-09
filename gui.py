@@ -142,7 +142,9 @@ class GUIManager(tk.Tk):
 
         #Default window positions and sizes
         self.main_geometry = (str(self.winfo_screenwidth()-5)+"x" + str(self.winfo_screenheight()-120)+"+0+60")
-        self.imagewindowgeometry = str(int(self.winfo_screenwidth()*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60"
+        self.viewer_geometry = str(int(self.winfo_screenwidth()*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60"
+        self.destpane_geometry = 0
+        self.leftpane_width = 363
         ##END OF PREFS
         
         #Initialization for lists.
@@ -168,10 +170,11 @@ class GUIManager(tk.Tk):
         self.toppane = Panedwindow(self, orient="horizontal")
 
         # Frame for the left hand side that holds the setup and also the destination buttons.
-        self.leftui = tk.Frame(self.toppane, bg=self.main_colour)
+        self.leftui = tk.Frame(self.toppane, width=self.leftpane_width, bg=self.main_colour)
+        self.leftui.grid_propagate(False) #to turn off auto scaling.
         self.leftui.columnconfigure(0, weight=1)
 
-        self.toppane.add(self.leftui, weight=1)
+        self.toppane.add(self.leftui, weight=0) # 0 here, it stops the divider from moving itself. The divider pos is saved by prefs, this complicates it, so auto scaling based on text amount in source and dest folder is disabled.
 
         # This setups all the buttons and text
         self.first_page_buttons()
@@ -443,7 +446,7 @@ Thank you for using this program!""")
         imagewindow.columnconfigure(0, weight=1)
         imagewindow.title("Image: " + path)
 
-        imagewindow.geometry(self.imagewindowgeometry)
+        imagewindow.geometry(self.viewer_geometry)
         imagewindow.bind("<Button-3>", partial(bindhandler, imagewindow, "destroy"))
         imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
         imagewindow.obj = imageobj
@@ -465,7 +468,7 @@ Thank you for using this program!""")
         nameentry.grid(row=0, column=1, sticky="EW")
         
     def saveimagewindowgeo(self):
-        self.imagewindowgeometry = self.imagewindow.winfo_geometry()
+        self.viewer_geometry = self.imagewindow.winfo_geometry()
         self.checkdupename(self.imagewindow.obj)
         self.imagewindow.destroy()
 
@@ -642,6 +645,13 @@ Thank you for using this program!""")
             self.destwindow.bind("<Button-3>", self.close_destination_window)
             self.destwindow.protocol("WM_DELETE_WINDOW", self.close_destination_window)
             self.destwindow.transient(self)
+
+            if self.destpane_geometry != 0:
+                try:
+                    self.destwindow.geometry(self.destpane_geometry)
+                except Exception as e:
+                    logger.error(f"Couldn't load destwindow geometry")
+
             self.destgrid = tk.Text(self.destwindow, wrap='word', borderwidth=0, 
                                     highlightthickness=0, state="disabled", background=self.main_colour)
             self.destgrid.grid(row=0, column=0, sticky="NSEW")
