@@ -322,9 +322,13 @@ Thank you for using this program!""")
     def closeprogram(self):
         if self.fileManager.hasunmoved:
             if askokcancel("Designated but Un-Moved files, really quit?","You have destination designated, but unmoved files. (Simply cancel and Move All if you want)"):
+                self.save_viewer_geometry()
+                self.close_destination_window()
                 self.fileManager.saveprefs(self)
                 self.destroy()
         else:
+            self.save_viewer_geometry()
+            self.close_destination_window()
             self.fileManager.saveprefs(self)
             self.destroy()
 
@@ -498,10 +502,20 @@ Thank you for using this program!""")
         nameentry = tk.Entry(renameframe, textvariable=imageobj.name, takefocus=False)
         nameentry.grid(row=0, column=1, sticky="EW")
         
-    def saveimagewindowgeo(self):
-        self.viewer_geometry = self.imagewindow.winfo_geometry()
-        self.checkdupename(self.imagewindow.obj)
-        self.imagewindow.destroy()
+    def save_viewer_geometry(self):
+        if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
+            self.viewer_geometry = self.second_window.winfo_geometry()
+            self.checkdupename(self.second_window.obj)
+            if hasattr(self, 'Image_frame'):
+                self.Image_frame.close_window()
+                self.after(0, self.Image_frame.destroy)
+                del self.Image_frame
+            self.second_window.destroy()
+            del self.second_window
+        elif hasattr(self, 'Image_frame'):
+            self.Image_frame.close_window()
+            self.after(0, self.Image_frame.destroy) # Gives it time to close
+            del self.Image_frame
 
     def filedialogselect(self, target, type):
         if type == "d":
