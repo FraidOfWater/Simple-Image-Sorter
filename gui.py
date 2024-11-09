@@ -1,4 +1,5 @@
 import os
+import time
 import pyvips
 import tkinter as tk
 import logging
@@ -85,6 +86,7 @@ class GUIManager(tk.Tk):
         self.interactive_buttons = True # Color change on hover
 
         #Technical preferences
+        self.throttle_time = None
         #threads # Exlusively for fileManager
         #autosave # Exlusively for fileManager
 
@@ -154,6 +156,9 @@ class GUIManager(tk.Tk):
         self.buttons = []
 
     def initialize(self): #Initializating GUI
+        global throttle_time
+        throttle_time = self.throttle_time
+
         self.geometry(self.main_geometry)
         #Styles
         self.smallfont = tkfont.Font(family='Helvetica', size=10)
@@ -196,7 +201,8 @@ class GUIManager(tk.Tk):
 
         self.toppane.add(imagegridframe, weight=3)
         self.toppane.grid(row=0, column=0, sticky="NSEW")
-        self.toppane.configure()
+        self.toppane.configure(style='Theme_dividers.TPanedwindow')
+
         self.columnconfigure(0, weight=10)
         self.columnconfigure(1, weight=0)
         self.rowconfigure(0, weight=10)
@@ -431,7 +437,7 @@ Thank you for using this program!""")
                     canvas['background'] = color
             if imageobj.dupename:
                 frame.configure(
-                    highlightbackground="yellow", highlightthickness=2)
+                    highlightbackground="brown", highlightthickness=2)
         except Exception as e:
             logger.error(e)
         return frame
@@ -472,27 +478,25 @@ Thank you for using this program!""")
         path = imageobj.path
 
         if hasattr(self, 'imagewindow'):
-            self.imagewindow.destroy()
+            self.second_window.destroy()
 
-        self.imagewindow = tk.Toplevel()
-        imagewindow = self.imagewindow
-        imagewindow.configure(background=self.main_colour)
-        imagewindow.rowconfigure(1, weight=1)
-        imagewindow.columnconfigure(0, weight=1)
-        imagewindow.title("Image: " + path)
+        self.second_window  = tk.Toplevel()
+        second_window = self.second_window
+        second_window.configure(background=self.main_colour)
+        second_window.rowconfigure(1, weight=1)
+        second_window.columnconfigure(0, weight=1)
+        second_window.title("Image: " + path)
+        second_window.geometry(self.viewer_geometry)
+        second_window.bind("<Button-3>", self.save_viewer_geometry)
+        second_window.protocol("WM_DELETE_WINDOW", self.save_viewer_geometry)
+        second_window.obj = imageobj
+        second_window.transient(self)
 
-        imagewindow.geometry(self.viewer_geometry)
-        imagewindow.bind("<Button-3>", partial(bindhandler, imagewindow, "destroy"))
-        imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
-        imagewindow.obj = imageobj
-        imagewindow.transient(self)
+        self.Image_frame = CanvasImage(second_window, self.canvasimage_background, imageobj, self)
+        self.Image_frame.grid(column=0, row=1)
+        self.Image_frame.rescale(min(second_window.winfo_width()/self.Image_frame.imwidth, second_window.winfo_height()/self.Image_frame.imheight))
 
-
-        Image_frame = CanvasImage(imagewindow, self.canvasimage_background, imageobj, self)
-        Image_frame.grid(column=0, row=1)
-        Image_frame.rescale(min(imagewindow.winfo_width()/Image_frame.imwidth, imagewindow.winfo_height()/Image_frame.imheight))
-
-        renameframe = tk.Frame(imagewindow)
+        renameframe = tk.Frame(second_window)
         renameframe.columnconfigure(1, weight=1)
         renameframe.grid(column=0, row=0, sticky="EW")
 
@@ -502,7 +506,7 @@ Thank you for using this program!""")
         nameentry = tk.Entry(renameframe, textvariable=imageobj.name, takefocus=False)
         nameentry.grid(row=0, column=1, sticky="EW")
         
-    def save_viewer_geometry(self):
+    def save_viewer_geometry(self,):
         if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
             self.viewer_geometry = self.second_window.winfo_geometry()
             self.checkdupename(self.second_window.obj)
@@ -715,7 +719,7 @@ Thank you for using this program!""")
                 self.imagegrid.window_create(
                     "insert", window=x.guidata["frame"])
 
-    def showthisdest(self, dest, *args):
+    def showthisdest(self, dest, *args): #If a destination window is already open, just update it.
 
         self.dest = dest['path']
         if not hasattr(self, 'destwindow') or not self.destwindow or not self.destwindow.winfo_exists():
@@ -741,9 +745,9 @@ Thank you for using this program!""")
 
             #scrollbars
             vbar = tk.Scrollbar(self.destwindow, orient='vertical',
-                                command=self.destgrid.yview)
+                                command=lambda *args: throttled_yview(self.destgrid, self.page_mode, *args))
             vbar.grid(row=0, column=1, sticky='ns')
-            
+            self.destgrid['yscrollcommand'] = vbar.set  # Link scrollbar to text widget
             for x in self.fileManager.imagelist:
                 if x.dest == dest['path']:
                     newframe = self.makegridsquare(self.destgrid, x, False)
@@ -797,18 +801,102 @@ Thank you for using this program!""")
             imageobj.dupename=True
             imageobj.guidata["frame"].configure(
                     highlightbackground="yellow", highlightthickness=2)
+            
+
         else:
             imageobj.dupename=False
             imageobj.guidata["frame"].configure(highlightthickness=0)
             self.fileManager.existingnames.add(imageobj.name.get())
         imageobj.guidata['tooltip'].set(self.tooltiptext(imageobj))
+last_scroll_time = None
+last_scroll_time2 = None
+current_scroll_direction = -1
+flag1 = []
+flag_len = 1
 
+def throttled_yview(widget, page_mode, *args):
+    """Throttle scroll events for both MouseWheel and Scrollbar slider"""
+    global flag1
+    global flag_len
+    #global last_scroll_time
+    #global throttle_time
+    #now = time.time()
+    #if not last_scroll_time:
+    #    last_scroll_time = now
+    #else:
+    #    if (now - last_scroll_time) > 0.0:  # 100ms throttle
+    #        last_scroll_time = now
+#
+    #    else:
+    #        print("GET THROTTLED IDIOT!!!!!")
+    #        return
+    print(len(flag1))
+    
+    
+    if len(flag1) > flag_len:
+        return
+    flag1.append("a")
+    if args[0] == "scroll":
+        current_view = widget.yview()
+        
+        if int(args[1]) > 0:
+            direction = 1
+        else:
+            direction = -1
+
+        new_position = current_view[0] + (direction * 0.01)
+        new_position = max(0.0, min(1.0, new_position))
+
+        if page_mode:
+            widget.yview(*args)
+
+        else:
+            widget.update()
+            widget.yview_moveto(new_position)            
+
+    elif args[0] == "moveto":
+        moveto = float(args[1])
+        widget.yview_moveto(moveto)
+    widget.update()
+    flag1.pop(0)
+
+
+def throttled_scrollbar(*args): # Throttled scrollbar callback
+    throttled_yview(args[0], 'yview', *args[1:])
+
+last_row_length = 0
+def bindhandler_1(widget): # Fixes moving from dock view back to standalone view / could figure out custom values from rows, but eh.
+    #global last_row_length
+    #if last_row_length == 0:
+    #    last_row_length = 1
+    #if last_row_length % 2 == 0:
+    #    #postivie goes down
+    #    widget.yview_scroll(1, "units")
+    #last_row_length += 1
+    pass
 def bindhandler(*args):
+    global current_scroll_direction
+    global flag1
+    global flag_len
     widget = args[0]
     command = args[1]
-    if command == "invoke":
-        widget.invoke()
-    elif command == "destroy":
-        widget.destroy()
-    elif command == "scroll":
+    global last_scroll_time2
+    global throttle_time
+    throttle_time = 0.01
+    now = time.time()
+    if last_scroll_time2 is None or (now - last_scroll_time2) > throttle_time:  # 100ms throttle
+            last_scroll_time2 = now
+    if command == "scroll1":
         widget.yview_scroll(-1*floor(args[2].delta/120), "units")
+        widget.yview_scroll(40*1*floor(args[2].delta/120), "pixels") # counteracts stupid scroll by tk.text get f##cked!
+        
+    if command == "scroll":
+        widget.yview_scroll(-1*floor(args[2].delta/120), "units") 
+
+    elif command == "invoke":
+        if last_scroll_time2 is None or (now - last_scroll_time2) < throttle_time:  # 100ms throttle
+            last_scroll_time2 = now
+            widget.invoke()
+
+    elif command == "scroll1":
+        pass

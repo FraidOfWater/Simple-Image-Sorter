@@ -97,6 +97,15 @@ class CanvasImage:
         self.__image.close()
         self.canvas.focus_set()  # set focus on the canvas
 
+    def close_window(self, x=None):
+        self.__image.close()
+        try:
+            map(lambda i: i.close, self.__pyramid)  # close all pyramid images
+        except Exception as e:
+            pass
+        del self.__pyramid  # delete pyramid variable
+        self.destroy()
+
     def smaller(self): # Resize image proportionally and return smaller image
         w1, h1 = float(self.imwidth), float(self.imheight)
         w2, h2 = float(self.__huge_size), float(self.__huge_size)
@@ -279,10 +288,6 @@ class CanvasImage:
             return self.__pyramid[0].crop(bbox)
 
     def destroy(self): # ImageFrame destructor
-        self.__image.close()
-        map(lambda i: i.close, self.__pyramid)  # close all pyramid images
-        del self.__pyramid[:]  # delete pyramid list
-        del self.__pyramid  # delete pyramid variable
         self.canvas.destroy()
         self.__imframe.destroy()
     
