@@ -506,7 +506,7 @@ Thank you for using this program!""")
         nameentry = tk.Entry(renameframe, textvariable=imageobj.name, takefocus=False)
         nameentry.grid(row=0, column=1, sticky="EW")
         
-    def save_viewer_geometry(self,):
+    def save_viewer_geometry(self, event=None):
         if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
             self.viewer_geometry = self.second_window.winfo_geometry()
             self.checkdupename(self.second_window.obj)
