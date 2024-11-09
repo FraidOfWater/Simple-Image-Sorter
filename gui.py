@@ -618,6 +618,8 @@ Thank you for using this program!""")
 
         self.squaresperpageentry = tk.Entry(
             optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.grid_background_colour, foreground=self.text_colour)
+        if self.squaresperpage.get() < 0: #this wont let you save -1
+            self.squaresperpage.set(1)
         ToolTip(self.squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
         self.squaresperpageentry.grid(row=2, column=0, sticky="EW",)
         for n in range(0, itern):
