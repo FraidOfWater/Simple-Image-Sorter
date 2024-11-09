@@ -266,11 +266,13 @@ Thank you for using this program!""")
                 if not os.path.exists(imageobj.thumbnail):
                     self.fileManager.makethumb(imageobj)
                 try:
+                    #this is faster
+                    img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
+                    
+                except:  # Pyvips fallback
                     buffer = pyvips.Image.new_from_file(imageobj.thumbnail)
                     img = ImageTk.PhotoImage(Image.frombuffer(
                         "RGB", [buffer.width, buffer.height], buffer.write_to_memory()))
-                except:  # Pillow fallback
-                    img = ImageTk.PhotoImage(Image.open(imageobj.thumbnail))
             else:
                 img = imageobj.guidata['img']
 

@@ -55,8 +55,11 @@ class Imagefile:
         self.name = tk.StringVar()
         self.name.set(name)
         self.path = path
+        self.mod_time = None
+        self.file_size = None
         self.checked = tk.BooleanVar(value=False)
         self.moved = False
+        self.id = None
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
@@ -337,6 +340,8 @@ class SortImages:
                     thumb = ""
                 imagesavedata.append({
                     "name": obj.name.get(),
+                    "file_size": obj.file_size,
+                    "id": obj.id,
                     "path": obj.path,
                     "dest": obj.dest,
                     "checked": obj.checked.get(),
@@ -372,6 +377,8 @@ class SortImages:
                     obj = Imagefile(line['name'], line['path'])
                     obj.thumbnail = line['thumbnail']
                     obj.dest=line['dest']
+                    obj.id=line['id']
+                    obj.file_size=line['file_size']
                     obj.checked.set(line['checked'])
                     obj.moved = line['moved']
                     obj.dupename=line['dupename']
@@ -431,14 +438,24 @@ class SortImages:
                     self.destinationsraw.append(entry.path)
 
     def makethumb(self, imagefile):
-        im = pyvips.Image.new_from_file(imagefile.path,)
-        hash = md5()
-        hash.update(im.write_to_memory())
-        imagefile.setid(hash.hexdigest())
-        thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
-        if os.path.exists(thumbpath):
-            imagefile.thumbnail = thumbpath
-        else:
+            file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
+            if not imagefile.file_size or not imagefile.mod_time:
+                file_stats = os.stat(imagefile.path)
+                imagefile.file_size = file_stats.st_size
+                imagefile.mod_time = file_stats.st_mtime
+            id = file_name1 + " " +str(imagefile.file_size)+ " " + str(imagefile.mod_time)
+
+            #dramatically faster hashing.
+            hash = md5()
+            hash.update(id.encode('utf-8'))
+            
+            imagefile.setid(hash.hexdigest())
+
+            thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
+            if(os.path.exists(thumbpath)):
+                imagefile.thumbnail = thumbpath
+                return
+
             try:
                 im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
