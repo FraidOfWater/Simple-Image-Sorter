@@ -22,7 +22,7 @@ logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
 handler = logging.StreamHandler()
 handler.setLevel(logging.WARNING)
 
-formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+formatter = logging.Formatter('%(message)s')
 handler.setFormatter(formatter)
 
 logger.addHandler(handler)
@@ -212,8 +212,6 @@ class SortImages:
                 #Preferences
                 if 'thumbnailsize' in jprefs:
                     self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
-                if 'max_text_length' in jprefs:
-                    self.gui.max_text_length = int(jprefs["max_text_length"])
                 if 'hotkeys' in jprefs:
                     hotkeys = jprefs["hotkeys"]
                 if "extra_buttons" in jprefs:
@@ -229,8 +227,10 @@ class SortImages:
                 #Technical preferences
                 if "filter_mode" in jprefs:
                     self.gui.filter_mode = jprefs["filter_mode"]
-                if "fast_render_size" in jprefs:
-                    self.gui.fast_render_size = int(jprefs["fast_render_size"])
+                if "quick_preview_size_threshold" in jprefs:
+                    self.gui.quick_preview_size_threshold = int(jprefs["quick_preview_size_threshold"])
+                if "throttle_time" in jprefs:
+                    self.gui.throttle_time = float(jprefs["throttle_time"])
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
                 if 'autosave' in jprefs:
@@ -258,20 +258,26 @@ class SortImages:
                     self.gui.imageborder_locked_colour = jprefs["imageborder_locked_colour"]
 
                 #Window colours
-                if "background_colour" in jprefs:
-                    self.gui.background_colour = jprefs["background_colour"]
-                if "text_colour" in jprefs:
-                    self.gui.text_colour = jprefs["text_colour"]
-                if "canvas_colour" in jprefs:
-                    self.gui.canvas_colour = jprefs["canvas_colour"]
+                if "main_colour" in jprefs:
+                    self.gui.main_colour = jprefs["main_colour"]
+                if "square_colour" in jprefs:
+                    self.gui.square_colour = jprefs["square_colour"]
                 if "grid_background_colour" in jprefs:
                     self.gui.grid_background_colour = jprefs["grid_background_colour"]
-                if "active_background_colour" in jprefs:
-                    self.gui.active_background_colour = jprefs["active_background_colour"]
-                if "active_background_colour" in jprefs:
-                    self.gui.active_background_colour = jprefs["active_background_colour"]
+                if "canvasimage_background" in jprefs:
+                    self.gui.canvasimage_background = jprefs["canvasimage_background"]
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs["text_colour"]
+                if "pressed_text_colour" in jprefs:
+                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
                 if "button_colour" in jprefs:
                     self.gui.button_colour = jprefs["button_colour"]
+                if "button_press_colour" in jprefs:
+                    self.gui.button_press_colour = jprefs["button_press_colour"]
+                if "text_field_colour" in jprefs:
+                    self.gui.text_field_colour = jprefs["text_field_colour"]
+                if "text_field_text_colour" in jprefs:
+                    self.gui.text_field_text_colour = jprefs["text_field_text_colour"]
                 if "pane_divider_colour" in jprefs:
                     self.gui.pane_divider_colour = jprefs["pane_divider_colour"]            
                 #GUI CONTROLLED PREFRENECES
@@ -327,18 +333,18 @@ class SortImages:
             #Preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--USER PREFERENCES":"--#--",
             "thumbnailsize": gui.thumbnailsize,
-            "max_text_length":gui.max_text_length,
             "hotkeys": gui.hotkeys,
             "extra_buttons": gui.extra_buttons,
             "force_scrollbar": gui.force_scrollbar,
             "interactive_buttons":gui.interactive_buttons,
             "page_mode": gui.page_mode,
-            "flicker_free_dock_view": gui.flicker_free_dock_view,
-
+            
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
-            "filter_mode": gui.filter_mode,
-            "fast_render_size": gui.fast_render_size,
+            "quick_preview_filter": gui.filter_mode,
+            "quick_preview_size_threshold": gui.quick_preview_size_threshold,
+            "throttle_time": gui.throttle_time,
+            "flicker_free_dock_view": gui.flicker_free_dock_view,
             "threads": self.threads, 
             "autosave":self.autosave,
 
@@ -357,13 +363,20 @@ class SortImages:
 
             #Window colours
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
-            "background_colour":gui.background_colour,
-            "text_colour":gui.text_colour,
-            "canvas_colour":gui.canvas_colour,
+            "main_colour":gui.main_colour,
+            "square_colour":gui.square_colour,
             "grid_background_colour":gui.grid_background_colour,
-            "active_background_colour":gui.active_background_colour,
-            "active_text_colour":gui.active_text_colour,
+            "canvasimage_background":gui.canvasimage_background,
+
+            "text_colour":gui.text_colour,
+            "pressed_text_colour":gui.pressed_text_colour,
+            
             "button_colour":gui.button_colour,
+            "button_press_colour":gui.button_press_colour,
+
+            "text_field_colour":gui.text_field_colour,
+            "text_field_text_colour":gui.text_field_text_colour,
+
             "pane_divider_colour":gui.pane_divider_colour,
 
             #GUI CONTROLLED PREFRENECES
@@ -713,14 +726,20 @@ class SortImages:
       
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
+        
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
             with open(sessionpath, "r") as savef:
                 sdata = savef.read()
                 savedata = json.loads(sdata)
             gui = self.gui
-            self.ddp = savedata['dest']
             self.sdp = savedata['source']
+            self.ddp = savedata['dest']
             self.setup(savedata['dest'])
+            print("")
+            print(f'Using session:  "{sessionpath}"')
+            print(f'Source:   "{self.sdp}"')
+            print(f'Target:   "{self.ddp}"')
+
             if 'existingnames' in savedata:
                 self.existingnames = set(savedata['existingnames'])
             for line in savedata['imagelist']:
@@ -742,6 +761,7 @@ class SortImages:
             
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
+            self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
             gui.guisetup(self.destinations)
         else:
@@ -751,20 +771,25 @@ class SortImages:
         self.sdp = self.gui.sdpEntry.get()
         self.ddp = self.gui.ddpEntry.get()
         samepath = (self.sdp == self.ddp)
-
-        print(f"Using source: {self.gui.sdpEntry.get()}, and destination: {self.ddp}")
+        
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
-
+            
             self.setup(self.ddp)
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
+            print("")
+            print(f'New session:  "{self.gui.sessionpathvar.get()}"')
+            print(f'Source:   "{self.sdp}"')
+            print(f'Target:   "{self.ddp}"')
+            
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
+            print(f'Loading: {len(sublist)}')
             self.generatethumbnails(sublist)
+            self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
-
         elif samepath:
             self.gui.sdpEntry.delete(0, tk.END)
             self.gui.ddpEntry.delete(0, tk.END)
