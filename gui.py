@@ -216,18 +216,14 @@ Thank you for using this program!""")
         self.hidemoved()
         self.hideassignedsquare(self.fileManager.imagelist)
 
-    
-        
     def closeprogram(self):
         if self.fileManager.hasunmoved:
             if askokcancel("Designated but Un-Moved files, really quit?","You have destination designated, but unmoved files. (Simply cancel and Move All if you want)"):
                 self.fileManager.saveprefs(self)
                 self.destroy()
-                exit(0)
         else:
             self.fileManager.saveprefs(self)
             self.destroy()
-            exit(0)
 
     def excludeshow(self):
         excludewindow = tk.Toplevel()
@@ -560,7 +556,6 @@ Thank you for using this program!""")
                         self.imagegrid.window_configure(
                             x.guidata["frame"], window='')
                     except Exception as e:
-                        #logger.error(e)
                         pass
 
     def addpage(self, *args):

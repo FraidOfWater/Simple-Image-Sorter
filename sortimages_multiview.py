@@ -9,7 +9,6 @@ import tkinter as tk
 from tkinter.messagebox import askokcancel
 import json
 import random
-from math import floor, sqrt
 from tkinter import filedialog as tkFileDialog
 import concurrent.futures as concurrent
 import logging
@@ -60,6 +59,7 @@ class Imagefile:
         self.checked = tk.BooleanVar(value=False)
         self.moved = False
         self.id = None
+
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
@@ -152,7 +152,6 @@ class SortImages:
             script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
             self.prefs_path = os.path.join(script_dir, "prefs.json") 
         self.data_dir = os.path.join(script_dir, "data")
-        print(self.data_dir)
 
         hotkeys = ""
         # todo: replace this with some actual prefs manager that isn't a shittone of ifs
@@ -191,7 +190,7 @@ class SortImages:
                 #Window colours
                 #GUI CONTROLLED PREFRENECES
                 if "squaresperpage" in jprefs:
-                    self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
+                    self.gui.squaresperpage.set(jprefs["squaresperpage"])
                 if "sortbydate" in jprefs:
                     self.gui.sortbydatevar.set(jprefs["sortbydate"])
                 #Window positions
@@ -267,8 +266,8 @@ class SortImages:
             if len(loglist) > 0:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
-        except:
-            logger.error("Failed to write filelog.txt")
+        except Exception as e:
+            logger.error(f"Failed to write filelog.txt: {e}")
         self.gui.hidemoved()
 
     def walk(self, src):
