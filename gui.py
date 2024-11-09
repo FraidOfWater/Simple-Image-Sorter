@@ -14,6 +14,19 @@ from tktooltip import ToolTip
 from tkinter import filedialog as tkFileDialog
 from operator import indexOf
 from functools import partial
+
+logger = logging.getLogger("GUI")
+logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.WARNING)
+
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
+throttle_time = None
 def luminance(hexin):
     color = tuple(int(hexin.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
     r = color[0]
@@ -84,12 +97,14 @@ class GUIManager(tk.Tk):
         self.geometry(self.main_geometry)
         #Styles
         self.smallfont = tkfont.Font(family='Helvetica', size=10)
+
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
 
         # Frame for the left hand side that holds the setup and also the destination buttons.
         self.leftui = tk.Frame(self.toppane)
         self.leftui.columnconfigure(0, weight=1)
+
         self.toppane.add(self.leftui, weight=1)
 
         # This setups all the buttons and text
@@ -221,7 +236,7 @@ Thank you for using this program!""")
         try:
             toplevelwin.destroy()
         except Exception as e:
-            logging.error(f"Error in excludesave: {e}")
+            logger.error(f"Error in excludesave: {e}")
 
     def tooltiptext(self,imageobject):
         text=""
@@ -293,7 +308,7 @@ Thank you for using this program!""")
                 frame.configure(
                     highlightbackground="yellow", highlightthickness=2)
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
         return frame
 
     def displaygrid(self, imagelist, range):
@@ -529,7 +544,7 @@ Thank you for using this program!""")
                         self.imagegrid.window_configure(
                             x.guidata["frame"], window='')
                     except Exception as e:
-                        #logging.error(e)
+                        #logger.error(e)
                         pass
 
     def addpage(self, *args):

@@ -17,7 +17,18 @@ from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
 
- # This can/should be commented if you build.
+logger = logging.getLogger("Sortimages")
+logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
+
+handler = logging.StreamHandler()
+handler.setLevel(logging.WARNING)
+
+formatter = logging.Formatter('%(message)s')
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
+"""# This can/should be commented if you build.
 
 import ctypes
 try:
@@ -27,13 +38,14 @@ try:
     dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
     dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
 except FileNotFoundError:
-    logging.error("The file was not found. (You are missing .dlls)")
+    logger.error("The file was not found. (You are missing .dlls)")
 ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
+"""
 
-
+# The imagefile class. It holds all information about the image and the state its container is in.
 class Imagefile:
     path = ""
     dest = ""
@@ -59,9 +71,10 @@ class Imagefile:
                              " -> " + destpath + "\n")
                 destpath = ""
                 return returnstr
+            
             except Exception as e:
-                logging.error("Error moving: %s . File: %s",
-                              e, self.name.get())
+                logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+
                 self.guidata["frame"].configure(
                     highlightbackground="red", highlightthickness=2)
                 return ("Error moving: %s . File: %s", e, self.name.get())
@@ -74,7 +87,7 @@ class Imagefile:
 
     def setdest(self, dest):
         self.dest = dest["path"]
-        logging.debug("Set destination of %s to %s",
+        logger.info("Set destination of %s to %s",
                       self.name.get(), self.dest)
 
 
@@ -114,13 +127,13 @@ class SortImages:
                     # The size doesnt match what is wanted in prefs
                     if max(width, height) != self.gui.thumbnailsize:
                         shutil.rmtree(data_dir)
-                        logging.warning(f"Removing data folder, thumbnailsize changed")
+                        logger.warning(f"Removing data folder, thumbnailsize changed")
                         os.mkdir(data_dir)
-                        logging.warning(f"Re-created data folder.")
+                        logger.warning(f"Re-created data folder.")
                 except Exception as e:
-                    logging.warning(f"Couldn't load first image in data folder")
+                    logger.warning(f"Couldn't load first image in data folder")
             else:
-                logging.warning(f"Data folder is empty")
+                logger.warning(f"Data folder is empty")
                 pass
             pass
         else:
@@ -164,7 +177,7 @@ class SortImages:
                 #Technical preferences
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
-                if "autosavesession" in jprefs:
+                if 'autosave_session' in jprefs:
                     self.autosave = jprefs['autosave']
                 #Customization
                 #Window colours
@@ -178,7 +191,7 @@ class SortImages:
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
-            logging.error(f"Error loading prefs.json: {e}")
+            logger.error(f"Error loading prefs.json: {e}")
     
     def saveprefs(self, gui):
         sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
@@ -201,7 +214,7 @@ class SortImages:
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
             "threads": self.threads, 
-            "autosave":self.autosave,
+            "autosave_session":self.autosave,
 
             #Customization
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PADDING AND COLOR FOR IMAGE CONTAINER": "--#--",
@@ -220,14 +233,15 @@ class SortImages:
         try: #Try to save the preference to prefs.json
             with open(self.prefs_path, "w+") as savef:
                 json.dump(save, savef,indent=4, sort_keys=False)
-                logging.debug(save)
+                logger.debug(save)
         except Exception as e:
-            logging.warning(("Failed to save prefs:", e))
-        try:
+            logger.warning(("Failed to save prefs:", e))
+
+        try: #Attempt to save the session if autosave is enabled
             if self.autosave:
                 self.savesession(False)
         except Exception as e:
-            logging.warning(("Failed to save session:", e))
+            logger.warning(("Failed to save session:", e))
 
     def moveall(self):
         self.hasunmoved = False
@@ -243,18 +257,22 @@ class SortImages:
                 with open("filelog.txt", "a") as logfile:
                     logfile.writelines(loglist)
         except:
-            logging.error("Failed to write filelog.txt")
+            logger.error("Failed to write filelog.txt")
         self.gui.hidemoved()
 
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
+        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd"}
+        animation_support = {"gif", "webp"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
-                ext = name.split(".")[len(name.split("."))-1].lower()
-                if ext == "png" or ext == "gif" or ext == "jpg" or ext == "jpeg" or ext == "bmp" or ext == "pcx" or ext == "tiff" or ext == "webp" or ext == "psd":
+                ext = os.path.splitext(name)[1][1:].lower()
+                if ext in supported_formats:
                     imgfile = Imagefile(name, os.path.join(root, name))
+                    if ext == "gif" or ext == "webp":
+                        imgfile.isanimated = True
                     if name in existing:
                         duplicates.append(imgfile)
                         imgfile.dupename=True
@@ -297,6 +315,7 @@ class SortImages:
             self.gui.hideassignedsquare(marked)
 
     def savesession(self,asksavelocation):
+        print("Saving session, Goodbye!")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
@@ -316,15 +335,16 @@ class SortImages:
                     "checked": obj.checked.get(),
                     "moved": obj.moved,
                     "thumbnail": thumb,
-                    "dupename":obj.dupename
-                })
+                    "dupename": obj.dupename,
+                    })
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
-                json.dump(save, savef)
-
+                json.dump(save, savef, indent=4)
+      
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
+        
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
             with open(sessionpath, "r") as savef:
                 sdata = savef.read()
@@ -333,6 +353,11 @@ class SortImages:
             self.sdp = savedata['source']
             self.ddp = savedata['dest']
             self.setup(savedata['dest'])
+            print("")
+            print(f'Using session:  "{sessionpath}"')
+            print(f'Source:   "{self.sdp}"')
+            print(f'Target:   "{self.ddp}"')
+
             if 'existingnames' in savedata:
                 self.existingnames = set(savedata['existingnames'])
             for line in savedata['imagelist']:
@@ -354,7 +379,7 @@ class SortImages:
             gui.hidemoved()
             gui.hideassignedsquare(sublist)
         else:
-            logging.error("No Last Session!")
+            logger.warning("No Last Session!")
 
     def validate(self, gui):
         self.sdp = self.gui.sdpEntry.get()
@@ -362,16 +387,18 @@ class SortImages:
         samepath = (self.sdp == self.ddp)
 
         if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
-            logging.info("main class setup")
             self.setup(self.ddp)
-            logging.info("GUI setup")
             gui.guisetup(self.destinations)
             gui.sessionpathvar.set(os.path.basename(
                 self.sdp)+"-"+os.path.basename(self.ddp)+".json")
-            logging.info("displaying first image grid")
+            print("")
+            print(f'New session:  "{self.gui.sessionpathvar.get()}"')
+            print(f'Source:   "{self.sdp}"')
+            print(f'Target:   "{self.ddp}"')
             self.walk(self.sdp)
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
+            print(f'Loading: {len(sublist)}')
             self.generatethumbnails(sublist)
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
         elif samepath:
@@ -410,14 +437,14 @@ class SortImages:
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
             except Exception as e:
-                logging.error("Error:: %s", e)
+                logger.error("Error in thumbnail generation: %s", e)
 
     def generatethumbnails(self, images):
-        logging.info("md5 hashing %s files", len(images))
+        #logger.info("md5 hashing %s files", len(images))
         max_workers = max(1,self.threads)
         with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
-        logging.info("Finished making thumbnails")
+
 
     def clear(self, *args):
         if askokcancel("Confirm", "Really clear your selection?"):
@@ -426,7 +453,4 @@ class SortImages:
 
 # Run Program
 if __name__ == '__main__':
-    format = "%(asctime)s: %(message)s"
-    logging.basicConfig(
-        format=format, level=logging.WARNING, datefmt="%H:%M:%S")
     mainclass = SortImages()
