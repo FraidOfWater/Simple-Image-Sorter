@@ -4,6 +4,7 @@
 # implement undo
 import os
 import sys
+import time
 import shutil
 import tkinter as tk
 from tkinter.messagebox import askokcancel
@@ -15,6 +16,7 @@ import logging
 from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
+from PIL import Image, ImageTk
 
 logger = logging.getLogger("Sortimages")
 logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
@@ -57,10 +59,21 @@ class Imagefile:
         self.mod_time = None
         self.file_size = None
         self.checked = tk.BooleanVar(value=False)
+        self.destchecked = tk.BooleanVar(value=False)
         self.moved = False
+        self.assigned = False
+        self.isanimated = False
+        self.isvisible = False
+        self.isvisibleindestination = False
+        self.lazy_loading = True
+        self.frames = []
+        self.frametimes = []
+        self.framecount = 0
+        self.index = 0
+        self.delay = 100 #Default delay
         self.id = None
 
-    def move(self) -> str:
+    def move(self, x, assigned, moved) -> str:
         destpath = self.dest
         do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
 
@@ -77,6 +90,10 @@ class Imagefile:
 
                 shutil.move(self.path, new_path) # Try to move, fails if 1. Locked
 
+                # If above functons and checks fail, these below won't get set. As designed
+                assigned.remove(x)
+                moved.append(x) # Moves from assigned to moved ?
+
                 self.moved = True
                 self.show = False
 
@@ -88,7 +105,8 @@ class Imagefile:
                              " -> " + destpath + "\n")
                 destpath = ""
                 self.dest = ""
-                self.hasunmoved = False
+                self.assigned = False
+                self.moved = True
                 return returnstr
             
             except Exception as e:
@@ -120,7 +138,8 @@ class SortImages:
     exclude = []
 
     def __init__(self) -> None:
-        self.hasunmoved=False
+        self.last_call_time = 0
+        self.throttle_delay = 0.19
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
@@ -196,14 +215,22 @@ class SortImages:
                     self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
                 if 'hotkeys' in jprefs:
                     hotkeys = jprefs["hotkeys"]
+                if "extra_buttons" in jprefs:
+                    self.gui.extra_buttons = jprefs["extra_buttons"]
+                if "force_scrollbar" in jprefs:
+                    self.gui.force_scrollbar = jprefs["force_scrollbar"]
                 if "interactive_buttons" in jprefs:
                     self.gui.interactive_buttons = jprefs["interactive_buttons"]
-                if "hideonassign" in jprefs:
-                    self.gui.hideonassignvar.set(jprefs["hideonassign"])
-                if "hidemoved" in jprefs:
-                    self.gui.hidemovedvar.set(jprefs["hidemoved"])
+                if "page_mode" in jprefs:
+                    self.gui.page_mode = jprefs["page_mode"]
+                if "flicker_free_dock_view" in jprefs:
+                    self.gui.flicker_free_dock_view = jprefs["flicker_free_dock_view"]
 
                 #Technical preferences
+                if "filter_mode" in jprefs:
+                    self.gui.filter_mode = jprefs["filter_mode"]
+                if "quick_preview_size_threshold" in jprefs:
+                    self.gui.quick_preview_size_threshold = int(jprefs["quick_preview_size_threshold"])
                 if "throttle_time" in jprefs:
                     self.gui.throttle_time = jprefs["throttle_time"]
                 if 'threads' in jprefs:
@@ -260,6 +287,18 @@ class SortImages:
                     self.gui.squaresperpage.set(jprefs["squaresperpage"])
                 if "sortbydate" in jprefs:
                     self.gui.sortbydatevar.set(jprefs["sortbydate"])
+                if "default_delay" in jprefs:
+                    self.gui.default_delay.set(jprefs["default_delay"])
+                if "viewer_x_centering" in jprefs:
+                    self.gui.viewer_x_centering = jprefs["viewer_x_centering"]
+                if "viewer_y_centering" in jprefs:
+                    self.gui.viewer_y_centering = jprefs["viewer_y_centering"]
+                if "show_next" in jprefs:
+                    self.gui.show_next.set(jprefs["show_next"])
+                if "dock_view" in jprefs:
+                    self.gui.dock_view.set(jprefs["dock_view"])
+                if "dock_side" in jprefs:
+                    self.gui.dock_side.set(jprefs["dock_side"])            
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -269,6 +308,8 @@ class SortImages:
                     self.gui.destpane_geometry = jprefs["destpane_geometry"]
                 if "leftpane_width" in jprefs:
                     self.gui.leftpane_width = int(jprefs["leftpane_width"])
+                if "middlepane_width" in jprefs:
+                    self.gui.middlepane_width = int(jprefs["middlepane_width"])
 
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
@@ -276,6 +317,10 @@ class SortImages:
             logger.error(f"Error loading prefs.json: {e}")
     
     def saveprefs(self, gui):
+        if gui.middlepane_frame.winfo_width() == 1:
+            pass
+        else:
+            gui.middlepane_width = gui.middlepane_frame.winfo_width()
         sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
         ddp = gui.ddpEntry.get() if os.path.exists(gui.ddpEntry.get()) else ""
 
@@ -291,12 +336,17 @@ class SortImages:
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--USER PREFERENCES":"--#--",
             "thumbnailsize": gui.thumbnailsize,
             "hotkeys": gui.hotkeys,
-            "hideonassign": gui.hideonassignvar.get(),
-            "hidemoved": gui.hidemovedvar.get(),
+            "extra_buttons": gui.extra_buttons,
+            "force_scrollbar": gui.force_scrollbar,
             "interactive_buttons":gui.interactive_buttons,
+            "page_mode": gui.page_mode,
+            
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
+            "quick_preview_filter": gui.filter_mode,
+            "quick_preview_size_threshold": gui.quick_preview_size_threshold,
             "throttle_time": gui.throttle_time,
+            "flicker_free_dock_view": gui.flicker_free_dock_view,
             "threads": self.threads, 
             "autosave_session":self.autosave,
 
@@ -339,6 +389,12 @@ class SortImages:
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
             "squaresperpage": gui.squaresperpage.get(),
             "sortbydate": gui.sortbydatevar.get(),
+            "default_delay": gui.default_delay.get(),
+            "viewer_x_centering": gui.viewer_x_centering,
+            "viewer_y_centering": gui.viewer_y_centering,
+            "show_next": gui.show_next.get(),
+            "dock_view": gui.dock_view.get(),
+            "dock_side": gui.dock_side.get(),
 
             #Window positions
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
@@ -346,6 +402,7 @@ class SortImages:
             "viewer_geometry": gui.viewer_geometry, 
             "destpane_geometry":gui.destpane_geometry,
             "leftpane_width":gui.leftui.winfo_width(),
+            "middlepane_width":gui.middlepane_width,
 
             }
 
@@ -363,12 +420,27 @@ class SortImages:
             logger.warning(("Failed to save session:", e))
 
     def moveall(self):
+        locked = False
+        check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
+
+        # If an imageviewer window is open, close it. (It locks move operations)
+        if check_if_window_open and len(self.gui.assigned_squarelist) > 0:
+            self.gui.save_viewer_geometry()
+            locked = True
+
         loglist = []
-        for x in self.imagelist:
-            out = x.move()
+
+        assigned = self.gui.assigned_squarelist
+        moved = self.gui.moved_squarelist
+
+        for x in self.gui.assigned_squarelist:
+            out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
 
             if isinstance(out, str):
                 loglist.append(out)
+
+        self.gui.refresh_rendered_list()
+        self.gui.refresh_destinations()
 
         try:
             if len(loglist) > 0:
@@ -377,7 +449,9 @@ class SortImages:
 
         except Exception as e:
             logger.error(f"Failed to write filelog.txt: {e}")
-        self.gui.hidemoved()
+
+        if len(self.gui.displayedlist) > 0 and locked: # Reopen image viewer now that moves are completed
+            self.gui.displayimage(self.gui.current_selection)
 
     def walk(self, src):
         duplicates = self.duplicatenames
@@ -415,27 +489,189 @@ class SortImages:
             else:
                 existing.add(item.name)
         return duplicates
+    
+    def get_current_list(self): # Communicates to setdestination what list is selected
+        if self.gui.show_unassigned.get():
+            unassign = self.gui.unassigned_squarelist
+            if self.gui.show_animated.get():
+                unassigned_animated = [item for item in unassign if item.obj.isanimated]
+                return unassigned_animated
+            else:
+                return unassign
+        
+        elif self.gui.show_assigned.get():
+            assign = self.gui.assigned_squarelist
+            return assign
+        
+        elif self.gui.show_moved.get():
+            moved = self.gui.moved_squarelist
+            return moved
         
     def setDestination(self, *args):
-        self.hasunmoved = True
-        marked = []
+        current_time = time.time()
+        if not self.gui.key_pressed:
+            pass
+        elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
+            self.last_call_time = current_time
+        else:
+            print("Victim of throttling")
+            return
+        index_before_move = -1
+        # cant find displayedimag at index. remove frame colours.
+        if self.gui.current_selection in self.gui.displayedlist:
+            if self.gui.displayedlist.index(self.gui.current_selection) != self.gui.current_selection and not self.gui.show_next.get():
+                self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            else:
+                # If we have something selected, and if that someting is not the same picture as the one displayed
+                # We know the frame colour must be updated.
+                index_before_move = self.gui.displayedlist.index(self.gui.current_selection)
+            
+
         dest = args[0]
+        marked = []
+        current_list = []
+        current_list = self.get_current_list()
+
         try:
             wid = args[1].widget
         except AttributeError:
             wid = args[1]["widget"]
         if isinstance(wid, tk.Entry):
             pass
+        # Return all images whose checkbox is checked (And currently in view by image viewer, so you can just press a hotkey and not have to check a checkbox everytime) (If interacting with other squares, it will cancel itself out. This is so user wont accidentally move anything.)
         else:
-            for x in self.imagelist:
-                if x.checked.get():
-                    marked.append(x)
-            for obj in marked:
-                obj.setdest(dest)
-                obj.guidata["frame"]['background'] = dest['color']
-                obj.guidata["canvas"]['background'] = dest['color']
-                obj.checked.set(False)
-            self.gui.hideassignedsquare(marked)
+            marked = [x for x in current_list if x.obj.checked.get()]
+            if self.gui.current_selection and self.gui.focused_on_secondwindow: # to see if we have clicked elsewhere as to not move the displayed image anymore.
+                for x in current_list:
+                    if self.gui.current_selection.obj.id == x.obj.id:
+                        if x not in marked:
+                            marked.append(x)
+                            
+            for x in marked:
+                x.obj.setdest(dest)
+                x.obj.guidata["frame"]['background'] = dest['color']
+                x.obj.guidata["canvas"]['background'] = dest['color']
+                x.obj.checked.set(False)
+                
+                # Move from unasssigned to assigned
+                if self.gui.show_unassigned.get():
+                    x.obj.assigned = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.unassigned_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x) 
+
+                        # Destination view different behaviour
+                        if x.obj.dest == dest['path']:
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']: #the path is here because we only want to append when path is the same as current dest
+                                    self.gui.filtered_images.append(x.obj)
+                                     #imageobject eventually
+                                    self.gui.queue.append(x)
+
+                        # Stop animations
+                        if x in self.gui.running:
+                            self.gui.running.remove(x)
+                        if x in self.gui.track_animated:
+                            self.gui.track_animated.remove(x)
+
+                # Moving from assigned to assigned
+                elif self.gui.show_assigned.get():
+
+                    # Different behaviour for destination view
+                    if hasattr(self.gui, 'destwindow'): # if we have the dest window open
+                        if self.gui.dest == dest['path']: # if the dest chosen and current dest window point to same dest
+                            if x.obj not in self.gui.filtered_images:
+                                self.gui.filtered_images.append(x.obj) # this makes is refresh the pos. but now getting stuff out of dest win or new into it no working.
+                                self.gui.queue.append(x)
+                            else:
+                                x.obj.checked.set(True)
+                                x.obj.destchecked.set(True)                                    
+
+                        else:
+                            if x.obj in self.gui.filtered_images:
+                                self.gui.filtered_images.remove(x.obj)
+
+                # Moving from moved to assigned
+                elif self.gui.show_moved.get():
+                    x.obj.assigned = True
+                    x.obj.moved = True
+                    if x.obj.assigned and x not in self.gui.assigned_squarelist:
+                        self.gui.moved_squarelist.remove(x)
+                        self.gui.assigned_squarelist.append(x)
+                        if x.obj.dest == dest['path']:
+                            if hasattr(self.gui, 'destwindow'): # if we have new assigned.
+                                if self.gui.dest == dest['path']:
+                                    self.gui.filtered_images.append(x.obj)
+                                    self.gui.queue.append(x)
+
+                        # Stop animations
+                        if x in self.gui.running:
+                            self.gui.running.remove(x)
+                        if x in self.gui.track_animated:
+                            self.gui.track_animated.remove(x)
+        
+        # Check for destination view changes separately. Note, We use destchecked here, not checked.
+        marked = []
+        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
+        temp = self.gui.assigned_squarelist.copy()
+
+        # Returns all images that are marked, but who are already assigned
+        # Why? IDK. It has to do with the behaviour of how items add to the list.
+        # Likely so we can update their positions in the list!
+        for square in marked:
+            if self.gui.show_assigned.get():
+                for gridsquare in self.gui.assigned_squarelist:
+                    if gridsquare.obj.id == square.obj.id:
+                        if not(square.obj.destchecked.get() and square.obj.checked.get()):
+                            self.gui.render_refresh.append(gridsquare)
+                            break
+        
+            #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
+            # What the fuck is this? I think it had something to do with how I couldnt use the same gridsquare for dest and imagegrid, so this has to match them.
+            for item in temp:
+                if item.obj.id == square.obj.id and dest['path'] == square.obj.dest:
+                    if not (square.obj.destchecked.get() and square.obj.checked.get()):
+                        self.gui.assigned_squarelist.remove(item)
+                        self.gui.assigned_squarelist.append(item)
+                    square.obj.checked.set(False)
+                    self.gui.destgrid_updateslist.append(square)
+                    self.gui.filtered_images.remove(square.obj)
+                    self.gui.filtered_images.append(square.obj) # going to the same destnation, just refresh, update pos.
+                    break
+                elif item.obj.id == square.obj.id:
+                    self.gui.assigned_squarelist.remove(item)
+                    self.gui.assigned_squarelist.append(item)
+                    self.gui.filtered_images.remove(square.obj)
+                    
+                    break
+            
+            square.obj.setdest(dest)
+            square.obj.guidata["frame"]['background'] = dest['color']
+            square.obj.guidata["canvas"]['background'] = dest['color']
+            square.obj.destchecked.set(False) #Not .checked for purposes of having different actions take place independent of current view. So
+            #For example... I dont remember
+            #Very helpful!
+
+        #Updates main and destination windows.
+        self.gui.refresh_rendered_list()
+        if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
+            self.gui.refresh_destinations()
+        if index_before_move >= 0 and index_before_move+1 <= len(self.gui.displayedlist):
+            self.update_show_next(index_before_move)
+        
+    def update_show_next(self, index_before_move): # Current_selection was in index x, after setdestination, it might not be in that index. We want that index to be "selected", this handles that.
+        
+        #check if moved from that index.
+        if self.gui.show_next.get() and self.gui.displayedlist[index_before_move] != self.gui.current_selection:
+            
+            previous_selection = self.gui.current_selection # Restore old frame's frame.
+            previous_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            
+            self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
+            self.gui.current_selection.canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
+
+            self.gui.last_selection = self.gui.current_selection
+            self.gui.displayimage(self.gui.current_selection, False) # The flag solves a performance issue when auto loading images very very fast. I do not know why.
 
     def savesession(self,asksavelocation):
         print("Saving session, Goodbye!")
@@ -462,6 +698,8 @@ class SortImages:
                     "thumbnail": thumb,
                     "dupename": obj.dupename,
                     })
+                if obj.isanimated:
+                    imagesavedata.append({"isanimated": obj.isanimated,})
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
@@ -496,15 +734,17 @@ class SortImages:
                     obj.moved = line['moved']
                     obj.dupename=line['dupename']
                     
+                    try:
+                        obj.isanimated=line['isanimated']
+                    except Exception as e:
+                        logger.debug(f"No value isanimated: {e}")
                     self.imagelist.append(obj)
 
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
-            sublist = self.imagelist[0:listmax]
+            self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
             gui.guisetup(self.destinations)
-            gui.hidemoved()
-            gui.hideassignedsquare(sublist)
         else:
             logger.warning("No Last Session!")
 
@@ -527,6 +767,7 @@ class SortImages:
             sublist = self.imagelist[0:listmax]
             print(f'Loading: {len(sublist)}')
             self.generatethumbnails(sublist)
+            self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
         elif samepath:
             self.gui.sdpEntry.delete(0, tk.END)
@@ -582,6 +823,37 @@ class SortImages:
         with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
 
+    def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
+        try:            
+            with Image.open(gridsquare.obj.path) as img:
+                gridsquare.obj.framecount = img.n_frames
+
+                if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
+                    raise Exception(f"Found static: {gridsquare.obj.name.get()[:30]}")
+                frame_frametime = img.info.get('duration',gridsquare.obj.delay)
+                if frame_frametime == 0:
+                    gridsquare.obj.delay = gridsquare.obj.delay
+                else:
+                    gridsquare.obj.delay = frame_frametime
+
+                logger.debug(f"Found animated: {gridsquare.obj.name.get()[:30]} with {gridsquare.obj.framecount} frames.")
+                for i in range(gridsquare.obj.framecount):
+                    img.seek(i)  # Move to the ith frame
+                    frame = img.copy()
+                    frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
+                    if frame_frametime == 0:
+                        print("Bugged animation frametimes. Using default_delay.")
+                        frame_frametime = gridsquare.obj.delay # Replace with default_delay
+                    gridsquare.obj.frametimes.append(frame_frametime)
+                    frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
+                    tk_image = ImageTk.PhotoImage(frame)
+                    gridsquare.obj.frames.append(tk_image)
+                gridsquare.obj.lazy_loading = False
+                logger.debug(f"frametimes {gridsquare.obj.frametimes}")
+                logger.info(f"All frames loaded for: {gridsquare.obj.name.get()[:30]}")
+        except Exception as e: #fallback to static.
+            logger.error(f"Error in load_frames: {e}")
+            gridsquare.obj.isanimated = False
 
     def clear(self, *args):
         if askokcancel("Confirm", "Really clear your selection?"):
