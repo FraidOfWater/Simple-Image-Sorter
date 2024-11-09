@@ -184,6 +184,8 @@ class SortImages:
                 #GUI CONTROLLED PREFRENECES
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
+                if "sortbydate" in jprefs:
+                    self.gui.sortbydatevar.set(jprefs["sortbydate"])
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -223,6 +225,7 @@ class SortImages:
             #GUI CONTROLLED PREFRENECES
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
             "squaresperpage": gui.squaresperpage.get(),
+            "sortbydate": gui.sortbydatevar.get(),
 
             #Window positions
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
@@ -279,6 +282,10 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
+                    
+        # Sort by date modificated
+        if self.gui.sortbydatevar.get():
+            self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
         return self.imagelist
 
     def checkdupefilenames(self, imagelist):

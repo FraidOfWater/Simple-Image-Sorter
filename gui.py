@@ -10,6 +10,7 @@ import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
 from tkinter.messagebox import askokcancel
 from tkinter.ttk import Panedwindow
+from tkinter import ttk
 from tktooltip import ToolTip
 from tkinter import filedialog as tkFileDialog
 from operator import indexOf
@@ -77,6 +78,7 @@ class GUIManager(tk.Tk):
 
         #GUI CONTROLLED PREFRENECES
         self.squaresperpage = tk.IntVar()
+        self.sortbydatevar = tk.BooleanVar()
         self.squaresperpage.set(120)
         self.hideonassignvar = tk.BooleanVar()
         self.hideonassignvar.set(True)
@@ -97,6 +99,13 @@ class GUIManager(tk.Tk):
         self.geometry(self.main_geometry)
         #Styles
         self.smallfont = tkfont.Font(family='Helvetica', size=10)
+
+        style = ttk.Style()
+        self.style = style
+        style.configure("Theme_checkbox.TCheckbutton", highlightthickness = 0) # Theme for checkbox
+
+        #style.configure("textc.TCheckbutton", foreground=self.text_colour, background=self.main_colour)
+        
 
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
@@ -193,6 +202,10 @@ Thank you for using this program!""")
         ToolTip(self.loadfolderbutton,delay=1,msg="Select a session json file to open.")
         self.loadfolderbutton.grid(row=3, column=0, sticky='e')
 
+        # Add a button for sortbydate option
+        self.sortbydate_button = ttk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar,style="Theme_checkbox.TCheckbutton")
+        self.sortbydate_button.grid(row=2, column=0, sticky="w", padx=25)
+
     def isnumber(self, char):
         return char.isdigit()
 
@@ -273,7 +286,7 @@ Thank you for using this program!""")
             canvas.create_image(
                 self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
             
-            check = tk.Checkbutton(frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
+            check = ttk.Checkbutton(frame, textvariable=imageobj.name, variable=imageobj.checked, onvalue=True, offvalue=False)
             check.grid(column=0, row=1, sticky="N")
             
             frame.config(height=self.thumbnailsize+12)
@@ -370,6 +383,7 @@ Thank you for using this program!""")
             target.insert(0, path)
 
     def guisetup(self, destinations):
+        self.sortbydate_button.destroy() # Hide sortbydate button after it is no longer needed
         sdpEntry = self.sdpEntry
         ddpEntry = self.ddpEntry
         sdpEntry.config(state=tk.DISABLED)
