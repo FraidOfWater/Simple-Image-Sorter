@@ -82,6 +82,7 @@ class GUIManager(tk.Tk):
         #Preferences
         self.thumbnailsize = 256
         self.hotkeys = "123456qwerty7890uiopasdfghjklzxcvbnm"
+        self.interactive_buttons = True # Color change on hover
 
         #Technical preferences
         #threads # Exlusively for fileManager
@@ -222,7 +223,7 @@ Right-click on Thumbnails to show a zoomable full view. You can also **rename** 
 Thanks to FooBar167 on stackoverflow for the advanced (and memory efficient!) Zoom and Pan tkinter class.
 Thank you for using this program!""")
         
-        self.panel.grid(row=1, column=0, columnspan=200, rowspan=200, sticky="NSEW")
+        self.panel.grid(row=3, column=0, columnspan=200, rowspan=200, sticky="NSEW")
 
         self.buttonframe = tk.Frame(master=self.leftui,bg=self.main_colour)
         self.buttonframe.grid(column=0, row=1, sticky="NSEW")
@@ -277,6 +278,36 @@ Thank you for using this program!""")
         self.sortbydate_button = ttk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, 
                                                  command=self.sortbydatevar,style="Theme_checkbox.TCheckbutton")
         self.sortbydate_button.grid(row=2, column=0, sticky="w", padx=25)
+
+        #If it is set in prefs, this makes the buttons blink when hovered over.
+        if self.interactive_buttons:
+            #Option for making the buttons change color on hover
+            self.excludebutton.bind("<Enter>", lambda e: self.excludebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            
+            self.excludebutton.bind("<Leave>", lambda e: self.excludebutton.config(bg=self.button_colour, fg=self.text_colour)) 
+            self.activebutton.bind("<Enter>", lambda e: self.activebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.activebutton.bind("<Leave>", lambda e: self.activebutton.config(bg=self.button_colour, fg=self.text_colour))
+
+            self.sdpEntry.bind("<FocusIn>", lambda e: self.sdpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
+            self.sdpEntry.bind("<FocusOut>", lambda e: self.sdpEntry.config(bg=self.grid_background_colour, fg=self.text_colour))
+
+            self.ddpEntry.bind("<FocusIn>", lambda e: self.ddpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
+            self.ddpEntry.bind("<FocusOut>", lambda e: self.ddpEntry.config(bg=self.grid_background_colour, fg=self.text_colour))
+
+            self.sdplabel.bind("<Enter>", lambda e: self.sdplabel.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.sdplabel.bind("<Leave>", lambda e: self.sdplabel.config(bg=self.button_colour, fg=self.text_colour))
+
+            self.ddplabel.bind("<Enter>", lambda e: self.ddplabel.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.ddplabel.bind("<Leave>", lambda e: self.ddplabel.config(bg=self.button_colour, fg=self.text_colour))
+
+            self.loadbutton.bind("<Enter>", lambda e: self.loadbutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.loadbutton.bind("<Leave>", lambda e: self.loadbutton.config(bg=self.button_colour, fg=self.text_colour))
+
+            self.loadfolderbutton.bind("<Enter>", lambda e: self.loadfolderbutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.loadfolderbutton.bind("<Leave>", lambda e: self.loadfolderbutton.config(bg=self.button_colour, fg=self.text_colour))
+
+            self.loadpathentry.bind("<FocusIn>", lambda e: self.loadpathentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
+            self.loadpathentry.bind("<FocusOut>", lambda e: self.loadpathentry.config(bg=self.grid_background_colour, fg=self.text_colour))
 
     def isnumber(self, char):
         return char.isdigit()
@@ -406,7 +437,7 @@ Thank you for using this program!""")
             gridsquare = self.makegridsquare(
                 self.imagegrid, imagelist[i], True)
             self.gridsquarelist.append(gridsquare)
-            self.imagegrid.window_create("insert", window=gridsquare)
+            self.imagegrid.window_create("insert", window=gridsquare,  padx=self.gridsquare_padx, pady=self.gridsquare_pady)
 
     def buttonResizeOnWindowResize(self, b=""):
         if len(self.buttons) > 0:
@@ -510,22 +541,27 @@ Thank you for using this program!""")
         if len(destinations) > int((self.leftui.winfo_height()/15)-4):
             columns = 3
             buttonframe.columnconfigure(2, weight=1)
+        original_colors = {} #Used to return their color when hovered off
         for x in destinations:
             color = x['color']
             if x['name'] != "SKIP" and x['name'] != "BACK":
                 if(itern < len(hotkeys)):
                     newbut = tk.Button(buttonframe, text=hotkeys[itern] + ": " + x['name'], command=partial(
                         self.fileManager.setDestination, x, {"widget": None}), anchor="w", wraplength=(self.leftui.winfo_width()/columns)-1)
-                    self.bind_all(hotkeys[itern], partial(
-                        self.fileManager.setDestination, x))
-                    fg = 'white'
+                    random.seed(x['name'])
+                    self.bind_all(f"<KeyPress-{self.hotkeys[itern]}>", partial(
+                        self.handle_setdestination_call, True, x))
+                    self.bind_all(f"<KeyRelease-{hotkeys[itern]}>", partial(
+                        self.handle_setdestination_call, False, None))
+                    fg = self.text_colour
                     if luminance(color) == 'light':
-                        fg = "black"
+                        fg = self.text_colour
                     newbut.configure(bg=color, fg=fg)
+                    original_colors[newbut] = {'bg': color, 'fg': fg}  # Store both colors
                     if(len(x['name']) >= 13):
                         newbut.configure(font=smallfont)
                 else:
-                    newbut = tk.Button(buttonframe, text=x['name'], command=partial(
+                    newbut = tk.Button(buttonframe, text=x['name'],command=partial(
                         self.fileManager.setDestination, x, {"widget": None}), anchor="w")
                 itern += 1
 
@@ -543,7 +579,19 @@ Thank you for using this program!""")
 
             self.buttons.append(newbut)
             guirow += 1
-        self.entryframe.grid_remove()
+            # Store the original colors for all buttons
+            original_colors[newbut] = {'bg': newbut.cget("bg"), 'fg': newbut.cget("fg")}  # Store both colors
+
+            # Bind hover events for each button
+            newbut.bind("<Enter>", lambda e, btn=newbut: btn.config(bg=darken_color(original_colors[btn]['bg']), fg='white'))
+            newbut.bind("<Leave>", lambda e, btn=newbut: btn.config(bg=original_colors[btn]['bg'], fg=original_colors[btn]['fg']))  # Reset to original colors
+
+        # For SKIP and BACK buttons, set hover to white
+        for btn in self.buttons:
+            if btn['text'] == "SKIP (Space)" or btn['text'] == "BACK":
+                btn.bind("<Enter>", lambda e, btn=btn: btn.config(bg=self.text_colour, fg=self.main_colour))
+                btn.bind("<Leave>", lambda e, btn=btn: btn.config(bg=self.button_colour, fg=self.text_colour))  # Reset to original colors
+            self.entryframe.grid_remove()
         # options frame
         optionsframe = tk.Frame(self.leftui,bg=self.main_colour)
         optionsframe.columnconfigure(0, weight=1)
@@ -553,14 +601,14 @@ Thank you for using this program!""")
         self.squaresperpageentry = tk.Entry(
             optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.grid_background_colour, foreground=self.text_colour)
         ToolTip(self.squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
-        self.squaresperpageentry.grid(row=1, column=0, sticky="EW",)
+        self.squaresperpageentry.grid(row=2, column=0, sticky="EW",)
         for n in range(0, itern):
             self.squaresperpageentry.unbind(hotkeys[n])
 
         self.addpagebut = tk.Button(
             optionsframe, text="Load More Images", command=self.addpage,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.addpagebut,msg="Add another batch of files from the source folders.", delay=1)
-        self.addpagebut.grid(row=1, column=1, sticky="EW")
+        self.addpagebut.grid(row=2, column=1, sticky="EW")
         self.addpagebutton = self.addpagebut
 
         # save button
@@ -572,12 +620,12 @@ Thank you for using this program!""")
         self.moveallbutton = tk.Button(
             optionsframe, text="Move All", command=self.fileManager.moveall,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
-        self.moveallbutton.grid(column=1, row=2, sticky="EW")
+        self.moveallbutton.grid(column=1, row=3, sticky="EW")
 
         self.clearallbutton = tk.Button(
             optionsframe, text="Clear Selection", command=self.fileManager.clear,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
-        self.clearallbutton.grid(row=0, column=1, sticky="EW")
+        self.clearallbutton.grid(row=3, column=0, sticky="EW")
 
         hideonassign = tk.Checkbutton(optionsframe, text="Hide Assigned",
                                       variable=self.hideonassignvar, onvalue=True, offvalue=False, bg=self.button_colour,fg=self.text_colour)
@@ -595,8 +643,29 @@ Thank you for using this program!""")
         ToolTip(hidemoved,delay=1,msg="When checked, images that are moved will be hidden from the grid.")
         hidemoved.grid(column=1, row=1, sticky="w")
 
+        if self.interactive_buttons:
+            #Option for making the buttons change color on hover
+            self.clearallbutton.bind("<Enter>", lambda e: self.clearallbutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.clearallbutton.bind("<Leave>", lambda e: self.clearallbutton.config(bg=self.button_colour, fg=self.text_colour))
+    
+            self.addpagebut.bind("<Enter>", lambda e: self.addpagebut.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.addpagebut.bind("<Leave>", lambda e: self.addpagebut.config(bg=self.button_colour, fg=self.text_colour))
+    
+            self.moveallbutton.bind("<Enter>", lambda e: self.moveallbutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.moveallbutton.bind("<Leave>", lambda e: self.moveallbutton.config(bg=self.button_colour, fg=self.text_colour))
+    
+            self.savebutton.bind("<Enter>", lambda e: self.savebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
+            self.savebutton.bind("<Leave>", lambda e: self.savebutton.config(bg=self.button_colour, fg=self.text_colour))
+    
+            self.squaresperpageentry.bind("<FocusIn>", lambda e: self.squaresperpageentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
+            self.squaresperpageentry.bind("<FocusOut>", lambda e: self.squaresperpageentry.config(bg=self.grid_background_colour, fg=self.text_colour))
+
         self.bind_all("<Button-1>", self.setfocus)
 
+    def handle_setdestination_call(self, state, x=None, event=None):
+        if x:
+            self.fileManager.setDestination(x, event)
+        self.key_pressed = state
     def setfocus(self, event):
         event.widget.focus_set()
 

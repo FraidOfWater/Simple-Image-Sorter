@@ -196,6 +196,8 @@ class SortImages:
                     self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
                 if 'hotkeys' in jprefs:
                     hotkeys = jprefs["hotkeys"]
+                if "interactive_buttons" in jprefs:
+                    self.gui.interactive_buttons = jprefs["interactive_buttons"]
                 if "hideonassign" in jprefs:
                     self.gui.hideonassignvar.set(jprefs["hideonassign"])
                 if "hidemoved" in jprefs:
@@ -205,7 +207,7 @@ class SortImages:
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
                 if 'autosave_session' in jprefs:
-                    self.autosave = jprefs['autosave']
+                    self.autosave = jprefs['autosave_session']
                 #Customization
                 if "checkbox_height" in jprefs:
                     self.gui.checkbox_height = int(jprefs["checkbox_height"])
