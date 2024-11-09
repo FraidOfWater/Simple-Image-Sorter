@@ -204,6 +204,8 @@ class SortImages:
                     self.gui.hidemovedvar.set(jprefs["hidemoved"])
 
                 #Technical preferences
+                if "throttle_time" in jprefs:
+                    self.gui.throttle_time = jprefs["throttle_time"]
                 if 'threads' in jprefs:
                     self.threads = jprefs['threads']
                 if 'autosave_session' in jprefs:
@@ -294,6 +296,7 @@ class SortImages:
             "interactive_buttons":gui.interactive_buttons,
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
+            "throttle_time": gui.throttle_time,
             "threads": self.threads, 
             "autosave_session":self.autosave,
 
