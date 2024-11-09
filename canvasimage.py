@@ -12,10 +12,10 @@ import logging
 from math import floor
 
 logger = logging.getLogger("Canvasimage")
-logger.setLevel(logging.INFO)  # Set to the lowest level you want to handle
+logger.setLevel(logging.ERROR)  # Set to the lowest level you want to handle
 
 handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
+handler.setLevel(logging.ERROR)
 
 formatter = logging.Formatter('%(message)s')
 handler.setFormatter(formatter)
@@ -39,16 +39,15 @@ class AutoScrollbar(ttk.Scrollbar):
     
 class CanvasImage:
     """ Display and zoom image """
-    def __init__(self, master, path, imagewindowgeometry, background_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode, gui):
+    def __init__(self, master, path, imagewindowgeometry, main_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode, gui):
         self.imageobj = imageobj
         self.obj = imageobj
         self.gui = gui
-
-        logger.info("")
-        logger.info(f"{self.imageobj.name.get()[:30]}. Frames: {self.obj.framecount}")
+        print("")
+        print(f"{self.imageobj.name.get()[:30]}.")
 
         """ Initialize core attributes and lists"""
-        self.background_colour = background_colour
+        self.main_colour = main_colour
         self.path = path  # path to the image, should be public for outer classes
         
         geometry_width, geometry_height = imagewindowgeometry.split('x',1)
@@ -82,7 +81,6 @@ class CanvasImage:
 
         self.lazy_index = 0
         self.lazy_loading = True    # Flag that turns off when all frames have been loaded to frames.
-        self.closing = True        # Flag that turn on when the window shuts down, so that open threads know to shutdown.
         
         # Navigator locking mechanism
         self.og_posx = 0
@@ -145,7 +143,7 @@ class CanvasImage:
         #vbar.grid(row=0, column=1, sticky='ns')
 
         # Create canvas and bind it with scrollbars. Public for outer classes
-        self.canvas = tk.Canvas(self.__imframe, bg=self.background_colour,
+        self.canvas = tk.Canvas(self.__imframe, bg=self.main_colour,
                                 highlightthickness=0, xscrollcommand=hbar.set,
                                 yscrollcommand=vbar.set, width=geometry_width, height = geometry_height)  # Set canvas dimensions to remove scrollbars
         self.canvas.grid(row=0, column=0, sticky='nswe') # Place into grid
@@ -280,28 +278,26 @@ class CanvasImage:
 
 
     def lazy_pyramid(self,w,h): # Loads the image pyramid lazily. We want to render the image first, we need the pyramid only for zooming later.
-        if self.closing:
-
+        try:
             self.pyramid = [Image.open(self.path)]
             self.replace_first = True
-            while w > 512 and h > 512 and self.closing:
+            while w > 512 and h > 512:
                 w /= self.__reduction
                 h /= self.__reduction
                 self.pyramid.append(self.pyramid[-1].resize((int(w), int(h)), self.__filter))
-                if self.replace_first and self.closing:
+                if self.replace_first:
                     self.replace_first = False
                     self.replace_await = True
                     self.__pyramid = self.pyramid
                     self.pyramid_ready.wait()
                     self.__show_image()
-
             self.__pyramid = self.pyramid # pass the whole zoom pyramid when it is ready.
+        except Exception as e:
+            logger.info("Thread caught.")
 
     def load_frames(self): # This loads the frames for gif and webp lazily
         try:
             #Happy ending, all frames found, return.
-            if not self.closing:
-                return
             if not self.frames:
                 #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
                 # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
@@ -321,18 +317,19 @@ class CanvasImage:
 
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
-                logger.info(f"F:  {elapsed_time}")
+
+                b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
+                
+                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                print(f"F:  {elapsed_time}")
                 del end_time2
                 self.first = False # Flags that the first has been created
 
                 for i in range(1, self.imageobj.framecount):
-                    if self.closing:
-                        self.image.seek(i)
-                        logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
-                        frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
-                        self.frames.append(frame)
-                    else: # If the closing flag is raised, we try to close and disregard loading.
-                        return
+                    self.image.seek(i)
+                    logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
+                    frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+                    self.frames.append(frame)
 
 
 
@@ -347,7 +344,6 @@ class CanvasImage:
                 logger.error(f"Error loading frames: {e}")
 
     def close_window(self, x=None):
-        self.closing = False
         if self.imageobj.isanimated:
             self.frames.clear()
             self.original_frames.clear()
@@ -386,7 +382,7 @@ class CanvasImage:
     def timeit(self): # Returns how fast the image was loaded to canvas.
         time_it_time = time.time()
         elapsed_time = time_it_time - self.creation_time
-        logger.info(f"L:  {elapsed_time}")
+        print(f"L:  {elapsed_time}")
         del time_it_time
 
     def lazy_load(self): # Lazily loads the frames
@@ -500,118 +496,113 @@ class CanvasImage:
         self.__show_image()  # redraw the image
 
     def __show_image(self): # Heavily modified to support gif
-        if self.imageobj.isanimated: #Let another function handle if animated
-            if self.frames:
-                pass
-        else:
+        try:
+            if self.imageobj.isanimated: #Let another function handle if animated
+                if self.frames:
+                    pass
+            else:
+                """ Show image on the Canvas. Implements correct image zoom almost like in Google Maps """
+                box_image = self.canvas.coords(self.container)  # get image area
+                box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
+                              self.canvas.canvasy(0),
+                              self.canvas.canvasx(self.canvas_width),
+                              self.canvas.canvasy(self.canvas_height))
+                box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
+                # Get scroll region box
+                box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
+                              max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
+                # Horizontal part of the image is in the visible area
+                if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
+                    box_scroll[0]  = box_img_int[0]
+                    box_scroll[2]  = box_img_int[2]
+                # Vertical part of the image is in the visible area
+                if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
+                    box_scroll[1]  = box_img_int[1]
+                    box_scroll[3]  = box_img_int[3]
+                # Convert scroll region to tuple and to integer
+                self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
+                x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
+                y1 = max(box_canvas[1] - box_image[1], 0)
+                x2 = min(box_canvas[2], box_image[2]) - box_image[0]
+                y2 = min(box_canvas[3], box_image[3]) - box_image[1]
 
-            """ Show image on the Canvas. Implements correct image zoom almost like in Google Maps """
-            box_image = self.canvas.coords(self.container)  # get image area
-            box_canvas = (self.canvas.canvasx(0),  # get visible area of the canvas
-                          self.canvas.canvasy(0),
-                          self.canvas.canvasx(self.canvas_width),
-                          self.canvas.canvasy(self.canvas_height))
-            box_img_int = tuple(map(int, box_image))  # convert to integer or it will not work properly
-            # Get scroll region box
-            box_scroll = [min(box_img_int[0], box_canvas[0]), min(box_img_int[1], box_canvas[1]),
-                          max(box_img_int[2], box_canvas[2]), max(box_img_int[3], box_canvas[3])]
-            # Horizontal part of the image is in the visible area
-            if  box_scroll[0] == box_canvas[0] and box_scroll[2] == box_canvas[2]:
-                box_scroll[0]  = box_img_int[0]
-                box_scroll[2]  = box_img_int[2]
-            # Vertical part of the image is in the visible area
-            if  box_scroll[1] == box_canvas[1] and box_scroll[3] == box_canvas[3]:
-                box_scroll[1]  = box_img_int[1]
-                box_scroll[3]  = box_img_int[3]
-            # Convert scroll region to tuple and to integer
-            self.canvas.configure(scrollregion=tuple(map(int, box_scroll)))  # set scroll region
-            x1 = max(box_canvas[0] - box_image[0], 0)  # get coordinates (x1,y1,x2,y2) of the image tile
-            y1 = max(box_canvas[1] - box_image[1], 0)
-            x2 = min(box_canvas[2], box_image[2]) - box_image[0]
-            y2 = min(box_canvas[3], box_image[3]) - box_image[1]
+                if int(x2 - x1) > 0 and int(y2 - y1) > 0:  # show image if it in the visible area
+                    if self.__huge and self.__curr_img < 0:  # show huge image
+                        h = int((y2 - y1) / self.imscale)  # height of the tile band
+                        self.__tile[1][3] = h  # set the tile band height
+                        self.__tile[2] = self.__offset + self.imwidth * int(y1 / self.imscale) * 3
+                        self.__image.close()
+                        self.__image = Image.open(self.path)  # reopen / reset image
+                        self.__image.size = (self.imwidth, h)  # set size of the tile band
+                        self.__image.tile = [self.__tile]
+                        image = self.__image.crop((int(x1 / self.imscale), 0, int(x2 / self.imscale), h))
+                        imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
+                        imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                                                       max(box_canvas[1], box_img_int[1]),
+                                                    anchor='nw', image=imagetk)
+                    else:  # show normal image
+                        if self.count < self.count1: # fixes lag on movign rescaled picture.
+                                self.manual_wheel()
+                                #logger.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
+                                self.count += 1
+                        a = round(self.imageobj.file_size/1000000,2) #file size
+                        b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
+                        c = round(self.fast_render_size,2) #Prefs set limit in MB
+                        if self.first:
+                            self.first = False
+                            image = self.__pyramid[(max(0, self.__curr_img))]
 
-            if int(x2 - x1) > 0 and int(y2 - y1) > 0:  # show image if it in the visible area
-                if self.__huge and self.__curr_img < 0:  # show huge image
-                    h = int((y2 - y1) / self.imscale)  # height of the tile band
-                    self.__tile[1][3] = h  # set the tile band height
-                    self.__tile[2] = self.__offset + self.imwidth * int(y1 / self.imscale) * 3
-                    self.__image.close()
-                    self.__image = Image.open(self.path)  # reopen / reset image
-                    self.__image.size = (self.imwidth, h)  # set size of the tile band
-                    self.__image.tile = [self.__tile]
-                    image = self.__image.crop((int(x1 / self.imscale), 0, int(x2 / self.imscale), h))
-                    imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
-                    imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-                                                   max(box_canvas[1], box_img_int[1]),
-                                                anchor='nw', image=imagetk)
-                else:  # show normal image
-                    if self.count < self.count1: # fixes lag on movign rescaled picture.
-                            self.manual_wheel()
-                            #logger.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
-                            self.count += 1
-                    a = round(self.imageobj.file_size/1000000,2) #file size
-                    b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
-                    c = round(self.fast_render_size,2) #Prefs set limit in MB
-                    if self.first:
-                        self.first = False
-
-
-                        image = self.__pyramid[(max(0, self.__curr_img))]
-
-
-                        if b < c: # if small render high quality
-                            logger.info(f"Size: {b} MB/{c} MB. Buffered: False")
-                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
-                        else:
-                            logger.info(f"Size: {b} MB/{c} MB. Buffered: True")
-                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
-
-                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-                                                   max(box_canvas[1], box_img_int[1]),
-                                                anchor='nw', image=imagetk)
-                        end_time = time.time()
-                        elapsed_time = end_time - self.creation_time
-                        del end_time
-                        logger.info(f"[F]:  {elapsed_time}")
-                        self.canvas.lower(self.imageid)  # set image into background
-                        self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
-                        self.pyramid_ready.set() #tell threading that second picture is allowed to render.
-
-
-                    elif self.replace_await and b > self.fast_render_size: # only render second time if needed.
-                        self.replace_await = False
-                        image = self.__pyramid[(max(0, self.__curr_img))]
-                        imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
-                        self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-                                                   max(box_canvas[1], box_img_int[1]),
-                                                anchor='nw', image=imagetk)
-
-                        end_time = time.time()
-                        elapsed_time = end_time - self.creation_time
-                        #del self.creation_time
-                        del end_time
-                        logger.info(f"[B]:  {elapsed_time}")
-                        self.canvas.lower(self.imageid)  # set image into background
-                        self.canvas.imagetk = imagetk
-
-                    else:
-                        image = self.__pyramid[(max(0, self.__curr_img))].crop(  # crop current img from pyramid
-                                        (int(x1 / self.__scale), int(y1 / self.__scale),
-                                         int(x2 / self.__scale), int(y2 / self.__scale)))
-                        if self.closing:
-                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
-                        if self.closing:
+                            if b < c: # if small render high quality
+                                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                                imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
+                            else:
+                                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                                imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
                             self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
-                                                   max(box_canvas[1], box_img_int[1]),
-                                                anchor='nw', image=imagetk)
+                                                       max(box_canvas[1], box_img_int[1]),
+                                                    anchor='nw', image=imagetk)
+                            end_time = time.time()
+                            elapsed_time = end_time - self.creation_time
+                            del end_time
+                            print(f"F:  {elapsed_time}")
+                            self.canvas.lower(self.imageid)  # set image into background
+                            self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
+                            self.pyramid_ready.set() #tell threading that second picture is allowed to render.
 
-                        self.canvas.lower(self.imageid)  # set image into background
-                        self.canvas.imagetk = imagetk
+
+                        elif self.replace_await and b > self.fast_render_size: # only render second time if needed.
+                            self.replace_await = False
+                            image = self.__pyramid[(max(0, self.__curr_img))]
+                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
+                            self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                                                       max(box_canvas[1], box_img_int[1]),
+                                                    anchor='nw', image=imagetk)
+
+                            end_time = time.time()
+                            elapsed_time = end_time - self.creation_time
+                            #del self.creation_time
+                            del end_time
+                            print(f"B:  {elapsed_time}")
+                            self.canvas.lower(self.imageid)  # set image into background
+                            self.canvas.imagetk = imagetk
+
+                        else:
+                            image = self.__pyramid[(max(0, self.__curr_img))].crop(  # crop current img from pyramid
+                                            (int(x1 / self.__scale), int(y1 / self.__scale),
+                                             int(x2 / self.__scale), int(y2 / self.__scale)))
+                            imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter)) #new resize for no reason?
+                            self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
+                                                       max(box_canvas[1], box_img_int[1]),
+                                                    anchor='nw', image=imagetk)
+                            self.canvas.lower(self.imageid)  # set image into background
+                            self.canvas.imagetk = imagetk
+        except Exception as e:
+            logger.info("Thread caught.")
     def time_set(self, event):
         time1 = time.time()
         press_time = time1 - self.time_from_click
         flag = False
-        
+
         if (self.og_posx == event.x or self.og_posy == event.y) and press_time < 0.2:
             flag = True
         if self.gui.show_next.get() and flag and not self.gui.enter_toggle:
