@@ -4,10 +4,9 @@
 # implement undo
 import os
 from sys import exit
-from shutil import move as shmove
+import shutil
 import tkinter as tk
 from tkinter.messagebox import askokcancel
-from math import floor
 import json
 import random
 from math import floor, sqrt
@@ -17,6 +16,23 @@ import logging
 from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
+
+ # This can/should be commented if you build.
+
+import ctypes
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dll_path1 = os.path.join(script_dir, 'libvips-cpp-42.dll')
+    dll_path2 = os.path.join(script_dir, 'libvips-42.dll')
+    dll_path3 = os.path.join(script_dir, 'libglib-2.0-0.dll')
+    dll_path4 = os.path.join(script_dir, 'libgobject-2.0-0.dll')
+except FileNotFoundError:
+    logging.error("The file was not found. (You are missing .dlls)")
+ctypes.CDLL(dll_path1)
+ctypes.CDLL(dll_path2)
+ctypes.CDLL(dll_path3)
+ctypes.CDLL(dll_path4)
+
 
 class Imagefile:
     path = ""
@@ -29,12 +45,11 @@ class Imagefile:
         self.path = path
         self.checked = tk.BooleanVar(value=False)
         self.moved = False
-
     def move(self) -> str:
         destpath = self.dest
         if destpath != "" and os.path.isdir(destpath):
             try:
-                shmove(self.path, os.path.join(destpath, self.name.get()))
+                shutil.move(self.path, os.path.join(destpath, self.name.get()))
                 self.moved = True
                 self.show = False
                 self.guidata["frame"].configure(
@@ -67,56 +82,152 @@ class SortImages:
     imagelist = []
     destinations = []
     exclude = []
-    thumbnailsize = 256
 
     def __init__(self) -> None:
         self.hasunmoved=False
         self.existingnames = set()
         self.duplicatenames=[]
         self.autosave=True
+        self.threads = os.cpu_count()
         self.gui = GUIManager(self)
-        # note, just load the preferences then pass it to the guimanager for processing there
-        if(os.path.exists("data") and os.path.isdir("data")):
+
+        self.loadprefs()
+        self.gui.initialize()
+        self.validate_data_dir_thumbnailsize()
+        
+        self.gui.mainloop()
+
+    def validate_data_dir_thumbnailsize(self): #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
+        
+        data_dir = self.data_dir
+        if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
+            temp = os.listdir(data_dir)
+            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', 'webp', '.bmp', '.tiff', '.pcx', 'psd'))]
+            if image_files:
+                first_image_path = os.path.join(data_dir, image_files[0])
+                try:
+                    image = pyvips.Image.new_from_file(first_image_path)
+                    
+                    width = image.width
+                    height = image.height
+                    
+                    # The size doesnt match what is wanted in prefs
+                    if max(width, height) != self.gui.thumbnailsize:
+                        shutil.rmtree(data_dir)
+                        logging.warning(f"Removing data folder, thumbnailsize changed")
+                        os.mkdir(data_dir)
+                        logging.warning(f"Re-created data folder.")
+                except Exception as e:
+                    logging.warning(f"Couldn't load first image in data folder")
+            else:
+                logging.warning(f"Data folder is empty")
+                pass
             pass
         else:
-            os.mkdir("data")
+            os.mkdir(data_dir)
+
+    def loadprefs(self):
+        script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
+        self.prefs_path = os.path.join(script_dir, "prefs.json")
+        self.prefs_path = os.path.join(script_dir, "prefs.json")
+        self.data_dir = os.path.join(script_dir, "data")
+        print(self.data_dir)
+
         hotkeys = ""
         # todo: replace this with some actual prefs manager that isn't a shittone of ifs
-        self.threads = 5
         try:
-            with open("prefs.json", "r") as prefsfile:
+            with open(self.prefs_path, "r") as prefsfile:
+
                 jdata = prefsfile.read()
                 jprefs = json.loads(jdata)
-                if 'hotkeys' in jprefs:
-                    hotkeys = jprefs["hotkeys"]
+
+                #paths
+                if "source" in jprefs:
+                    self.gui.source_folder = jprefs["source"]
+                if "destination" in jprefs:
+                    self.gui.destination_folder = jprefs["destination"]
+                if "lastsession" in jprefs:
+                    self.gui.sessionpathvar.set(jprefs['lastsession'])
+                if "exclude" in jprefs:
+                    self.exclude = jprefs["exclude"]
+
+                #Preferences
                 if 'thumbnailsize' in jprefs:
                     self.gui.thumbnailsize = int(jprefs["thumbnailsize"])
-                    self.thumbnailsize = int(jprefs["thumbnailsize"])
-                if 'threads' in jprefs:
-                    self.threads = jprefs['threads']
+                if 'hotkeys' in jprefs:
+                    hotkeys = jprefs["hotkeys"]
                 if "hideonassign" in jprefs:
                     self.gui.hideonassignvar.set(jprefs["hideonassign"])
                 if "hidemoved" in jprefs:
                     self.gui.hidemovedvar.set(jprefs["hidemoved"])
-                self.exclude = jprefs["exclude"]
-                self.gui.sdpEntry.delete(0, len(self.gui.sdpEntry.get()))
-                self.gui.ddpEntry.delete(0, len(self.gui.ddpEntry.get()))
-                self.gui.sdpEntry.insert(0, jprefs["srcpath"])
-                self.gui.ddpEntry.insert(0, jprefs["despath"])
-                if "squaresperpage" in jprefs:
-                    self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
-                if "geometry" in jprefs:
-                    self.gui.geometry(jprefs["geometry"])
-                if "lastsession" in jprefs:
-                    self.gui.sessionpathvar.set(jprefs['lastsession'])
+
+                #Technical preferences
+                if 'threads' in jprefs:
+                    self.threads = jprefs['threads']
                 if "autosavesession" in jprefs:
                     self.autosave = jprefs['autosave']
+                #Customization
+                #Window colours
+                #GUI CONTROLLED PREFRENECES
+                if "squaresperpage" in jprefs:
+                    self.gui.squaresperpage.set(int(jprefs["squaresperpage"]))
+                #Window positions
+                if "main_geometry" in jprefs:
+                    self.gui.main_geometry = jprefs["main_geometry"]
+
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
-            logging.error("Error loading prefs.json, it is possibly corrupt, try deleting it, or else it doesn't exist and will be created upon exiting the program.")
-            logging.error(e)
-        self.gui.mainloop()
+            logging.error(f"Error loading prefs.json: {e}")
+    
+    def saveprefs(self, gui):
+        sdp = gui.sdpEntry.get() if os.path.exists(gui.sdpEntry.get()) else ""
+        ddp = gui.ddpEntry.get() if os.path.exists(gui.ddpEntry.get()) else ""
+
+        save = {
+            #paths
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PATHS": "--#--",
+            "source": sdp,
+            "destination": ddp,
+            "lastsession": gui.sessionpathvar.get(),
+            "exclude": self.exclude,
+
+            #Preferences
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--USER PREFERENCES":"--#--",
+            "thumbnailsize": gui.thumbnailsize,
+            "hotkeys": gui.hotkeys,
+            "hideonassign": gui.hideonassignvar.get(),
+            "hidemoved": gui.hidemovedvar.get(),
+            #Technical preferences
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
+            "threads": self.threads, 
+            "autosave":self.autosave,
+
+            #Customization
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PADDING AND COLOR FOR IMAGE CONTAINER": "--#--",
+            #Window colours
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
+            #GUI CONTROLLED PREFRENECES
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
+            "squaresperpage": gui.squaresperpage.get(),
+
+            #Window positions
+            "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
+            "main_geometry": gui.winfo_geometry(),
+
+            }
+
+        try: #Try to save the preference to prefs.json
+            with open(self.prefs_path, "w+") as savef:
+                json.dump(save, savef,indent=4, sort_keys=False)
+                logging.debug(save)
+        except Exception as e:
+            logging.warning(("Failed to save prefs:", e))
+        try:
+            if self.autosave:
+                self.savesession(False)
+        except Exception as e:
+            logging.warning(("Failed to save session:", e))
 
     def moveall(self):
         self.hasunmoved = False
@@ -151,8 +262,7 @@ class SortImages:
                         existing.add(name)
                     self.imagelist.append(imgfile)
         return self.imagelist
-            
-                
+
     def checkdupefilenames(self, imagelist):
         duplicates: list[Imagefile] = []
         existing: set[str] = set()
@@ -209,7 +319,7 @@ class SortImages:
                     "dupename":obj.dupename
                 })
             save = {"dest": self.ddp, "source": self.sdp,
-                    "imagelist": imagesavedata,"thumbnailsize":self.thumbnailsize,'existingnames':list(self.existingnames)}
+                    "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef)
 
@@ -220,21 +330,22 @@ class SortImages:
                 sdata = savef.read()
                 savedata = json.loads(sdata)
             gui = self.gui
-            self.ddp = savedata['dest']
             self.sdp = savedata['source']
+            self.ddp = savedata['dest']
             self.setup(savedata['dest'])
             if 'existingnames' in savedata:
                 self.existingnames = set(savedata['existingnames'])
-            for o in savedata['imagelist']:
-                if os.path.exists(o['path']):
-                    n = Imagefile(o['name'], o['path'])
-                    n.checked.set(o['checked'])
-                    n.moved = o['moved']
-                    n.thumbnail = o['thumbnail']
-                    n.dupename=o['dupename']
-                    n.dest=o['dest']
-                    self.imagelist.append(n)
-            self.thumbnailsize=savedata['thumbnailsize']
+            for line in savedata['imagelist']:
+                if os.path.exists(line['path']):
+                    obj = Imagefile(line['name'], line['path'])
+                    obj.thumbnail = line['thumbnail']
+                    obj.dest=line['dest']
+                    obj.checked.set(line['checked'])
+                    obj.moved = line['moved']
+                    obj.dupename=line['dupename']
+                    
+                    self.imagelist.append(obj)
+
             self.gui.thumbnailsize=savedata['thumbnailsize']
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             sublist = self.imagelist[0:listmax]
@@ -246,10 +357,11 @@ class SortImages:
             logging.error("No Last Session!")
 
     def validate(self, gui):
-        samepath = (gui.sdpEntry.get() == gui.ddpEntry.get())
-        if((os.path.isdir(gui.sdpEntry.get())) and (os.path.isdir(gui.ddpEntry.get())) and not samepath):
-            self.sdp = gui.sdpEntry.get()
-            self.ddp = gui.ddpEntry.get()
+        self.sdp = self.gui.sdpEntry.get()
+        self.ddp = self.gui.ddpEntry.get()
+        samepath = (self.sdp == self.ddp)
+
+        if ((os.path.isdir(self.sdp)) and (os.path.isdir(self.ddp)) and not samepath):
             logging.info("main class setup")
             self.setup(self.ddp)
             logging.info("GUI setup")
@@ -262,19 +374,18 @@ class SortImages:
             sublist = self.imagelist[0:listmax]
             self.generatethumbnails(sublist)
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
-        elif gui.sdpEntry.get() == gui.ddpEntry.get():
-            gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
-            gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
-            gui.sdpEntry.insert(0, "PATHS CANNOT BE SAME")
-            gui.ddpEntry.insert(0, "PATHS CANNOT BE SAME")
+        elif samepath:
+            self.gui.sdpEntry.delete(0, tk.END)
+            self.gui.ddpEntry.delete(0, tk.END)
+            self.gui.sdpEntry.insert(0, "PATHS CANNOT BE SAME")
+            self.gui.ddpEntry.insert(0, "PATHS CANNOT BE SAME")
         else:
-            gui.sdpEntry.delete(0, len(gui.sdpEntry.get()))
-            gui.ddpEntry.delete(0, len(gui.ddpEntry.get()))
-            gui.sdpEntry.insert(0, "ERROR INVALID PATH")
-            gui.ddpEntry.insert(0, "ERROR INVALID PATH")
+            self.gui.sdpEntry.delete(0, tk.END)
+            self.gui.ddpEntry.delete(0, tk.END)
+            self.gui.sdpEntry.insert(0, "ERROR INVALID PATH")
+            self.gui.ddpEntry.insert(0, "ERROR INVALID PATH")
 
-    def setup(self, dest):
-        # scan the destination
+    def setup(self, dest): # scan the destination
         self.destinations = []
         self.destinationsraw = []
         with os.scandir(dest) as it:
@@ -290,12 +401,12 @@ class SortImages:
         hash = md5()
         hash.update(im.write_to_memory())
         imagefile.setid(hash.hexdigest())
-        thumbpath = os.path.join("data", imagefile.id+os.extsep+"jpg")
+        thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
         if os.path.exists(thumbpath):
             imagefile.thumbnail = thumbpath
         else:
             try:
-                im = pyvips.Image.thumbnail(imagefile.path, self.thumbnailsize)
+                im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
             except Exception as e:
@@ -303,7 +414,8 @@ class SortImages:
 
     def generatethumbnails(self, images):
         logging.info("md5 hashing %s files", len(images))
-        with concurrent.ThreadPoolExecutor(max_workers=self.threads) as executor:
+        max_workers = max(1,self.threads)
+        with concurrent.ThreadPoolExecutor(max_workers=max_workers) as executor:
             executor.map(self.makethumb, images)
         logging.info("Finished making thumbnails")
 
@@ -311,7 +423,6 @@ class SortImages:
         if askokcancel("Confirm", "Really clear your selection?"):
             for x in self.imagelist:
                 x.checked.set(False)
-
 
 # Run Program
 if __name__ == '__main__':
