@@ -20,7 +20,12 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 class CanvasImage:
     """ Display and zoom image """
-    def __init__(self, placeholder, path):
+    def __init__(self, placeholder, viewer_background, imageobj, gui):
+        self.imageobj = imageobj
+        path = imageobj.path
+        self.gui = gui
+
+        self.viewer_background = viewer_background
         """ Initialize the ImageFrame """
         self.imscale = 1.0  # scale for the canvas image zoom, public for outer classes
         self.__delta = 1.3  # zoom magnitude
@@ -36,7 +41,7 @@ class CanvasImage:
         vbar.grid(row=0, column=1, sticky='ns')
         # Create canvas and bind it with scrollbars. Public for outer classes
         self.canvas = tk.Canvas(self.__imframe, highlightthickness=0,
-                                xscrollcommand=hbar.set, yscrollcommand=vbar.set)
+                                xscrollcommand=hbar.set, yscrollcommand=vbar.set, background=self.viewer_background)
         self.canvas.grid(row=0, column=0, sticky='nswe')
         self.canvas.update()  # wait till canvas is created
         hbar.configure(command=self.__scroll_x)  # bind scrollbars to the canvas

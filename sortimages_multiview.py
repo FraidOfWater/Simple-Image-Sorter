@@ -207,7 +207,50 @@ class SortImages:
                 if 'autosave_session' in jprefs:
                     self.autosave = jprefs['autosave']
                 #Customization
+                if "checkbox_height" in jprefs:
+                    self.gui.checkbox_height = int(jprefs["checkbox_height"])
+                if "gridsquare_padx" in jprefs:
+                    self.gui.gridsquare_padx = int(jprefs["gridsquare_padx"])
+                if "gridsquare_pady" in jprefs:
+                    self.gui.gridsquare_pady = int(jprefs["gridsquare_pady"])
+                if "text_box_thickness" in jprefs:
+                    self.gui.text_box_thickness = int(jprefs["text_box_thickness"])
+                if "image_border_thickness" in jprefs:
+                    self.gui.image_border_thickness = int(jprefs["image_border_thickness"])
+                if "text_box_colour" in jprefs:
+                    self.gui.text_box_colour = jprefs["text_box_colour"]
+                if "text_box_selection_colour" in jprefs:
+                    self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
+                if "imageborder_default_colour" in jprefs:
+                    self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]   
+                if "imageborder_selected_colour" in jprefs:
+                    self.gui.imageborder_selected_colour = jprefs["imageborder_selected_colour"]
+                if "imageborder_locked_colour" in jprefs:
+                    self.gui.imageborder_locked_colour = jprefs["imageborder_locked_colour"]
+
                 #Window colours
+                if "main_colour" in jprefs:
+                    self.gui.main_colour = jprefs["main_colour"]
+                if "square_colour" in jprefs:
+                    self.gui.square_colour = jprefs["square_colour"]
+                if "grid_background_colour" in jprefs:
+                    self.gui.grid_background_colour = jprefs["grid_background_colour"]
+                if "canvasimage_background" in jprefs:
+                    self.gui.canvasimage_background = jprefs["canvasimage_background"]
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs["text_colour"]
+                if "pressed_text_colour" in jprefs:
+                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
+                if "button_colour" in jprefs:
+                    self.gui.button_colour = jprefs["button_colour"]
+                if "button_press_colour" in jprefs:
+                    self.gui.button_press_colour = jprefs["button_press_colour"]
+                if "text_field_colour" in jprefs:
+                    self.gui.text_field_colour = jprefs["text_field_colour"]
+                if "text_field_text_colour" in jprefs:
+                    self.gui.text_field_text_colour = jprefs["text_field_text_colour"]
+                if "pane_divider_colour" in jprefs:
+                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]            
                 #GUI CONTROLLED PREFRENECES
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(jprefs["squaresperpage"])
@@ -247,8 +290,39 @@ class SortImages:
 
             #Customization
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--PADDING AND COLOR FOR IMAGE CONTAINER": "--#--",
+            "checkbox_height":gui.checkbox_height,
+
+            "gridsquare_padx":gui.gridsquare_padx,
+            "gridsquare_pady":gui.gridsquare_pady,
+
+            "text_box_thickness":gui.text_box_thickness,
+            "image_border_thickness":gui.image_border_thickness,
+
+            "text_box_colour":gui.text_box_colour,
+            "text_box_selection_colour":gui.text_box_selection_colour,
+            
+            "imageborder_default_colour":gui.imageborder_default_colour,
+            "imageborder_selected_colour":gui.imageborder_selected_colour,
+            "imageborder_locked_colour":gui.imageborder_locked_colour,
+
             #Window colours
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
+            "main_colour":gui.main_colour,
+            "square_colour":gui.square_colour,
+            "grid_background_colour":gui.grid_background_colour,
+            "canvasimage_background":gui.canvasimage_background,
+
+            "text_colour":gui.text_colour,
+            "pressed_text_colour":gui.pressed_text_colour,
+            
+            "button_colour":gui.button_colour,
+            "button_press_colour":gui.button_press_colour,
+
+            "text_field_colour":gui.text_field_colour,
+            "text_field_text_colour":gui.text_field_text_colour,
+
+            "pane_divider_colour":gui.pane_divider_colour,
+
             #GUI CONTROLLED PREFRENECES
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FROM GUI" : "--#--",
             "squaresperpage": gui.squaresperpage.get(),

@@ -53,6 +53,21 @@ def randomColor():
         color += hexletters[floor(random.random()*16)]
     return color
 
+def darken_color(color, factor=0.5): #Darken a given color by a specified factor
+        # Convert hex color to RGB
+        r = int(color[1:3], 16)
+        g = int(color[3:5], 16)
+        b = int(color[5:7], 16)
+
+        # Darken the color
+        r = int(r * factor)
+        g = int(g * factor)
+        b = int(b * factor)
+
+        # Convert back to hex
+        
+        return f'#{r:02x}{g:02x}{b:02x}'
+
 class GUIManager(tk.Tk):
     def __init__(self, fileManager) -> None:
         super().__init__()
@@ -73,8 +88,48 @@ class GUIManager(tk.Tk):
         #autosave # Exlusively for fileManager
 
         #Customization
+        self.checkbox_height = 25
+        self.gridsquare_padx = 2
+        self.gridsquare_pady = 2
+        self.text_box_thickness = 0
+        self.image_border_thickness = 1
+        self.text_box_colour =                  "white"
+        self.text_box_selection_colour  =       "blue"
+        self.imageborder_default_colour =       "white"
+        self.imageborder_selected_colour =      "blue"
+        self.imageborder_locked_colour =        "yellow"
+
+        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.image_border_thickness + self.text_box_thickness
+        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
 
         #Window colours
+        # Dark Mode
+        """
+        self.main_colour =              'black'
+        self.square_colour =            'black'
+        self.grid_background_colour =   'black'
+        self.canvasimage_background =   'black'
+        self.text_colour =              'white'
+        self.button_press_colour =      'white'
+        self.pressed_text_colour =      'black'
+        self.button_colour =            'black'
+        self.text_field_colour =        'white'
+        self.text_field_text_colour =   'black'
+        self.pane_divider_colour =      'grey'
+        """
+        # Midnight Blue
+        self.main_colour =              '#202041'
+        self.square_colour =            '#888BF8'
+        self.grid_background_colour =   '#303276'
+        self.canvasimage_background =   '#141433'
+        self.text_colour =              'white'
+        self.pressed_text_colour =      'white'
+        self.button_press_colour =      '#303276'
+        self.button_colour =            '#24255C'
+        self.text_field_colour =        'white'
+        self.text_field_text_colour =   'black'
+        self.pane_divider_colour =      'grey'
+        
 
         #GUI CONTROLLED PREFRENECES
         self.squaresperpage = tk.IntVar()
@@ -102,7 +157,9 @@ class GUIManager(tk.Tk):
 
         style = ttk.Style()
         self.style = style
-        style.configure("Theme_checkbox.TCheckbutton", highlightthickness = 0) # Theme for checkbox
+        style.configure('Theme_dividers.TPanedwindow', background=self.pane_divider_colour)  # Panedwindow, the divider colour.
+        style.configure("Theme_square.TCheckbutton", background=self.grid_background_colour, foreground=self.text_colour) # Theme for Square
+        style.configure("Theme_checkbox.TCheckbutton", background=self.main_colour, foreground=self.text_colour, highlightthickness = 0) # Theme for checkbox
 
         #style.configure("textc.TCheckbutton", foreground=self.text_colour, background=self.main_colour)
         
@@ -111,7 +168,7 @@ class GUIManager(tk.Tk):
         self.toppane = Panedwindow(self, orient="horizontal")
 
         # Frame for the left hand side that holds the setup and also the destination buttons.
-        self.leftui = tk.Frame(self.toppane)
+        self.leftui = tk.Frame(self.toppane, bg=self.main_colour)
         self.leftui.columnconfigure(0, weight=1)
 
         self.toppane.add(self.leftui, weight=1)
@@ -120,9 +177,11 @@ class GUIManager(tk.Tk):
         self.first_page_buttons()
 
         # Start the grid setup
-        imagegridframe = tk.Frame(self.toppane)
-        imagegridframe.grid(row=0, column=1, sticky="NSEW")
-        self.imagegrid = tk.Text(imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background='#a9a9a9')
+        imagegridframe = tk.Frame(self.toppane,bg=self.main_colour)
+        imagegridframe.grid(row=0, column=2, sticky="NSEW") #this is in second so content frame inside this.
+        self.imagegridframe = imagegridframe
+
+        self.imagegrid = tk.Text(imagegridframe, wrap='word', borderwidth=0, highlightthickness=0, state="disabled", background=self.grid_background_colour)
 
         vbar = tk.Scrollbar(imagegridframe, orient='vertical',command=self.imagegrid.yview)
         vbar.grid(row=0, column=1, sticky='ns')
@@ -146,7 +205,7 @@ class GUIManager(tk.Tk):
         self.buttonResizeOnWindowResize("a")    
 
     def first_page_buttons(self):
-        self.panel = tk.Label(self.leftui, wraplength=350, justify="left", text="""Select a source directory to search for images in above.
+        self.panel = tk.Label(self.leftui, wraplength=350, justify="left", bg=self.main_colour,fg=self.text_colour, text="""Select a source directory to search for images in above.
 The program will find all png, gif, jpg, bmp, pcx, tiff, Webp, and psds. It can has as many sub-folders as you like, the program will scan them all (except exclusions).
 Enter a root folder to sort to for the "Destination field" too. The destination directory MUST have sub folders, since those are the folders that you will be sorting to.
 \d (unless you delete prefs.json). Remember that it's one per line, no commas or anything.
@@ -162,48 +221,58 @@ Thank you for using this program!""")
         
         self.panel.grid(row=1, column=0, columnspan=200, rowspan=200, sticky="NSEW")
 
-        self.buttonframe = tk.Frame(master=self.leftui)
+        self.buttonframe = tk.Frame(master=self.leftui,bg=self.main_colour)
         self.buttonframe.grid(column=0, row=1, sticky="NSEW")
         self.buttonframe.columnconfigure(0, weight=1)
 
-        self.entryframe = tk.Frame(master=self.leftui)
+        self.entryframe = tk.Frame(master=self.leftui,bg=self.main_colour)
         self.entryframe.columnconfigure(1, weight=1)
         self.entryframe.grid(row=0, column=0, sticky="ew")
 
-        self.excludebutton = tk.Button(self.entryframe, text="Manage Exclusions", command=self.excludeshow)
+        self.excludebutton = tk.Button(self.entryframe, text="Manage Exclusions", command=self.excludeshow,
+                                       bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         self.excludebutton.grid(row=0, column=2)
 
-        self.sdpEntry = tk.Entry(self.entryframe, takefocus=False)  # scandirpathEntry
+        self.sdpEntry = tk.Entry(self.entryframe, takefocus=False, 
+                                 background=self.grid_background_colour, foreground=self.text_colour)  # scandirpathEntry
         self.sdpEntry.grid(row=0, column=1, sticky="ew", padx=2)
         self.sdpEntry.insert(0, self.source_folder)
 
-        self.sdplabel = tk.Button(self.entryframe, text="Source Folder:", command=partial(self.filedialogselect, self.sdpEntry, "d"))
+        self.sdplabel = tk.Button(self.entryframe, text="Source Folder:", command=partial(self.filedialogselect, self.sdpEntry, "d"), 
+                                  bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         self.sdplabel.grid(row=0, column=0, sticky="e")
 
-        self.ddpEntry = tk.Entry(self.entryframe, takefocus=False)  # dest dir path entry
+        self.ddpEntry = tk.Entry(self.entryframe, takefocus=False, 
+                                 background=self.grid_background_colour, foreground=self.text_colour)  # dest dir path entry
         self.ddpEntry.grid(row=1, column=1, sticky="ew", padx=2)
         self.ddpEntry.insert(0, self.destination_folder)
 
-        self.ddplabel = tk.Button(self.entryframe, text="Destination Folder:", command=partial(self.filedialogselect, self.ddpEntry, "d"))
+        self.ddplabel = tk.Button(self.entryframe, text="Destination Folder:", command=partial(self.filedialogselect, self.ddpEntry, "d"),
+                                  bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         self.ddplabel.grid(row=1, column=0, sticky="e")
 
-        self.activebutton = tk.Button(self.entryframe, text="New Session", command=partial(self.fileManager.validate, self))
+        self.activebutton = tk.Button(self.entryframe, text="New Session", command=partial(self.fileManager.validate, self),
+                                      bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.activebutton,delay=1,msg="Start a new Session with the entered source and destination")
         self.activebutton.grid(row=1, column=2, sticky="ew")
 
-        self.loadpathentry = tk.Entry(self.entryframe, takefocus=False, textvariable=self.sessionpathvar)
+        self.loadpathentry = tk.Entry(self.entryframe, takefocus=False, textvariable=self.sessionpathvar, 
+                                      background=self.grid_background_colour, foreground=self.text_colour)
         self.loadpathentry.grid(row=3, column=1, sticky='ew', padx=2)
 
-        self.loadbutton = tk.Button(self.entryframe, text="Load Session", command=self.fileManager.loadsession)
+        self.loadbutton = tk.Button(self.entryframe, text="Load Session", command=self.fileManager.loadsession,
+                                    bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.loadbutton,delay=1,msg="Load and start the selected session data.")
         self.loadbutton.grid(row=3, column=2, sticky='ew')
 
-        self.loadfolderbutton = tk.Button(self.entryframe, text="Session Data:", command=partial(self.filedialogselect, self.loadpathentry, "f"))
+        self.loadfolderbutton = tk.Button(self.entryframe, text="Session Data:", command=partial(self.filedialogselect, self.loadpathentry, "f"),
+                                          bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
         ToolTip(self.loadfolderbutton,delay=1,msg="Select a session json file to open.")
         self.loadfolderbutton.grid(row=3, column=0, sticky='e')
 
         # Add a button for sortbydate option
-        self.sortbydate_button = ttk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, command=self.sortbydatevar,style="Theme_checkbox.TCheckbutton")
+        self.sortbydate_button = ttk.Checkbutton(self.leftui, text="Sort by Date", variable=self.sortbydatevar, onvalue=True, offvalue=False, 
+                                                 command=self.sortbydatevar,style="Theme_checkbox.TCheckbutton")
         self.sortbydate_button.grid(row=2, column=0, sticky="w", padx=25)
 
     def isnumber(self, char):
@@ -229,7 +298,7 @@ Thank you for using this program!""")
         excludewindow = tk.Toplevel()
         excludewindow.winfo_toplevel().title(
             "Folder names to ignore, one per line. This will ignore sub-folders too.")
-        excludetext = tkst.ScrolledText(excludewindow)
+        excludetext = tkst.ScrolledText(excludewindow, bg=self.main_colour, fg=self.text_colour)
         for x in self.fileManager.exclude:
             excludetext.insert("1.0", x+"\n")
         excludetext.pack()
@@ -255,7 +324,8 @@ Thank you for using this program!""")
         return text
 
     def makegridsquare(self, parent, imageobj, setguidata):
-        frame = tk.Frame(parent, width=self.thumbnailsize + 14, height=self.thumbnailsize+24)
+        frame = tk.Frame(parent, borderwidth=0, bg=self.square_colour,
+                         highlightthickness = 0, highlightcolor=self.imageborder_selected_colour, padx = 0, pady = 0) #unclear if width and height needed
         frame.obj = imageobj
         truncated_filename = self.truncate_text(imageobj)
         truncated_name_var = tk.StringVar(frame, value=truncated_filename)
@@ -277,8 +347,8 @@ Thank you for using this program!""")
             else:
                 img = imageobj.guidata['img']
 
-            canvas = tk.Canvas(frame, width=self.thumbnailsize,
-                               height=self.thumbnailsize)
+            canvas = tk.Canvas(frame, width=self.thumbnailsize, 
+                               height=self.thumbnailsize,bg=self.square_colour, highlightthickness=self.image_border_thickness, highlightcolor=self.imageborder_selected_colour, highlightbackground = self.imageborder_default_colour) #The gridbox color.
             canvas.grid(column=0, row=0, sticky="NSEW")
             tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj))
             ToolTip(canvas,msg=tooltiptext.get,delay=1)
@@ -287,12 +357,14 @@ Thank you for using this program!""")
             frame.rowconfigure(1, weight=1)
 
             canvas.create_image(
-                self.thumbnailsize/2, self.thumbnailsize/2, anchor="center", image=img)
+                self.thumbnailsize/2+self.image_border_thickness, self.thumbnailsize/2+self.image_border_thickness, anchor="center", image=img) #If you use gridboxes, you must +1 to thumbnailsize/2, so it counteracts the highlighthickness.
             
-            check = ttk.Checkbutton(frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False)
-            check.grid(column=0, row=1, sticky="N")
-            
-            frame.config(height=self.thumbnailsize+12)
+            # Create a frame for the Checkbutton to control its height
+            check_frame = tk.Frame(frame, height=self.checkbox_height,bg=self.grid_background_colour, highlightthickness=self.text_box_thickness, highlightcolor=self.text_box_selection_colour, highlightbackground=self.text_box_colour) 
+            check_frame.grid(column=0, row=1, sticky="NSEW")  # Place the frame in the grid
+            check_frame.grid_propagate(False)
+            check = ttk.Checkbutton(check_frame, textvariable=truncated_name_var, variable=imageobj.checked, onvalue=True, offvalue=False, style="Theme_square.TCheckbutton")
+            check.grid(sticky="NSEW")
 
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
@@ -319,7 +391,6 @@ Thank you for using this program!""")
                         self.fileManager.destinationsraw,os.path.dirname(imageobj.path))]['color']
                     frame['background'] = color
                     canvas['background'] = color
-            frame.configure(height=self.thumbnailsize+10)
             if imageobj.dupename:
                 frame.configure(
                     highlightbackground="yellow", highlightthickness=2)
@@ -367,15 +438,19 @@ Thank you for using this program!""")
 
         self.imagewindow = tk.Toplevel()
         imagewindow = self.imagewindow
+        imagewindow.configure(background=self.main_colour)
         imagewindow.rowconfigure(1, weight=1)
         imagewindow.columnconfigure(0, weight=1)
         imagewindow.title("Image: " + path)
+
         imagewindow.geometry(self.imagewindowgeometry)
         imagewindow.bind("<Button-3>", partial(bindhandler, imagewindow, "destroy"))
         imagewindow.protocol("WM_DELETE_WINDOW", self.saveimagewindowgeo)
         imagewindow.obj = imageobj
         imagewindow.transient(self)
-        Image_frame = CanvasImage(imagewindow, path)
+
+
+        Image_frame = CanvasImage(imagewindow, self.canvasimage_background, imageobj, self)
         Image_frame.grid(column=0, row=1)
         Image_frame.rescale(min(imagewindow.winfo_width()/Image_frame.imwidth, imagewindow.winfo_height()/Image_frame.imheight))
 
@@ -467,53 +542,53 @@ Thank you for using this program!""")
             guirow += 1
         self.entryframe.grid_remove()
         # options frame
-        optionsframe = tk.Frame(self.leftui)
+        optionsframe = tk.Frame(self.leftui,bg=self.main_colour)
         optionsframe.columnconfigure(0, weight=1)
         optionsframe.columnconfigure(1, weight=3)
-        self.optionsframe = optionsframe
-        self.optionsframe.grid(row=0, column=0, sticky="ew")
+        optionsframe.grid(row=0, column=0, sticky="ew")
 
-        squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, takefocus=False)
-        squaresperpageentry.grid(row=2, column=0, sticky="E")
-        ToolTip(squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
+        self.squaresperpageentry = tk.Entry(
+            optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.grid_background_colour, foreground=self.text_colour)
+        ToolTip(self.squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
+        self.squaresperpageentry.grid(row=1, column=0, sticky="EW",)
         for n in range(0, itern):
-            squaresperpageentry.unbind(hotkeys[n])
+            self.squaresperpageentry.unbind(hotkeys[n])
 
-        addpagebut = tk.Button(
-            optionsframe, text="Load More Images", command=self.addpage)
-        ToolTip(addpagebut,msg="Add another batch of files from the source folders.", delay=1)
-        addpagebut.grid(row=2, column=1, sticky="EW")
-        self.addpagebutton = addpagebut
+        self.addpagebut = tk.Button(
+            optionsframe, text="Load More Images", command=self.addpage,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
+        ToolTip(self.addpagebut,msg="Add another batch of files from the source folders.", delay=1)
+        self.addpagebut.grid(row=1, column=1, sticky="EW")
+        self.addpagebutton = self.addpagebut
 
         # save button
-        savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True))
-        ToolTip(savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
-        savebutton.grid(column=0,row=0,sticky="ew")
+        self.savebutton = tk.Button(optionsframe,text="Save Session",command=partial(self.fileManager.savesession,True),bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
+        ToolTip(self.savebutton,delay=1,msg="Save this image sorting session to a file, where it can be loaded at a later time. Assigned destinations and moved images will be saved.")
+        self.savebutton.grid(column=0,row=0,sticky="ew")
+        self.savebutton.configure(relief = tk.RAISED)
 
-        moveallbutton = tk.Button(
-            optionsframe, text="Move All", command=self.fileManager.moveall)
-        ToolTip(moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
-        moveallbutton.grid(column=1, row=3, sticky="EW")
+        self.moveallbutton = tk.Button(
+            optionsframe, text="Move All", command=self.fileManager.moveall,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
+        ToolTip(self.moveallbutton,delay=1,msg="Move all images to their assigned destinations, if they have one.")
+        self.moveallbutton.grid(column=1, row=2, sticky="EW")
 
-        clearallbutton = tk.Button(
-            optionsframe, text="Clear Selection", command=self.fileManager.clear)
-        ToolTip(clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
-        clearallbutton.grid(row=3, column=0, sticky="EW")
+        self.clearallbutton = tk.Button(
+            optionsframe, text="Clear Selection", command=self.fileManager.clear,bg=self.button_colour, fg=self.text_colour, activebackground = self.button_press_colour, activeforeground=self.pressed_text_colour)
+        ToolTip(self.clearallbutton,delay=1,msg="Clear your selection on the grid and any other windows with checkable image grids.")
+        self.clearallbutton.grid(row=0, column=1, sticky="EW")
 
         hideonassign = tk.Checkbutton(optionsframe, text="Hide Assigned",
-                                      variable=self.hideonassignvar, onvalue=True, offvalue=False)
+                                      variable=self.hideonassignvar, onvalue=True, offvalue=False, bg=self.button_colour,fg=self.text_colour)
         ToolTip(hideonassign,delay=1,msg="When checked, images that are assigned to a destination be hidden from the grid.")
         hideonassign.grid(column=1, row=0, sticky='W')
         self.hideonassign = hideonassign
-
+        
         showhidden = tk.Checkbutton(optionsframe, text="Show Hidden Images",
-                                    variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares)
+                                    variable=self.showhiddenvar, onvalue=True, offvalue=False, command=self.showhiddensquares, bg=self.button_colour,fg=self.text_colour)
         showhidden.grid(column=0, row=1, sticky="W")
         self.showhidden = showhidden
 
         hidemoved = tk.Checkbutton(optionsframe, text="Hide Moved",
-                                   variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved)
+                                   variable=self.hidemovedvar, onvalue=True, offvalue=False, command=self.hidemoved, bg=self.button_colour,fg=self.text_colour)
         ToolTip(hidemoved,delay=1,msg="When checked, images that are moved will be hidden from the grid.")
         hidemoved.grid(column=1, row=1, sticky="w")
 
@@ -555,23 +630,52 @@ Thank you for using this program!""")
                     "insert", window=x.guidata["frame"])
 
     def showthisdest(self, dest, *args):
-        destwindow = tk.Toplevel()
-        destwindow.geometry(str(int(self.winfo_screenwidth(
-        )*0.80)) + "x" + str(self.winfo_screenheight()-120)+"+365+60")
-        destwindow.winfo_toplevel().title(
-            "Files designated for" + dest['path'])
-        destgrid = tk.Text(destwindow, wrap='word', borderwidth=0,
-                           highlightthickness=0, state="disabled", background='#a9a9a9')
-        destgrid.grid(row=0, column=0, sticky="NSEW")
-        destwindow.columnconfigure(0, weight=1)
-        destwindow.rowconfigure(0, weight=1)
-        vbar = tk.Scrollbar(destwindow, orient='vertical',
-                            command=destgrid.yview)
-        vbar.grid(row=0, column=1, sticky='ns')
-        for x in self.fileManager.imagelist:
-            if x.dest == dest['path']:
-                newframe = self.makegridsquare(destgrid, x, False)
-                destgrid.window_create("insert", window=newframe)
+
+        self.dest = dest['path']
+        if not hasattr(self, 'destwindow') or not self.destwindow or not self.destwindow.winfo_exists():
+            #Make new window
+            self.destwindow = tk.Toplevel()
+            self.destwindow.columnconfigure(0, weight=1)
+            self.destwindow.rowconfigure(0, weight=1)
+            self.destwindow.winfo_toplevel().title("Files designated for " + dest['path'])
+            self.destwindow.geometry(str(int(self.winfo_screenwidth() * 0.80)) + "x" + str(self.winfo_screenheight() - 120) + "+365+60")
+            self.destwindow.bind("<Button-3>", self.close_destination_window)
+            self.destwindow.protocol("WM_DELETE_WINDOW", self.close_destination_window)
+            self.destwindow.transient(self)
+            self.destgrid = tk.Text(self.destwindow, wrap='word', borderwidth=0, 
+                                    highlightthickness=0, state="disabled", background=self.main_colour)
+            self.destgrid.grid(row=0, column=0, sticky="NSEW")
+
+            #scrollbars
+            vbar = tk.Scrollbar(self.destwindow, orient='vertical',
+                                command=self.destgrid.yview)
+            vbar.grid(row=0, column=1, sticky='ns')
+            
+            for x in self.fileManager.imagelist:
+                if x.dest == dest['path']:
+                    newframe = self.makegridsquare(self.destgrid, x, False)
+                    self.destgrid.window_create("insert", window=newframe)
+    def close_destination_window(self, event=None):
+        if event:
+            for square in self.dest_squarelist:
+                if square.winfo_x() <= event.x <= square.winfo_x() + square.winfo_width() and \
+                   square.winfo_y() <= event.y <= square.winfo_y() + square.winfo_height():
+                    logger.debug("Click inside a square, not closing.")
+                    return  # Click is inside a square, do not close
+            
+        try:
+            if hasattr(self, 'destwindow'):
+                self.destpane_geometry = self.destwindow.winfo_geometry()
+                self.destgrid.destroy()
+                del self.destgrid
+                self.destwindow.destroy()
+                self.destwindow = None
+                del self.destwindow
+                self.dest_squarelist = []
+                self.filtered_images = []
+                self.queue = []
+        except Exception as e:
+            pass
 
     def hidemoved(self):
         if self.hidemovedvar.get():
