@@ -3,7 +3,7 @@
 # Check if filename already exists on move.
 # implement undo
 import os
-from sys import exit
+import sys
 import shutil
 import tkinter as tk
 from tkinter.messagebox import askokcancel
@@ -143,9 +143,14 @@ class SortImages:
             os.mkdir(data_dir)
 
     def loadprefs(self):
-        script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
-        self.prefs_path = os.path.join(script_dir, "prefs.json")
-        self.prefs_path = os.path.join(script_dir, "prefs.json")
+
+        # Figure out script and data directory locations
+        if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+            script_dir = os.path.dirname(sys.executable) 
+            self.prefs_path = os.path.join(script_dir, "prefs.json")
+        else:
+            script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
+            self.prefs_path = os.path.join(script_dir, "prefs.json") 
         self.data_dir = os.path.join(script_dir, "data")
         print(self.data_dir)
 
