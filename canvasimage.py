@@ -50,7 +50,6 @@ class CanvasImage:
         self.viewer_colour = viewer_colour
 
 
-
         print("")
         print(f"{self.obj.name.get()[:30]}.")
 
@@ -92,7 +91,7 @@ class CanvasImage:
         self.og_posx = 0
         self.og_posy = 0
         self.last_state = ""
-
+        self.exit_lock = False
         # Image scaling defaults
         self.imscale = 1.0  # Scale for the canvas image zoom
         self.__delta = 1.15  # Zoom step magnitude
@@ -215,42 +214,59 @@ class CanvasImage:
         # when too many key stroke events in the same time
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.key_listener, event))
 
-        self.canvas.bind('<KeyPress-Control_L>', lambda event: self.on_control_press(event))
-        self.canvas.bind('<KeyRelease-Control_L>', lambda event: self.on_control_release(event))
-        self.canvas.bind('<KeyPress-Control_R>', lambda event: self.on_control_press(event))
-        self.canvas.bind('<KeyRelease-Control_R>', lambda event: self.on_control_release(event))
+        self.canvas.bind('<KeyPress-Control_L>', lambda event: self.control_key_press(event))
+        self.canvas.bind('<KeyRelease-Control_L>', lambda event: self.control_key_release(event))
+        self.canvas.bind('<KeyPress-Control_R>', lambda event: self.control_key_press(event))
+        self.canvas.bind('<KeyRelease-Control_R>', lambda event: self.control_key_release(event))
 
-        self.canvas.bind('<KeyPress-Shift_L>', lambda event: self.on_control_press_s(event))
-        self.canvas.bind('<KeyRelease-Shift_L>', lambda event: self.on_control_release_s(event))
-        self.canvas.bind('<KeyPress-Shift_R>', lambda event: self.on_control_press_s(event))
-        self.canvas.bind('<KeyRelease-Shift_R>', lambda event: self.on_control_release_s(event))
+        self.canvas.bind('<KeyPress-Shift_L>', lambda event: self.shift_key_press(event))
+        self.canvas.bind('<KeyRelease-Shift_L>', lambda event: self.shift_key_release(event))
+        self.canvas.bind('<KeyPress-Shift_R>', lambda event: self.shift_key_press(event))
+        self.canvas.bind('<KeyRelease-Shift_R>', lambda event: self.shift_key_release(event))
 
         try:
             self.__image.close()
         except Exception as e:
             logger.error(f"Error in destroy displayimage: {e}")
 
-    def on_control_press(self, event):
-        self.control_pressed = True
-        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
-        self.canvas.focus_set()
-        #logger.debug(self.control_pressed)
+    def control_key_press(self, event):
+        if not self.gui.enter_toggle:
+            self.control_pressed = True
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
-    def on_control_release(self, event):
-        self.control_pressed = False
-        logger.debug(self.control_pressed)
-        #self.last_state = "quickzoom"
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+            self.canvas.focus_set()
+            #logger.debug(self.control_pressed)
+        self.exit_lock = True #listen for key presses and disable. if set to false by any keypress, do not exit lock.
 
-    def on_control_press_s(self, event):
-        self.control_pressed = True
-        self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
-        self.canvas.focus_set()
-        #logger.debug(self.control_pressed)
+    def control_key_release(self, event):
+        if self.exit_lock:
+            self.control_pressed = False
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.last_state = "quickscroll"
+            self.gui.enter_toggle = False
+        elif not self.gui.enter_toggle:
+            self.control_pressed = False
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
-    def on_control_release_s(self, event):
-        self.control_pressed = False
-        #logger.debug(self.control_pressed)
-        self.last_state = "quickscroll"
+            #logger.debug(self.control_pressed)
+            self.last_state = "quickzoom"
+
+    def shift_key_press(self, event):
+        if not self.gui.enter_toggle:
+            self.control_pressed = True
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
+            self.canvas.focus_set()
+            #logger.debug(self.control_pressed)
+
+    def shift_key_release(self, event):      
+        if not self.gui.enter_toggle:
+            self.control_pressed = False
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+    
+            #logger.debug(self.control_pressed)
+            self.last_state = "quickscroll"
 
     def key_listener(self, event):
         # 1. When moving, we want to be unimpeded until we click enter. If show next and caps lock is OFF, give it to navigator.
@@ -737,8 +753,51 @@ class CanvasImage:
 
 
     def keystroke(self, event): # Scrolling and zooming with the keyboard
-        print(self.is_image_inside_viewport())
-        print(self.is_image_cropped())
+
+        #On exiting the lock.
+        #Colour image yellow if we press enter while its selected
+        if event.keysym == "Return" and self.gui.show_next.get():
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.enter_toggle = not self.gui.enter_toggle
+            self.last_state = "Return" #unsure what does
+
+        #if shift or cntrl not presed and image is unlocked, return og color and bind keys to navigator (grid viewer) (not canvasiamge)
+        if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
+            self.gui.current_selection.canvas.configure(highlightcolor="blue", highlightbackground = "blue")
+            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
+            if self.last_state == "quickzoom" or self.last_state == "quickscroll": #if we used scroll or zooming, dont just bind but run once.
+                self.canvas.after_idle(self.gui.navigator, event)
+            return
+        
+        #else
+        #If pressed key isnt arrow keys or wasd, do nothing.
+        if event.keycode in [37,38,39,40] or event.keycode in [65,68,83,87]:
+            #wasd = 87,65,83,68
+            #updownleftright = 38,40,37,39
+            pass
+        else:
+            return
+
+        #Should wasd be disabled?
+        check = ["w","a","s","d"]
+        for x in check:
+            if x in self.gui.hotkeys: # If hotkey and navigation key should conflict, disable wasd.
+                if event.keysym == x:
+                    print("disabled, reject wasd press")
+                    return
+            else:
+                
+                break
+        
+        if self.exit_lock:
+            print("exit locked iinlopcked")
+            self.exit_lock = False
+        #viewport debug prints
+        #print(self.is_image_inside_viewport())
+        #print(self.is_image_cropped())
+
+        #If image is unzoomed, its behaviour is as expected, up goes up. However, when zoomed, it used to reverse the behaviour for some reason.
+        #This maintains the correct direction while zoomed.
         width, height = self.is_image_cropped()
         if not width and not height:
             right = -1
@@ -759,32 +818,7 @@ class CanvasImage:
             right = 1
             left = -1
             up = -1
-            down = 1
-
-        if event.keysym == "Return" and self.gui.show_next.get():
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-            self.gui.enter_toggle = not self.gui.enter_toggle
-            self.last_state = "Return"
-
-        if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
-            self.gui.current_selection.canvas.configure(highlightcolor="blue", highlightbackground = "blue")
-            self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
-            if self.last_state == "quickzoom" or self.last_state == "quickscroll":
-                self.canvas.after_idle(self.gui.navigator, event)
-            return
-        # if press enter, focus on keystroke. If press enter again, focus on moving again. a switch.
-        check = ["w","a","s","d"]
-            #wasd = 87,65,83,68
-            #updownleftright = 38,40,37,39
-        for x in check:
-            if x in self.gui.hotkeys:
-                disable_wasd = True
-                break
-            else:
-                disable_wasd = False
-                break
-        if not event.keycode in [37,38,39,40] or (event.keycode in [65,68,83,87] and not disable_wasd):
-            return
+            down = 1        
 
         # Up, Down, Left, Right keystrokes
         if not event.state & 0x4 and not event.state & 0x1:
