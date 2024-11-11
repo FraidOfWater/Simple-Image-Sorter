@@ -1,7 +1,3 @@
-# todo:
-# Filename dupicate scanning to prevent collisions
-# Check if filename already exists on move.
-# implement undo
 import os
 import sys
 import time
@@ -17,7 +13,7 @@ from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
 from PIL import Image, ImageTk
-
+#interesting borderwidth adds padding but it is friendly.
 logger = logging.getLogger("Sortimages")
 logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
 
@@ -29,7 +25,7 @@ handler.setFormatter(formatter)
 
 logger.addHandler(handler)
 
-"""# This can/should be commented if you build.
+ # This can/should be commented if you build.
 
 import ctypes
 try:
@@ -44,7 +40,7 @@ ctypes.CDLL(dll_path1)
 ctypes.CDLL(dll_path2)
 ctypes.CDLL(dll_path3)
 ctypes.CDLL(dll_path4)
-"""
+
 
 # The imagefile class. It holds all information about the image and the state its container is in.
 class Imagefile:
@@ -99,7 +95,7 @@ class Imagefile:
 
                 self.guidata["frame"].configure(
                     highlightbackground="green", highlightthickness=2)
-                
+
                 self.path = new_path
                 returnstr = ("Moved:" + self.name.get() +
                              " -> " + destpath + "\n")
@@ -108,10 +104,10 @@ class Imagefile:
                 self.assigned = False
                 self.moved = True
                 return returnstr
-            
+
             except Exception as e:
                 logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
-                
+
                 if os.path.exists(new_path) and os.path.exists(old_path): # shuti.move has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
                     os.remove(new_path)
                     logger.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
@@ -149,11 +145,11 @@ class SortImages:
         self.loadprefs()
         self.gui.initialize()
         self.validate_data_dir_thumbnailsize()
-        
+
         self.gui.mainloop()
 
     def validate_data_dir_thumbnailsize(self): #Deletes data directory if the first picture doesnt match the thumbnail size from prefs. (If user changes thumbnailsize, we want to generate thumbnails again)
-        
+
         data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
@@ -162,10 +158,10 @@ class SortImages:
                 first_image_path = os.path.join(data_dir, image_files[0])
                 try:
                     image = pyvips.Image.new_from_file(first_image_path)
-                    
+
                     width = image.width
                     height = image.height
-                    
+
                     # The size doesnt match what is wanted in prefs
                     if max(width, height) != self.gui.thumbnailsize:
                         shutil.rmtree(data_dir)
@@ -185,11 +181,11 @@ class SortImages:
 
         # Figure out script and data directory locations
         if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
-            script_dir = os.path.dirname(sys.executable) 
+            script_dir = os.path.dirname(sys.executable)
             self.prefs_path = os.path.join(script_dir, "prefs.json")
         else:
             script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
-            self.prefs_path = os.path.join(script_dir, "prefs.json") 
+            self.prefs_path = os.path.join(script_dir, "prefs.json")
         self.data_dir = os.path.join(script_dir, "data")
 
         hotkeys = ""
@@ -253,7 +249,7 @@ class SortImages:
                 if "text_box_selection_colour" in jprefs:
                     self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
                 if "imageborder_default_colour" in jprefs:
-                    self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]   
+                    self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]
                 if "imageborder_selected_colour" in jprefs:
                     self.gui.imageborder_selected_colour = jprefs["imageborder_selected_colour"]
                 if "imageborder_locked_colour" in jprefs:
@@ -281,7 +277,7 @@ class SortImages:
                 if "text_field_text_colour" in jprefs:
                     self.gui.text_field_text_colour = jprefs["text_field_text_colour"]
                 if "pane_divider_colour" in jprefs:
-                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]            
+                    self.gui.pane_divider_colour = jprefs["pane_divider_colour"]
                 #GUI CONTROLLED PREFRENECES
                 if "squaresperpage" in jprefs:
                     self.gui.squaresperpage.set(jprefs["squaresperpage"])
@@ -298,7 +294,7 @@ class SortImages:
                 if "dock_view" in jprefs:
                     self.gui.dock_view.set(jprefs["dock_view"])
                 if "dock_side" in jprefs:
-                    self.gui.dock_side.set(jprefs["dock_side"])            
+                    self.gui.dock_side.set(jprefs["dock_side"])
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -315,7 +311,7 @@ class SortImages:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
             logger.error(f"Error loading prefs.json: {e}")
-    
+
     def saveprefs(self, gui):
         if gui.middlepane_frame.winfo_width() == 1:
             pass
@@ -340,14 +336,14 @@ class SortImages:
             "force_scrollbar": gui.force_scrollbar,
             "interactive_buttons":gui.interactive_buttons,
             "page_mode": gui.page_mode,
-            
+
             #Technical preferences
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--TECHNICAL PREFERENCES": "--#--",
             "quick_preview_filter": gui.filter_mode,
             "quick_preview_size_threshold": gui.quick_preview_size_threshold,
             "throttle_time": gui.throttle_time,
             "flicker_free_dock_view": gui.flicker_free_dock_view,
-            "threads": self.threads, 
+            "threads": self.threads,
             "autosave_session":self.autosave,
 
             #Customization
@@ -362,7 +358,7 @@ class SortImages:
 
             "text_box_colour":gui.text_box_colour,
             "text_box_selection_colour":gui.text_box_selection_colour,
-            
+
             "imageborder_default_colour":gui.imageborder_default_colour,
             "imageborder_selected_colour":gui.imageborder_selected_colour,
             "imageborder_locked_colour":gui.imageborder_locked_colour,
@@ -376,7 +372,7 @@ class SortImages:
 
             "text_colour":gui.text_colour,
             "pressed_text_colour":gui.pressed_text_colour,
-            
+
             "button_colour":gui.button_colour,
             "button_press_colour":gui.button_press_colour,
 
@@ -399,7 +395,7 @@ class SortImages:
             #Window positions
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--SAVE DATA FOR WINDOWS": "--#--",
             "main_geometry": gui.winfo_geometry(),
-            "viewer_geometry": gui.viewer_geometry, 
+            "viewer_geometry": gui.viewer_geometry,
             "destpane_geometry":gui.destpane_geometry,
             "leftpane_width":gui.leftui.winfo_width(),
             "middlepane_width":gui.middlepane_width,
@@ -420,14 +416,6 @@ class SortImages:
             logger.warning(("Failed to save session:", e))
 
     def moveall(self):
-        locked = False
-        check_if_window_open = hasattr(self.gui, 'second_window') and self.gui.second_window and self.gui.second_window.winfo_exists()
-
-        # If an imageviewer window is open, close it. (It locks move operations)
-        if check_if_window_open and len(self.gui.assigned_squarelist) > 0:
-            self.gui.save_viewer_geometry()
-            locked = True
-
         loglist = []
 
         assigned = self.gui.assigned_squarelist
@@ -450,9 +438,6 @@ class SortImages:
         except Exception as e:
             logger.error(f"Failed to write filelog.txt: {e}")
 
-        if len(self.gui.displayedlist) > 0 and locked: # Reopen image viewer now that moves are completed
-            self.gui.displayimage(self.gui.current_selection)
-
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
@@ -472,7 +457,7 @@ class SortImages:
                     else:
                         existing.add(name)
                     self.imagelist.append(imgfile)
-                    
+
         # Sort by date modificated
         if self.gui.sortbydatevar.get():
             self.imagelist.sort(key=lambda img: os.path.getmtime(img.path), reverse=True)
@@ -489,7 +474,7 @@ class SortImages:
             else:
                 existing.add(item.name)
         return duplicates
-    
+
     def get_current_list(self): # Communicates to setdestination what list is selected
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
@@ -498,15 +483,15 @@ class SortImages:
                 return unassigned_animated
             else:
                 return unassign
-        
+
         elif self.gui.show_assigned.get():
             assign = self.gui.assigned_squarelist
             return assign
-        
+
         elif self.gui.show_moved.get():
             moved = self.gui.moved_squarelist
             return moved
-        
+
     def setDestination(self, *args):
         current_time = time.time()
         if not self.gui.key_pressed:
@@ -525,7 +510,7 @@ class SortImages:
                 # If we have something selected, and if that someting is not the same picture as the one displayed
                 # We know the frame colour must be updated.
                 index_before_move = self.gui.displayedlist.index(self.gui.current_selection)
-            
+
 
         dest = args[0]
         marked = []
@@ -546,19 +531,19 @@ class SortImages:
                     if self.gui.current_selection.obj.id == x.obj.id:
                         if x not in marked:
                             marked.append(x)
-                            
+
             for x in marked:
                 x.obj.setdest(dest)
                 x.obj.guidata["frame"]['background'] = dest['color']
                 x.obj.guidata["canvas"]['background'] = dest['color']
                 x.obj.checked.set(False)
-                
+
                 # Move from unasssigned to assigned
                 if self.gui.show_unassigned.get():
                     x.obj.assigned = True
                     if x.obj.assigned and x not in self.gui.assigned_squarelist:
                         self.gui.unassigned_squarelist.remove(x)
-                        self.gui.assigned_squarelist.append(x) 
+                        self.gui.assigned_squarelist.append(x)
 
                         # Destination view different behaviour
                         if x.obj.dest == dest['path']:
@@ -585,7 +570,7 @@ class SortImages:
                                 self.gui.queue.append(x)
                             else:
                                 x.obj.checked.set(True)
-                                x.obj.destchecked.set(True)                                    
+                                x.obj.destchecked.set(True)
 
                         else:
                             if x.obj in self.gui.filtered_images:
@@ -609,10 +594,10 @@ class SortImages:
                             self.gui.running.remove(x)
                         if x in self.gui.track_animated:
                             self.gui.track_animated.remove(x)
-        
+
         # Check for destination view changes separately. Note, We use destchecked here, not checked.
         marked = []
-        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]    
+        marked = [square for square in self.gui.dest_squarelist if square.obj.destchecked.get()]
         temp = self.gui.assigned_squarelist.copy()
 
         # Returns all images that are marked, but who are already assigned
@@ -625,7 +610,7 @@ class SortImages:
                         if not(square.obj.destchecked.get() and square.obj.checked.get()):
                             self.gui.render_refresh.append(gridsquare)
                             break
-        
+
             #we check against the main assigned list to find the key, then we remove it and add it again, so the order is saved.
             # What the fuck is this? I think it had something to do with how I couldnt use the same gridsquare for dest and imagegrid, so this has to match them.
             for item in temp:
@@ -642,9 +627,9 @@ class SortImages:
                     self.gui.assigned_squarelist.remove(item)
                     self.gui.assigned_squarelist.append(item)
                     self.gui.filtered_images.remove(square.obj)
-                    
+
                     break
-            
+
             square.obj.setdest(dest)
             square.obj.guidata["frame"]['background'] = dest['color']
             square.obj.guidata["canvas"]['background'] = dest['color']
@@ -658,15 +643,15 @@ class SortImages:
             self.gui.refresh_destinations()
         if index_before_move >= 0 and index_before_move+1 <= len(self.gui.displayedlist):
             self.update_show_next(index_before_move)
-        
+
     def update_show_next(self, index_before_move): # Current_selection was in index x, after setdestination, it might not be in that index. We want that index to be "selected", this handles that.
-        
+
         #check if moved from that index.
         if self.gui.show_next.get() and self.gui.displayedlist[index_before_move] != self.gui.current_selection:
-            
+
             previous_selection = self.gui.current_selection # Restore old frame's frame.
             previous_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
-            
+
             self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
             self.gui.current_selection.canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
 
@@ -704,10 +689,10 @@ class SortImages:
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
                 json.dump(save, savef, indent=4)
-      
+
     def loadsession(self):
         sessionpath = self.gui.sessionpathvar.get()
-        
+
         if os.path.exists(sessionpath) and os.path.isfile(sessionpath):
             with open(sessionpath, "r") as savef:
                 sdata = savef.read()
@@ -733,7 +718,7 @@ class SortImages:
                     obj.checked.set(line['checked'])
                     obj.moved = line['moved']
                     obj.dupename=line['dupename']
-                    
+
                     try:
                         obj.isanimated=line['isanimated']
                     except Exception as e:
@@ -802,7 +787,7 @@ class SortImages:
             #dramatically faster hashing.
             hash = md5()
             hash.update(id.encode('utf-8'))
-            
+
             imagefile.setid(hash.hexdigest())
 
             thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
@@ -824,7 +809,7 @@ class SortImages:
             executor.map(self.makethumb, images)
 
     def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
-        try:            
+        try:
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
 
