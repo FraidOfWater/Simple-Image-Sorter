@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 # Advanced zoom for images of various types from small to huge up to several GB
-
 import math
 import warnings
 import tkinter as tk
@@ -23,33 +22,41 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 class AutoScrollbar(ttk.Scrollbar):
-	""" A scrollbar that hides itself if it's not needed. Works only for grid geometry manager """
-	def set(self, lo, hi):
-		if float(lo) <= 0.0 and float(hi) >= 1.0:
-			self.grid_remove()
-		else:
-			self.grid()
-			ttk.Scrollbar.set(self, lo, hi)
+    """ A scrollbar that hides itself if it's not needed. Works only for grid geometry manager """
+    def set(self, lo, hi):
+        if float(lo) <= 0.0 and float(hi) >= 1.0:
+            self.grid_remove()
+        else:
+            self.grid()
+            ttk.Scrollbar.set(self, lo, hi)
 
-	def pack(self, **kw):
-		raise tk.TclError('Cannot use pack with the widget ' + self.__class__.__name__)
+    def pack(self, **kw):
+        raise tk.TclError('Cannot use pack with the widget ' + self.__class__.__name__)
 
-	def place(self, **kw):
-		raise tk.TclError('Cannot use place with the widget ' + self.__class__.__name__)
-    
+    def place(self, **kw):
+        raise tk.TclError('Cannot use place with the widget ' + self.__class__.__name__)
+
 class CanvasImage:
     """ Display and zoom image """
-    def __init__(self, master, path, imagewindowgeometry, main_colour, imageobj, fast_render_size, viewer_x_centering, viewer_y_centering, filter_mode, gui):
-        self.imageobj = imageobj
+    def __init__(self, master, imagewindowgeometry, viewer_colour, imageobj, gui):
+
         self.obj = imageobj
+        path = self.obj.path
         self.gui = gui
+
+        viewer_x_centering = gui.viewer_x_centering
+        viewer_y_centering = gui.viewer_y_centering
+        filter_mode = gui.filter_mode
+        self.viewer_colour = viewer_colour
+
+
+
         print("")
-        print(f"{self.imageobj.name.get()[:30]}.")
+        print(f"{self.obj.name.get()[:30]}.")
 
         """ Initialize core attributes and lists"""
-        self.main_colour = main_colour
         self.path = path  # path to the image, should be public for outer classes
-        
+
         geometry_width, geometry_height = imagewindowgeometry.split('x',1)
 
         # Fix for lag in first image that is placed!
@@ -70,7 +77,6 @@ class CanvasImage:
             self.__first_filter = Image.Resampling.BILINEAR
 
         self.__filter = Image.Resampling.LANCZOS  # The end qualtiy of the image. #NEAREST, BILINEAR, BICUBIC
-        self.fast_render_size = fast_render_size
         # Lists, attributes and other flags.
         self.frames = []            # Stores loaded frames for .Gif, .Webp
         self.original_frames = []   # Could be used for zooming logic
@@ -81,7 +87,7 @@ class CanvasImage:
 
         self.lazy_index = 0
         self.lazy_loading = True    # Flag that turns off when all frames have been loaded to frames.
-        
+
         # Navigator locking mechanism
         self.og_posx = 0
         self.og_posy = 0
@@ -105,11 +111,10 @@ class CanvasImage:
             logger.error(f"An error occurred: {e}")
             return
 
-        """ Initialization of image data shorcuts """
         # Decide if this image huge or not
-        self.__huge = False
-        self.__huge_size = 14000
-        self.__band_width = 1024
+        self.__huge = False # huge or not
+        self.__huge_size = 14000 # define size of the huge image
+        self.__band_width = 1024 # width of the tile band
 
         Image.MAX_IMAGE_PIXELS = 1000000000  # suppress DecompressionBombError for the big image
 
@@ -128,10 +133,11 @@ class CanvasImage:
                            self.__offset,
                            self.__image.tile[0][3]]  # list of arguments to the decoder
         self.__min_side = min(self.imwidth, self.imheight)  # get the smaller image side
+        # Set ratio coefficient for image pyramid
         self.__ratio = max(self.imwidth, self.imheight) / self.__huge_size if self.__huge else 1.0
         self.__curr_img = 0  # current image from the pyramid
         self.__scale = self.imscale * self.__ratio  # image pyramid scale
-        self.__reduction = 2
+        self.__reduction = 2 # reduction degree of image pyramid
 
         """ Initialization of frame in master widget"""
         self.__imframe = ttk.Frame(master)
@@ -143,7 +149,7 @@ class CanvasImage:
         #vbar.grid(row=0, column=1, sticky='ns')
 
         # Create canvas and bind it with scrollbars. Public for outer classes
-        self.canvas = tk.Canvas(self.__imframe, bg=self.main_colour,
+        self.canvas = tk.Canvas(self.__imframe, bg=self.viewer_colour,
                                 highlightthickness=0, xscrollcommand=hbar.set,
                                 yscrollcommand=vbar.set, width=geometry_width, height = geometry_height)  # Set canvas dimensions to remove scrollbars
         self.canvas.grid(row=0, column=0, sticky='nswe') # Place into grid
@@ -155,13 +161,13 @@ class CanvasImage:
         self.canvas_width = int(geometry_width)
         self.__pyramid = [self.smaller()] if self.__huge else [Image.open(self.path)]
         self.pyramid = []
-        if not imageobj.isanimated:
+        if not self.obj.isanimated:
             w, h = self.__pyramid[-1].size
             self.pyramid_ready = threading.Event()
             threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
         else:
             try:
-                self.length = imageobj.framecount
+                self.length = self.obj.framecount
 
                 new_width = self.canvas_width
                 new_height = self.canvas_height
@@ -186,6 +192,7 @@ class CanvasImage:
         #Try to load frames from gif and webp images.
         self.container = self.canvas.create_rectangle((0, 0, self.imwidth, self.imheight), width=0)
         #this creates displays first image?
+        
         self.canvas.bind('<Configure>', lambda event: (self.__show_image()))  # canvas is resized from displayimage, time to show image.
         # Create image pyramid
         #old place for image:
@@ -228,7 +235,7 @@ class CanvasImage:
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
         self.canvas.focus_set()
         #logger.debug(self.control_pressed)
-    
+
     def on_control_release(self, event):
         self.control_pressed = False
         logger.debug(self.control_pressed)
@@ -239,12 +246,12 @@ class CanvasImage:
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
         self.canvas.focus_set()
         #logger.debug(self.control_pressed)
-    
+
     def on_control_release_s(self, event):
         self.control_pressed = False
         #logger.debug(self.control_pressed)
         self.last_state = "quickscroll"
-            
+
     def key_listener(self, event):
         # 1. When moving, we want to be unimpeded until we click enter. If show next and caps lock is OFF, give it to navigator.
         # 2. This sets the initial one. In keystroke we must recognize if the flag is tripped. To return control.
@@ -318,14 +325,14 @@ class CanvasImage:
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
 
-                b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
-                
-                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                b = round(self.obj.file_size/1.048576/1000000,2) #file size in MB
+
+                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                 print(f"F:  {elapsed_time}")
                 del end_time2
                 self.first = False # Flags that the first has been created
 
-                for i in range(1, self.imageobj.framecount):
+                for i in range(1, self.obj.framecount):
                     self.image.seek(i)
                     logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
                     frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
@@ -344,7 +351,7 @@ class CanvasImage:
                 logger.error(f"Error loading frames: {e}")
 
     def close_window(self, x=None):
-        if self.imageobj.isanimated:
+        if self.obj.isanimated:
             self.frames.clear()
             self.original_frames.clear()
             del self.frames
@@ -394,35 +401,35 @@ class CanvasImage:
 
         elif not self.frames or not len(self.frames) > self.lazy_index: #if the list is still empty. Wait.
             logger.debug("Buffering") #Ideally 0 buffering, update somethng so frames is initialzied quaranteed.
-            self.canvas.after(self.imageobj.delay, self.lazy_load)
+            self.canvas.after(self.obj.delay, self.lazy_load)
             return
 
-        elif self.lazy_index != self.imageobj.framecount:
+        elif self.lazy_index != self.obj.framecount:
             #Checks if more frames than index is trying and less than max allowed.
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
 
             if self.default_delay.get():
                 logger.debug(f"Lazy: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.delay}) ###")
-                self.canvas.after(self.imageobj.delay, self.run_multiple)
+                self.canvas.after(self.obj.delay, self.run_multiple)
                 return
             else:
                 logger.debug(f"Lazy: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]}) ###")
-                self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple)
+                self.canvas.after(self.obj.frametimes[self.lazy_index], self.run_multiple)
                 return
 
         else:
             logger.error("Error in lazy load, take a look")
-            self.canvas.after(self.imageobj.delay, self.lazy_load)
+            self.canvas.after(self.obj.delay, self.lazy_load)
 
     def animate_image(self): # Switches the frames to make it animated
         self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])
         if self.default_delay.get():
             logger.debug(f"{self.lazy_index+1}/{self.obj.framecount} ({self.obj.delay})")
-            self.canvas.after(self.imageobj.delay, self.run_multiple2)
+            self.canvas.after(self.obj.delay, self.run_multiple2)
 
         else:
             logger.debug(f"{self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
-            self.canvas.after(self.imageobj.frametimes[self.lazy_index], self.run_multiple2)
+            self.canvas.after(self.obj.frametimes[self.lazy_index], self.run_multiple2)
 
     def run_multiple(self): # Helper function to run lazy_load again #make it handle going over.
         self.lazy_index += 1
@@ -497,7 +504,7 @@ class CanvasImage:
 
     def __show_image(self): # Heavily modified to support gif
         try:
-            if self.imageobj.isanimated: #Let another function handle if animated
+            if self.obj.isanimated: #Let another function handle if animated
                 if self.frames:
                     pass
             else:
@@ -545,18 +552,18 @@ class CanvasImage:
                                 self.manual_wheel()
                                 #logger.debug(f"scroll event {self.__curr_img}, {(max(0, self.__curr_img))} {self.count} {self.count1}")
                                 self.count += 1
-                        a = round(self.imageobj.file_size/1000000,2) #file size
-                        b = round(self.imageobj.file_size/1.048576/1000000,2) #file size in MB
-                        c = round(self.fast_render_size,2) #Prefs set limit in MB
+                        a = round(self.obj.file_size/1000000,2) #file size
+                        b = round(self.obj.file_size/1.048576/1000000,2) #file size in MB
+                        c = round(self.obj.file_size,2) #Prefs set limit in MB
                         if self.first:
                             self.first = False
                             image = self.__pyramid[(max(0, self.__curr_img))]
 
                             if b < c: # if small render high quality
-                                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                                 imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
                             else:
-                                print(f"Size: {b} MB. Frames: {self.imageobj.framecount}")
+                                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                                 imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
                             self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                        max(box_canvas[1], box_img_int[1]),
@@ -570,7 +577,7 @@ class CanvasImage:
                             self.pyramid_ready.set() #tell threading that second picture is allowed to render.
 
 
-                        elif self.replace_await and b > self.fast_render_size: # only render second time if needed.
+                        elif self.replace_await and b > self.obj.file_size: # only render second time if needed.
                             self.replace_await = False
                             image = self.__pyramid[(max(0, self.__curr_img))]
                             imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
@@ -598,6 +605,8 @@ class CanvasImage:
                             self.canvas.imagetk = imagetk
         except Exception as e:
             logger.info("Thread caught.")
+            print(e)
+
     def time_set(self, event):
         time1 = time.time()
         press_time = time1 - self.time_from_click
@@ -625,17 +634,15 @@ class CanvasImage:
         self.canvas.scan_dragto(event.x, event.y, gain=1)
         self.__show_image()  # zoom tile and show it on the canvas
 
-    import tkinter as tk
-
     def is_image_inside_viewport(self):
         """ Check if the image is entirely within the visible canvas area """
         # Get the image and canvas bounding boxes
         img_bbox = self.canvas.coords(self.container)  # (x1, y1, x2, y2) for the image
-        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0), 
+        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0),
                        self.canvas.canvasx(self.canvas_width), self.canvas.canvasy(self.canvas_height))
-        
+
         # Check if the image is fully inside the canvas bounds
-        if (img_bbox[0] >= canvas_bbox[0] and img_bbox[1] >= canvas_bbox[1] and 
+        if (img_bbox[0] >= canvas_bbox[0] and img_bbox[1] >= canvas_bbox[1] and
             img_bbox[2] <= canvas_bbox[2] and img_bbox[3] <= canvas_bbox[3]):
             return True  # Image is fully inside
         return False  # Image is partially or fully outside
@@ -643,9 +650,9 @@ class CanvasImage:
     def is_image_cropped(self):
         """ Check if the image is cropped and if so, determine the direction(s) """
         img_bbox = self.canvas.coords(self.container)
-        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0), 
+        canvas_bbox = (self.canvas.canvasx(0), self.canvas.canvasy(0),
                        self.canvas.canvasx(self.canvas_width), self.canvas.canvasy(self.canvas_height))
-        
+
         # Initialize flags for each cropping direction
         cropped_width = False
         cropped_height = False
@@ -654,7 +661,7 @@ class CanvasImage:
         print(floor(img_bbox[0]), canvas_bbox[0], floor(img_bbox[2]), floor(canvas_bbox[2]))
         if floor(img_bbox[0]) < canvas_bbox[0] or floor(img_bbox[2]) > canvas_bbox[2]:
             cropped_width = True
-        
+
         # Check if the image overflows vertically
         print(floor(img_bbox[1]), floor(canvas_bbox[1]), floor(img_bbox[3]), floor(canvas_bbox[3]))
         if floor(img_bbox[1]) < canvas_bbox[1] or floor(img_bbox[3]) > canvas_bbox[3]:
@@ -677,7 +684,7 @@ class CanvasImage:
 
             """ re-enable this if you dont want scrolling outside the image """
             #if self.outside(x, y): return  # zoom only inside image area
-        else: 
+        else:
             x = self.canvas.canvasx(self.canvas_width // 2)
             y = self.canvas.canvasy(self.canvas_height // 2)
         scale = 1.0
@@ -707,9 +714,9 @@ class CanvasImage:
         #logger.debug(f"after scroll event {self.__curr_img}, {(max(0, self.__curr_img))}")
 
     def rescale_gif_frames(self, scale): # Unused logic for now. Should be used for zooming
-        if self.imageobj.isanimated:
+        if self.obj.isanimated:
             new_size = (int(self.new_size[0] * scale), int(self.new_size[1] * scale))
-            for i in range(self.imageobj.framecount):
+            for i in range(self.obj.framecount):
                 self.frames[i] = ImageTk.PhotoImage(self.image.resize(new_size, Image.Resampling.LANCZOS))
             self.canvas.itemconfig(self.imageid, image=self.frames[self.lazy_index])  # Update the current frame on canvas
 
@@ -727,7 +734,7 @@ class CanvasImage:
         self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
 
-    
+
 
     def keystroke(self, event): # Scrolling and zooming with the keyboard
         print(self.is_image_inside_viewport())
@@ -778,7 +785,7 @@ class CanvasImage:
                 break
         if not event.keycode in [37,38,39,40] or (event.keycode in [65,68,83,87] and not disable_wasd):
             return
-        
+
         # Up, Down, Left, Right keystrokes
         if not event.state & 0x4 and not event.state & 0x1:
             if event.keycode in [68, 39]:    # scroll right, keys 'd' or 'Right'
@@ -811,7 +818,7 @@ class CanvasImage:
                     self.__scroll_y('scroll', down, 'unit', event=event)
 
     def crop(self, bbox): # Crop rectangle from the image and return it
-        if self.__huge:    # image is huge and not totally in RAM
+        if self.__huge:     # image is huge and not totally in RAM
             band = bbox[3] - bbox[1]    # width of the tile band
             self.__tile[1][3] = band    # set the tile height
             self.__tile[2] = self.__offset + self.imwidth * bbox[1] * 3    # set offset of the band
@@ -824,13 +831,12 @@ class CanvasImage:
             return self.__pyramid[0].crop(bbox)
 
     def destroy(self): # ImageFrame destructor
-
         self.canvas.destroy()
         self.__imframe.destroy()
 
     def rescale(self, scale): # Rescales the image to fit image viewer
         """ Rescale the Image without doing anything else """
-        if  not self.imageobj.isanimated:
+        if  not self.obj.isanimated:
             self.__scale=scale
             self.imscale=scale
 
@@ -838,7 +844,7 @@ class CanvasImage:
 
     def center_image(self): # Centers the iamge in the image viewer
         """ Center the image on the canvas """
-        if not self.imageobj.isanimated:
+        if not self.obj.isanimated:
             canvas_width = self.canvas_width
             canvas_height = self.canvas_height
 
