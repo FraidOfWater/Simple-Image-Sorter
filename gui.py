@@ -803,7 +803,6 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
 
             self.enter_toggle = False
             self.Image_frame.canvas.focus_set()
-            #self.current_selection.focus_set()
             return
 
         # Standalone image viewer
@@ -838,10 +837,9 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.show_next_method(frame)
 
         if not self.show_next.get():
-            self.second_window.after(100, lambda: self.Image_frame.canvas.focus_set())
+            self.second_window.after(0, lambda: self.Image_frame.canvas.focus_set())
         else:
-            self.second_window.after(100, lambda: self.Image_frame.canvas.focus_set())
-            #self.current_selection.focus_set()
+            self.second_window.after(0, lambda: self.Image_frame.canvas.focus_set())
 
     def show_next_method(self, frame): # Record current and last gridsquares that have been "selected". Change their colours.
         self.current_selection = frame # Update current_selection
@@ -865,6 +863,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.Image_frame.close_window()
             self.after(0, self.Image_frame.destroy) # Gives it time to close
             del self.Image_frame
+        #if the viewer is closed when show next is on, disable show next.
 
     def filedialogselect(self, target, type):
         if type == "d":
