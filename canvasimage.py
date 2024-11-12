@@ -232,7 +232,12 @@ class CanvasImage:
     def control_key_press(self, event):
         if not self.gui.enter_toggle:
             self.control_pressed = True
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
+
 
             self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
             self.canvas.focus_set()
@@ -242,12 +247,23 @@ class CanvasImage:
     def control_key_release(self, event):
         if self.exit_lock:
             self.control_pressed = False
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
+
             self.last_state = "quickscroll"
             self.gui.enter_toggle = False
         elif not self.gui.enter_toggle:
             self.control_pressed = False
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
 
             #logger.debug(self.control_pressed)
             self.last_state = "quickzoom"
@@ -255,7 +271,13 @@ class CanvasImage:
     def shift_key_press(self, event):
         if not self.gui.enter_toggle:
             self.control_pressed = True
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
+
+            
             self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
             self.canvas.focus_set()
             #logger.debug(self.control_pressed)
@@ -263,8 +285,13 @@ class CanvasImage:
     def shift_key_release(self, event):      
         if not self.gui.enter_toggle:
             self.control_pressed = False
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
-    
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour,highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
+
             #logger.debug(self.control_pressed)
             self.last_state = "quickscroll"
 
@@ -632,11 +659,23 @@ class CanvasImage:
             flag = True
         if self.gui.show_next.get() and flag and not self.gui.enter_toggle:
             self.gui.enter_toggle = True
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
+
+            
             self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
         else:
             self.gui.enter_toggle = False
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
+            
             self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
 
     def __move_from(self, event): # Remember previous coordinates for scrolling with the mouse
@@ -747,7 +786,13 @@ class CanvasImage:
         self.canvas.scale('all', x, y, scale, scale)  # rescale all objects
 
     def focus_canvasimage(self):
-        self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+
+        #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
+
+
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.keystroke, event))
 
 
@@ -757,13 +802,24 @@ class CanvasImage:
         #On exiting the lock.
         #Colour image yellow if we press enter while its selected
         if event.keysym == "Return" and self.gui.show_next.get():
-            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
+
+            
             self.gui.enter_toggle = not self.gui.enter_toggle
             self.last_state = "Return" #unsure what does
 
         #if shift or cntrl not presed and image is unlocked, return og color and bind keys to navigator (grid viewer) (not canvasiamge)
         if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
-            self.gui.current_selection.canvas.configure(highlightcolor="blue", highlightbackground = "blue")
+            #self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
             self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.gui.navigator, event))
             if self.last_state == "quickzoom" or self.last_state == "quickscroll": #if we used scroll or zooming, dont just bind but run once.
                 self.canvas.after_idle(self.gui.navigator, event)
