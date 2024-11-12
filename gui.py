@@ -615,7 +615,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 img = imageobj.guidata['img']
 
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
-                               height=self.thumbnailsize,bg=self.square_colour, highlightthickness=self.square_border_size, highlightcolor=self.imageborder_selected_colour, highlightbackground = self.imageborder_default_colour) #The gridbox color.
+                               height=self.thumbnailsize,bg=self.square_colour, highlightthickness=self.square_border_size, highlightcolor=self.imageborder_default_colour, highlightbackground = self.imageborder_default_colour) #The gridbox color.
             canvas.grid(column=0, row=0, sticky="NSEW")
             #tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj)) #CHECK PROFILE
             #ToolTip(canvas,msg=tooltiptext.get,delay=1) #CHECK PROFILE
@@ -729,7 +729,10 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.__previous_state = event.state    # remember the last keystroke state
             items_per_row = int(max(1, self.imagegrid.winfo_width() / self.actual_gridsquare_width))
             items_per_rowy = int(max(1, self.imagegrid.winfo_height() / self.actual_gridsquare_height))
-            current_index = self.displayedlist.index(self.current_selection)
+            if self.current_selection in self.displayedlist:
+                current_index = self.displayedlist.index(self.current_selection)
+            else:
+                return
             last_row = max(0,floor((current_index) / items_per_row))
             list_length = len(self.displayedlist)
 
