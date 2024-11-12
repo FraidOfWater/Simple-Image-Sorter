@@ -213,6 +213,7 @@ class CanvasImage:
         # Handle keystrokes in idle mode, because program slows down on a weak computers,
         # when too many key stroke events in the same time
         self.canvas.bind('<Key>', lambda event: self.canvas.after_idle(self.key_listener, event))
+        self.canvas.bind('<space>', lambda event: self.canvas.after_idle(self.on_spacebar, event))
 
         self.canvas.bind('<KeyPress-Control_L>', lambda event: self.control_key_press(event))
         self.canvas.bind('<KeyRelease-Control_L>', lambda event: self.control_key_release(event))
@@ -228,12 +229,19 @@ class CanvasImage:
             self.__image.close()
         except Exception as e:
             logger.error(f"Error in destroy displayimage: {e}")
-
+    
+    def on_spacebar(self, event):
+        print("test")
+        if self.gui.current_selection.obj.checked.get():
+            self.gui.current_selection.obj.checked.set(False)
+        else:
+            self.gui.current_selection.obj.checked.set(True)
+            
     def control_key_press(self, event):
         if not self.gui.enter_toggle:
             self.control_pressed = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -248,7 +256,7 @@ class CanvasImage:
         if self.exit_lock:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -259,7 +267,7 @@ class CanvasImage:
         elif not self.gui.enter_toggle:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -272,7 +280,7 @@ class CanvasImage:
         if not self.gui.enter_toggle:
             self.control_pressed = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -286,7 +294,7 @@ class CanvasImage:
         if not self.gui.enter_toggle:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour,highlightcolor = self.gui.imageborder_selected_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -660,7 +668,7 @@ class CanvasImage:
         if self.gui.show_next.get() and flag and not self.gui.enter_toggle:
             self.gui.enter_toggle = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -670,7 +678,7 @@ class CanvasImage:
         else:
             self.gui.enter_toggle = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -787,7 +795,7 @@ class CanvasImage:
 
     def focus_canvasimage(self):
         self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-        #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
         #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
         #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -803,7 +811,7 @@ class CanvasImage:
         #Colour image yellow if we press enter while its selected
         if event.keysym == "Return" and self.gui.show_next.get():
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
-            #self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -814,7 +822,7 @@ class CanvasImage:
 
         #if shift or cntrl not presed and image is unlocked, return og color and bind keys to navigator (grid viewer) (not canvasiamge)
         if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
-            #self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
             self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
