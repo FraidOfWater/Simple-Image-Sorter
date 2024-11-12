@@ -233,6 +233,7 @@ class SortImages:
                     self.threads = jprefs['threads']
                 if 'autosave_session' in jprefs:
                     self.autosave = jprefs['autosave_session']
+
                 #Customization
                 if "checkbox_height" in jprefs:
                     self.gui.checkbox_height = int(jprefs["checkbox_height"])
@@ -240,14 +241,12 @@ class SortImages:
                     self.gui.gridsquare_padx = int(jprefs["gridsquare_padx"])
                 if "gridsquare_pady" in jprefs:
                     self.gui.gridsquare_pady = int(jprefs["gridsquare_pady"])
-                if "text_box_thickness" in jprefs:
-                    self.gui.text_box_thickness = int(jprefs["text_box_thickness"])
-                if "image_border_thickness" in jprefs:
-                    self.gui.image_border_thickness = int(jprefs["image_border_thickness"])
+
                 if "text_box_colour" in jprefs:
                     self.gui.text_box_colour = jprefs["text_box_colour"]
                 if "text_box_selection_colour" in jprefs:
                     self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
+                    
                 if "imageborder_default_colour" in jprefs:
                     self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]
                 if "imageborder_selected_colour" in jprefs:
@@ -258,24 +257,44 @@ class SortImages:
                 #Window colours
                 if "main_colour" in jprefs:
                     self.gui.main_colour = jprefs["main_colour"]
-                if "square_colour" in jprefs:
-                    self.gui.square_colour = jprefs["square_colour"]
                 if "grid_background_colour" in jprefs:
                     self.gui.grid_background_colour = jprefs["grid_background_colour"]
                 if "canvasimage_background" in jprefs:
                     self.gui.canvasimage_background = jprefs["canvasimage_background"]
-                if "text_colour" in jprefs:
-                    self.gui.text_colour = jprefs["text_colour"]
-                if "pressed_text_colour" in jprefs:
-                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
+
+                if "whole_box_size" in jprefs:
+                    self.gui.whole_box_size = jprefs["whole_box_size"]
+                if "square_border_size" in jprefs:
+                    self.gui.square_border_size = int(jprefs["square_border_size"])
+                if "square_colour" in jprefs:
+                    self.gui.square_colour = jprefs["square_colour"]
+                if "square_text_colour" in jprefs:
+                    self.gui.square_text_colour = jprefs["square_text_colour"]
+                if "square_text_box_colour" in jprefs:
+                    self.gui.square_text_box_colour = jprefs["square_text_box_colour"]
+                if "imagebox_default_colour" in jprefs:
+                    self.gui.imagebox_default_colour = jprefs["imagebox_default_colour"]
+                if "imagebox_selection_colour" in jprefs:
+                    self.gui.imagebox_selection_colour = jprefs["imagebox_selection_colour"]
+
                 if "button_colour" in jprefs:
                     self.gui.button_colour = jprefs["button_colour"]
                 if "button_press_colour" in jprefs:
                     self.gui.button_press_colour = jprefs["button_press_colour"]
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs["text_colour"]
+                if "pressed_text_colour" in jprefs:
+                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
+
                 if "text_field_colour" in jprefs:
                     self.gui.text_field_colour = jprefs["text_field_colour"]
                 if "text_field_text_colour" in jprefs:
                     self.gui.text_field_text_colour = jprefs["text_field_text_colour"]
+                if "text_field_activated_colour" in jprefs:
+                    self.gui.text_field_activated_colour = jprefs["text_field_activated_colour"]
+                if "text_field_activated_text_colour" in jprefs:
+                    self.gui.text_field_activated_text_colour = jprefs["text_field_activated_text_colour"]
+
                 if "pane_divider_colour" in jprefs:
                     self.gui.pane_divider_colour = jprefs["pane_divider_colour"]
                 #GUI CONTROLLED PREFRENECES
@@ -295,6 +314,7 @@ class SortImages:
                     self.gui.dock_view.set(jprefs["dock_view"])
                 if "dock_side" in jprefs:
                     self.gui.dock_side.set(jprefs["dock_side"])
+
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -353,9 +373,6 @@ class SortImages:
             "gridsquare_padx":gui.gridsquare_padx,
             "gridsquare_pady":gui.gridsquare_pady,
 
-            "text_box_thickness":gui.text_box_thickness,
-            "image_border_thickness":gui.image_border_thickness,
-
             "text_box_colour":gui.text_box_colour,
             "text_box_selection_colour":gui.text_box_selection_colour,
 
@@ -365,19 +382,28 @@ class SortImages:
 
             #Window colours
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
+
             "main_colour":gui.main_colour,
-            "square_colour":gui.square_colour,
             "grid_background_colour":gui.grid_background_colour,
             "canvasimage_background":gui.canvasimage_background,
 
-            "text_colour":gui.text_colour,
-            "pressed_text_colour":gui.pressed_text_colour,
+            "whole_box_size":gui.whole_box_size,
+            "square_border_size":gui.square_border_size,
+            "square_colour":gui.square_colour,
+            "square_text_colour":gui.square_text_colour,
+            "square_text_box_colour":gui.square_text_box_colour,
+            "imagebox_default_colour":gui.imagebox_default_colour,
+            "imagebox_selection_colour":gui.imagebox_selection_colour,
 
             "button_colour":gui.button_colour,
             "button_press_colour":gui.button_press_colour,
+            "text_colour":gui.text_colour,
+            "pressed_text_colour":gui.pressed_text_colour,
 
             "text_field_colour":gui.text_field_colour,
             "text_field_text_colour":gui.text_field_text_colour,
+            "text_field_activated_colour":gui.text_field_activated_colour,
+            "text_field_activated_text_colour":gui.text_field_activated_text_colour,
 
             "pane_divider_colour":gui.pane_divider_colour,
 
@@ -505,6 +531,8 @@ class SortImages:
         # cant find displayedimag at index. remove frame colours.
         if self.gui.current_selection in self.gui.displayedlist:
             if self.gui.displayedlist.index(self.gui.current_selection) != self.gui.current_selection and not self.gui.show_next.get():
+                self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+
                 self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
             else:
                 # If we have something selected, and if that someting is not the same picture as the one displayed
@@ -650,10 +678,20 @@ class SortImages:
         if self.gui.show_next.get() and self.gui.displayedlist[index_before_move] != self.gui.current_selection:
 
             previous_selection = self.gui.current_selection # Restore old frame's frame.
-            previous_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.canvas.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            #previous_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #previous_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_default_colour)
+
 
             self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
-            self.gui.current_selection.canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
+            self.gui.current_selection.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
 
             self.gui.last_selection = self.gui.current_selection
             self.gui.displayimage(self.gui.current_selection, False) # The flag solves a performance issue when auto loading images very very fast. I do not know why.
@@ -814,7 +852,10 @@ class SortImages:
                 gridsquare.obj.framecount = img.n_frames
 
                 if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
-                    raise Exception(f"Found static: {gridsquare.obj.name.get()[:30]}")
+                    print(f"Found static gif/webp: {gridsquare.obj.name.get()[:30]}")
+                    gridsquare.obj.isanimated = False
+                    print(gridsquare.obj.isanimated, gridsquare.obj.framecount)
+                    return
                 frame_frametime = img.info.get('duration',gridsquare.obj.delay)
                 if frame_frametime == 0:
                     gridsquare.obj.delay = gridsquare.obj.delay
@@ -827,7 +868,7 @@ class SortImages:
                     frame = img.copy()
                     frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
                     if frame_frametime == 0:
-                        print("Bugged animation frametimes. Using default_delay.")
+                        print(f"Bugged animation frametimes. Using default_delay. {gridsquare.obj.name.get()[:30]}")
                         frame_frametime = gridsquare.obj.delay # Replace with default_delay
                     gridsquare.obj.frametimes.append(frame_frametime)
                     frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
