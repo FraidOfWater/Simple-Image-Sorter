@@ -270,14 +270,20 @@ class SortImages:
                     self.gui.square_colour = jprefs["square_colour"]
                 if "square_text_colour" in jprefs:
                     self.gui.square_text_colour = jprefs["square_text_colour"]
+
                 if "square_text_box_colour" in jprefs:
                     self.gui.square_text_box_colour = jprefs["square_text_box_colour"]
                 if "square_text_box_selection_colour" in jprefs:
                     self.gui.square_text_box_selection_colour = jprefs["square_text_box_selection_colour"]
+                if "square_text_box_locked_colour" in jprefs:
+                    self.gui.square_text_box_locked_colour = jprefs["square_text_box_locked_colour"]
+
                 if "imagebox_default_colour" in jprefs:
                     self.gui.imagebox_default_colour = jprefs["imagebox_default_colour"]
                 if "imagebox_selection_colour" in jprefs:
                     self.gui.imagebox_selection_colour = jprefs["imagebox_selection_colour"]
+                if "imagebox_locked_colour" in jprefs:
+                    self.gui.imagebox_locked_colour = jprefs["imagebox_locked_colour"]
 
                 if "button_colour" in jprefs:
                     self.gui.button_colour = jprefs["button_colour"]
@@ -393,10 +399,14 @@ class SortImages:
             "square_border_size":gui.square_border_size,
             "square_colour":gui.square_colour,
             "square_text_colour":gui.square_text_colour,
+
             "square_text_box_colour":gui.square_text_box_colour,
             "square_text_box_selection_colour":gui.square_text_box_selection_colour,
+            "square_text_box_locked_colour":gui.square_text_box_locked_colour,
+
             "imagebox_default_colour":gui.imagebox_default_colour,
             "imagebox_selection_colour":gui.imagebox_selection_colour,
+            "imagebox_locked_colour":gui.imagebox_locked_colour,
 
             "button_colour":gui.button_colour,
             "button_press_colour":gui.button_press_colour,
