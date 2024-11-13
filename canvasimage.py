@@ -242,6 +242,9 @@ class CanvasImage:
             self.control_pressed = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
+
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -257,6 +260,8 @@ class CanvasImage:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -268,6 +273,8 @@ class CanvasImage:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -281,6 +288,8 @@ class CanvasImage:
             self.control_pressed = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -295,6 +304,8 @@ class CanvasImage:
             self.control_pressed = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour,highlightcolor = self.gui.imageborder_selected_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -669,6 +680,8 @@ class CanvasImage:
             self.gui.enter_toggle = True
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -679,6 +692,8 @@ class CanvasImage:
             self.gui.enter_toggle = False
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
@@ -796,6 +811,8 @@ class CanvasImage:
     def focus_canvasimage(self):
         self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
         self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+        self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+        self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
         #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
         #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -812,6 +829,8 @@ class CanvasImage:
         if event.keysym == "Return" and self.gui.show_next.get():
             self.gui.current_selection.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
             self.gui.current_selection.canvas.configure(highlightbackground = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_locked_colour, highlightcolor = self.gui.imageborder_locked_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_locked_colour)
@@ -824,6 +843,8 @@ class CanvasImage:
         if not self.gui.enter_toggle and self.gui.show_next.get() and not event.state & 0x4 and not event.state & 0x1:
             self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
             self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_selected_colour, highlightbackground = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
