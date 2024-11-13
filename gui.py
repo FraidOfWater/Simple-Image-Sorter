@@ -97,71 +97,33 @@ class GUIManager(tk.Tk):
         #threads # Exlusively for fileManager
         #autosave # Exlusively for fileManager
 
-        #Customization (MISC)
+        #Customization (MISC) (PADDING AND COLOR FOR IMAGE CONTAINER)
         self.checkbox_height = 25
         self.gridsquare_padx = 2
         self.gridsquare_pady = 2
-
-        #defaults
-        self.square_border_size =           2
-        self.whole_box_size =               0
-
         self.text_box_colour =                  "white"
         self.text_box_selection_colour  =       "blue"
-        self.imageborder_default_colour =       "white"
+        self.imageborder_default_colour =       "#303276"
         self.imageborder_selected_colour =      "blue"
         self.imageborder_locked_colour =        "yellow"
 
-        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.square_border_size + self.square_border_size
-        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
-
-        #Window colours
+        #DEFAULT Customizations
         # Dark Mode
-        """
-        self.main_colour =              'black'
-        self.grid_background_colour =   'black'
-        self.canvasimage_background =   'black'
 
-        self.square_colour =            'black'
-        self.square_text_box_colour =   'black'
-        self.square_text_colour =       'white'
-
-        self.square_border_size =           2
-        self.whole_box_size =               0
-        self.imageborder_default_colour =   self.square_colour
-        self.imageborder_selected_colour =  "blue"
-        self.imageborder_locked_colour =    "yellow"
-        self.imagebox_default_colour =      self.square_colour
-        self.imagebox_selection_colour =    self.square_colour
-        
-        self.button_colour =            'black'
-        self.button_press_colour =      'black'
-        self.text_colour =              'white'
-        self.pressed_text_colour =      'white'
-
-        self.text_field_colour =        'black'
-        self.text_field_text_colour =   'white'
-        self.text_field_activated_colour =      'white'
-        self.text_field_activated_text_colour = 'black'
-
-        self.pane_divider_colour =      'grey'
-        """
-        """
-        # Midnight Blue
+        # Midnight Blue (BRIGHT SELECTION)
         self.main_colour =              '#202041'
         self.grid_background_colour =   '#303276'
         self.canvasimage_background =   '#141433'
 
-        self.square_colour =            '#888BF8'
-        self.square_text_box_colour =   '#303276'
-        self.square_text_colour =       'white'
+        self.whole_box_size =               0 #Selection border on or off
+        self.square_border_size =           0
 
-        self.square_border_size =           2
-        self.whole_box_size =               0
-        self.imageborder_default_colour =   "white"
-        self.imageborder_selected_colour =  "#1FCC30"
-        self.imageborder_locked_colour =    "yellow"
-        self.imagebox_default_colour =      self.square_colour
+        self.square_colour =            '#303276'
+        self.square_text_colour =       'white'
+        self.square_text_box_colour =   '#303276'
+        self.square_text_box_selection_colour = "#888BF8"
+
+        self.imagebox_default_colour =      "#303276"
         self.imagebox_selection_colour =    "#888BF8"
         
         self.button_colour =            '#24255C'
@@ -175,42 +137,6 @@ class GUIManager(tk.Tk):
         self.text_field_activated_text_colour = 'black'
 
         self.pane_divider_colour =      'grey'
-        """
-
-        #"""
-        # White
-        
-        self.main_colour =              'lightgrey'
-        self.grid_background_colour =   '#a9a9a9'
-        self.canvasimage_background =   '#a9a9a9'
-
-        self.square_colour =            'lightgrey'
-        self.square_text_box_colour =   'lightgrey'
-        self.square_text_colour =       'black'
-
-        self.square_border_size =           0
-        self.whole_box_size =               2
-        self.gridsquare_padx = 1
-        self.gridsquare_pady = 1
-
-        self.imageborder_default_colour =   "#a9a9a9"
-        self.imageborder_selected_colour =  "blue"
-        self.imageborder_locked_colour =    "yellow"
-        self.imagebox_default_colour =      self.square_colour
-        self.imagebox_selection_colour =    self.square_colour
-        
-        self.button_colour =            'lightgrey'
-        self.button_press_colour =      'lightgrey'
-        self.text_colour =              'black'
-        self.pressed_text_colour =      'black'
-
-        self.text_field_colour =        '#a9a9a9'
-        self.text_field_text_colour =   'black'
-        self.text_field_activated_colour =      'white'
-        self.text_field_activated_text_colour = 'black'
-
-        self.pane_divider_colour =      'grey'
-        #"""
 
         #GUI CONTROLLED PREFRENECES
         self.squaresperpage = tk.IntVar()
@@ -282,6 +208,9 @@ class GUIManager(tk.Tk):
         #Buttons list
         self.buttons = []
 
+        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.square_border_size + self.square_border_size
+        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
+
     def initialize(self): #Initializating GUI
         global throttle_time
         throttle_time = self.throttle_time
@@ -294,6 +223,8 @@ class GUIManager(tk.Tk):
         self.style = style
         style.configure('Theme_dividers.TPanedwindow', background=self.pane_divider_colour)  # Panedwindow, the divider colour.
         style.configure("Theme_square.TCheckbutton", background=self.square_text_box_colour, foreground=self.square_text_colour) # Theme for Square
+        style.configure("Theme_square2.TCheckbutton", background=self.square_text_box_selection_colour, foreground=self.square_text_colour) # Theme for Square
+
         style.configure("Theme_checkbox.TCheckbutton", background=self.main_colour, foreground=self.text_colour, highlightthickness = 0) # Theme for checkbox
 
         # Paned window that holds the almost top level stuff.
@@ -639,6 +570,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             check_frame.grid_propagate(False)
             check_frame.grid(column=0, row=1, sticky="EW")  # Place the frame in the grid
             
+            frame.cf = check_frame
             #bar = tk.Frame(frame, width=self.thumbnailsize, height = 3, bg=self.grid_background_colour)
             #bar.grid_propagate(False)
             #bar.grid(column=0, row=1, sticky="EW")
@@ -656,7 +588,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
                     {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True}) #"tooltip":tooltiptext
-
+            frame.c = check
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
@@ -704,6 +636,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.Image_frame.focus_canvasimage()
             self.current_selection.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour)
             self.current_selection.canvas.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
+            self.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.current_selection.cf.configure(bg=self.square_text_box_selection_colour)
             #self.current_selection.bar.configure(bg = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
 
             #self.current_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_locked_colour)
@@ -942,11 +876,15 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         if self.last_selection and self.last_selection != self.current_selection and not hasattr(self, 'destwindow'): # Restore old frame's frame.
             self.last_selection.configure(highlightcolor = self.imageborder_default_colour,  highlightbackground = self.imageborder_default_colour)
             self.last_selection.canvas.configure(bg=self.imagebox_default_colour, highlightcolor=self.imageborder_default_colour, highlightbackground = self.imageborder_default_colour)
+            self.last_selection.c.configure(style="Theme_square.TCheckbutton")
+            self.last_selection.cf.configure(bg=self.square_text_box_colour)
             #self.last_selection.bar.configure(bg = self.imagebox_default_colour, highlightcolor = self.imagebox_default_colour)
             #self.last_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_default_colour)
         if not hasattr(self, 'destwindow'):
             self.current_selection.configure(highlightcolor = self.imageborder_selected_colour, highlightbackground = self.imageborder_selected_colour)
             self.current_selection.canvas.configure(bg=self.imagebox_selection_colour, highlightbackground = self.imageborder_selected_colour, highlightcolor = self.imageborder_selected_colour) # Change new frame's frame
+            self.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.current_selection.cf.configure(bg=self.square_text_box_selection_colour)
             #self.current_selection.bar.configure(bg = self.imageborder_selected_colour, highlightcolor = self.imageborder_selected_colour)
             #self.current_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_selected_colour)
             self.last_selection = self.current_selection # Update last_selection
