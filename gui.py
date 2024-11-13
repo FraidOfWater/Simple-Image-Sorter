@@ -122,9 +122,11 @@ class GUIManager(tk.Tk):
         self.square_text_colour =       'white'
         self.square_text_box_colour =   '#303276'
         self.square_text_box_selection_colour = "#888BF8"
+        self.square_text_box_locked_colour =    "#202041"
 
         self.imagebox_default_colour =      "#303276"
         self.imagebox_selection_colour =    "#888BF8"
+        self.imagebox_locked_colour =       "#202041"
         
         self.button_colour =            '#24255C'
         self.button_press_colour =      '#303276'
@@ -223,7 +225,8 @@ class GUIManager(tk.Tk):
         self.style = style
         style.configure('Theme_dividers.TPanedwindow', background=self.pane_divider_colour)  # Panedwindow, the divider colour.
         style.configure("Theme_square.TCheckbutton", background=self.square_text_box_colour, foreground=self.square_text_colour) # Theme for Square
-        style.configure("Theme_square2.TCheckbutton", background=self.square_text_box_selection_colour, foreground=self.square_text_colour) # Theme for Square
+        style.configure("Theme_square2.TCheckbutton", background=self.square_text_box_selection_colour, foreground=self.square_text_colour) # Theme for Square (selected)
+        style.configure("Theme_square3.TCheckbutton", background=self.square_text_box_locked_colour, foreground=self.square_text_colour) # Theme for Square (locked)
 
         style.configure("Theme_checkbox.TCheckbutton", background=self.main_colour, foreground=self.text_colour, highlightthickness = 0) # Theme for checkbox
 
@@ -636,8 +639,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.Image_frame.focus_canvasimage()
             self.current_selection.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour)
             self.current_selection.canvas.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
-            self.current_selection.c.configure(style="Theme_square2.TCheckbutton")
-            self.current_selection.cf.configure(bg=self.square_text_box_selection_colour)
+            self.current_selection.c.configure(style="Theme_square3.TCheckbutton")
+            self.current_selection.cf.configure(bg=self.square_text_box_locked_colour)
             #self.current_selection.bar.configure(bg = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
 
             #self.current_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_locked_colour)
