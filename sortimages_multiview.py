@@ -272,6 +272,8 @@ class SortImages:
                     self.gui.square_text_colour = jprefs["square_text_colour"]
                 if "square_text_box_colour" in jprefs:
                     self.gui.square_text_box_colour = jprefs["square_text_box_colour"]
+                if "square_text_box_selection_colour" in jprefs:
+                    self.gui.square_text_box_selection_colour = jprefs["square_text_box_selection_colour"]
                 if "imagebox_default_colour" in jprefs:
                     self.gui.imagebox_default_colour = jprefs["imagebox_default_colour"]
                 if "imagebox_selection_colour" in jprefs:
@@ -392,6 +394,7 @@ class SortImages:
             "square_colour":gui.square_colour,
             "square_text_colour":gui.square_text_colour,
             "square_text_box_colour":gui.square_text_box_colour,
+            "square_text_box_selection_colour":gui.square_text_box_selection_colour,
             "imagebox_default_colour":gui.imagebox_default_colour,
             "imagebox_selection_colour":gui.imagebox_selection_colour,
 
@@ -532,6 +535,8 @@ class SortImages:
         if self.gui.current_selection in self.gui.displayedlist:
             if self.gui.displayedlist.index(self.gui.current_selection) != self.gui.current_selection and not self.gui.show_next.get():
                 self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+                self.gui.current_selection.c.configure(style="Theme_square.TCheckbutton")
+                self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_colour)
 
                 self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
             else:
@@ -680,6 +685,9 @@ class SortImages:
             previous_selection = self.gui.current_selection # Restore old frame's frame.
             previous_selection.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
             previous_selection.canvas.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.cf.configure(bg=self.gui.square_text_box_colour)
+            previous_selection.c.configure(style="Theme_square.TCheckbutton")
+
             #previous_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #previous_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_default_colour)
@@ -688,6 +696,8 @@ class SortImages:
             self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
             self.gui.current_selection.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
             self.gui.current_selection.canvas.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
             #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
 
             #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
