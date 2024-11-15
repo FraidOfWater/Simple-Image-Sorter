@@ -71,24 +71,25 @@ class Imagefile:
 
     def move(self, x, assigned, moved) -> str:
         destpath = self.dest
-        do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
 
         if destpath != "" and os.path.isdir(destpath):
             file_name = self.name.get()
+
+            # Check for name conflicts (source -> destination)
             exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
             if exists_already_in_destination:
-                if do_not_move_if_exists:
-                    logger.warning(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
-                    return ("") # Returns if 1. Would overwrite someone
+                print(f"File {self.name.get()[:30]} already exists at destination. Cancelling move.")
+                return ("") # Returns if 1. Would overwrite someone
+            
             try:
                 new_path = os.path.join(destpath, file_name)
-                old_path = os.path.join(self.path, file_name)
+                old_path = self.path
 
-                shutil.move(self.path, new_path) # Try to move, fails if 1. Locked
+                # Throws exception when image is open.
+                shutil.move(self.path, new_path)
 
-                # If above functons and checks fail, these below won't get set. As designed
                 assigned.remove(x)
-                moved.append(x) # Moves from assigned to moved ?
+                moved.append(x)
 
                 self.moved = True
                 self.show = False
@@ -106,15 +107,25 @@ class Imagefile:
                 return returnstr
 
             except Exception as e:
-                logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
-
-                if os.path.exists(new_path) and os.path.exists(old_path): # shuti.move has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
+                # Shutil failed. Delete the copy from destination, leaving the original at source.
+                # This only runs if shutil fails, meaning the image couldn't be deleted from source.
+                # It is therefore safe to delete the destination copy.
+                if os.path.exists(new_path) and os.path.exists(old_path):
                     os.remove(new_path)
-                    logger.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
+                    print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
+                    return ""
+                else:
+                    logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+                    
+                    #self.guidata["frame"].configure(
+                    #highlightbackground="red", highlightthickness=2)
+                    #return ("Error moving: %s . File: %s", e, self.name.get())
+                    return ""
 
-                self.guidata["frame"].configure(
-                    highlightbackground="red", highlightthickness=2)
-                return ("Error moving: %s . File: %s", e, self.name.get())
+                
+
+
+                
 
     def setid(self, id):
         self.id = id
@@ -459,13 +470,16 @@ class SortImages:
 
         assigned = self.gui.assigned_squarelist
         moved = self.gui.moved_squarelist
+        temp = self.gui.assigned_squarelist.copy()
+        for x in temp:
+            try:
+                out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
 
-        for x in self.gui.assigned_squarelist:
-            out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
-
-            if isinstance(out, str):
-                loglist.append(out)
-
+                if isinstance(out, str):
+                    loglist.append(out)
+            except Exception as e:
+                print("Carry on")
+        temp.clear()
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
 
@@ -538,7 +552,7 @@ class SortImages:
         elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
             self.last_call_time = current_time
         else:
-            print("Victim of throttling")
+            #print("Victim of throttling")
             return
         index_before_move = -1
         # cant find displayedimag at index. remove frame colours.
@@ -717,19 +731,27 @@ class SortImages:
             self.gui.displayimage(self.gui.current_selection, False) # The flag solves a performance issue when auto loading images very very fast. I do not know why.
 
     def savesession(self,asksavelocation):
+
         print("Saving session, Goodbye!")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
         else:
             savelocation = self.gui.sessionpathvar.get()
+
         if len(self.imagelist) > 0:
             imagesavedata = []
+
             for obj in self.imagelist:
                 if hasattr(obj, 'thumbnail'):
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
+                if hasattr(obj, 'isanimated'):
+                    if obj.isanimated:
+                        isanimated = True
+                    else:
+                        isanimated = False
                 imagesavedata.append({
                     "name": obj.name.get(),
                     "file_size": obj.file_size,
@@ -740,9 +762,9 @@ class SortImages:
                     "moved": obj.moved,
                     "thumbnail": thumb,
                     "dupename": obj.dupename,
+                    "isanimated": isanimated,
                     })
-                if obj.isanimated:
-                    imagesavedata.append({"isanimated": obj.isanimated,})
+    
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
