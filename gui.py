@@ -655,7 +655,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
             self.last_call_time = current_time
         else:
-            print("Victim of throttler")
+            #print("Victim of throttler")
             return
         """Throttling"""
 
@@ -756,9 +756,9 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                     if current_row >= list_length-items_per_rowy:
                         self.imagegrid.yview_moveto(1)
                         return
-                    print(current_row+1, last_visible_index)
+                    #print(current_row+1, last_visible_index)
                     if current_row > floor(last_visible_index):
-                        print("act") #current row +1
+                        #print("act") #current row +1
                         #self.imagegrid.yview_scroll(1, "units")  # Scroll down one unit # non page
                         target_scroll = (current_row-items_per_rowy) / total_rows
                         self.imagegrid.yview_moveto(target_scroll)
@@ -1672,7 +1672,7 @@ def throttled_yview(widget, page_mode, *args):
     #    else:
     #        print("GET THROTTLED IDIOT!!!!!")
     #        return
-    print(len(flag1))
+    #print(len(flag1))
 
 
     if len(flag1) > flag_len:
