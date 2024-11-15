@@ -81,6 +81,10 @@ class GUIManager(tk.Tk):
         self.destination_folder = ""
         self.sessionpathvar = tk.StringVar()
 
+        self.images_sorted = tk.StringVar(value="0")
+        self.images_left = tk.StringVar(value="0")
+        self.images_left_and_assigned = tk.StringVar(value="0/0")
+
         #Preferences
         self.thumbnailsize = 256
         self.hotkeys = "123456qwerty7890uiopasdfghjklzxcvbnm"
@@ -344,6 +348,29 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         self.buttonframe.grid(column=0, row=3, sticky="NSEW")
         self.buttonframe.columnconfigure(0, weight=1)
 
+        self.leftui.rowconfigure(300, weight=1)
+        self.counterframe = tk.Frame(self.leftui, bg=self.main_colour)
+        self.counterframe.grid(column=0, row=300, sticky="NSEW")
+        self.counterframe.columnconfigure(0, weight=1)
+        self.counterframe.rowconfigure(0, weight=1)
+
+        self.counter = tk.Frame(self.counterframe, bg="yellow", width = 50, height = 25)
+        self.counter.grid(column=0, row=0, sticky="se")
+        self.counter.columnconfigure(0, weight=1)
+        self.counter.rowconfigure(0, weight=1)
+
+        self.panel11 = tk.Label(self.counter, justify="left", bg="purple",fg=self.text_colour, text="Images sorted  :   ")
+        self.panel11.grid(column = 0, row = 0, sticky="NSEW")
+
+        self.panel1 = tk.Label(self.counter, justify="left", bg="purple",fg=self.text_colour, textvariable=self.images_sorted)
+        self.panel1.grid(column = 1, row = 0, sticky="NSEW")
+
+        self.panel22 = tk.Label(self.counter, justify="left", bg="purple",fg=self.text_colour, text="Images left    :   ")
+        self.panel22.grid(column = 0, row = 1, sticky="NSEW")
+
+        self.panel2 = tk.Label(self.counter, justify="left", bg="purple",fg=self.text_colour, textvariable=self.images_left_and_assigned)
+        self.panel2.grid(column = 1, row = 1, sticky="NSEW")
+        
         self.entryframe = tk.Frame(master=self.leftui,bg=self.main_colour)
         self.entryframe.columnconfigure(1, weight=1)
         self.entryframe.grid(row=0, column=0, sticky="ew")
