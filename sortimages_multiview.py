@@ -105,7 +105,6 @@ class Imagefile:
                 self.assigned = False
                 self.moved = True
                 return returnstr
-
             except Exception as e:
                 # Shutil failed. Delete the copy from destination, leaving the original at source.
                 # This only runs if shutil fails, meaning the image couldn't be deleted from source.
@@ -113,19 +112,13 @@ class Imagefile:
                 if os.path.exists(new_path) and os.path.exists(old_path):
                     os.remove(new_path)
                     print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
-                    return ""
+                    return "Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)"
                 else:
                     logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
-                    
-                    #self.guidata["frame"].configure(
-                    #highlightbackground="red", highlightthickness=2)
-                    #return ("Error moving: %s . File: %s", e, self.name.get())
-                    return ""
 
-                
-
-
-                
+                self.guidata["frame"].configure(
+                    highlightbackground="red", highlightthickness=2)
+                return ("Error moving: %s . File: %s", e, self.name.get())
 
     def setid(self, id):
         self.id = id
@@ -517,7 +510,7 @@ class SortImages:
                 if ext in supported_formats:
                     imgfile = Imagefile(name, os.path.join(root, name))
                     if ext == "gif" or ext == "webp":
-                        imgfile.isanimated = True
+                        imgfile. = True
                     if name in existing:
                         duplicates.append(imgfile)
                         imgfile.dupename=True
@@ -546,7 +539,7 @@ class SortImages:
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
-                unassigned_animated = [item for item in unassign if item.obj.isanimated]
+                unassigned_animated = [item for item in unassign if item.obj.]
                 return unassigned_animated
             else:
                 return unassign
@@ -761,7 +754,7 @@ class SortImages:
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
-                if hasattr(obj, 'isanimated'):
+                if hasattr(obj, ''):
                     if obj.isanimated:
                         isanimated = True
                     else:
