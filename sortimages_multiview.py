@@ -471,6 +471,16 @@ class SortImages:
         assigned = self.gui.assigned_squarelist
         moved = self.gui.moved_squarelist
         temp = self.gui.assigned_squarelist.copy()
+        reopen = "none"
+        if hasattr(self.gui, "second_window"):
+            self.gui.save_viewer_geometry()
+            flag = "window"
+        elif hasattr(self.gui, "Image_frame"):
+            self.gui.Image_frame.close_window()
+            self.gui.after(0, self.gui.Image_frame.destroy)
+            del self.gui.Image_frame
+            flag = "dock"
+        
         for x in temp:
             try:
                 out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
@@ -482,6 +492,10 @@ class SortImages:
         temp.clear()
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
+        if flag == "window":
+            self.gui.displayimage(self.gui.current_selection)
+        elif flag =="dock":
+            self.gui.displayimage(self.gui.current_selection)
 
         try:
             if len(loglist) > 0:
