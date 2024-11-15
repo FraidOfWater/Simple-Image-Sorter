@@ -69,7 +69,7 @@ class Imagefile:
         self.delay = 100 #Default delay
         self.id = None
 
-    def move(self, x, assigned, moved) -> str:
+    def move(self, x, assigned, moved, gui) -> str:
         destpath = self.dest
 
         if destpath != "" and os.path.isdir(destpath):
@@ -104,6 +104,9 @@ class Imagefile:
                 self.dest = ""
                 self.assigned = False
                 self.moved = True
+                gui.images_left.set(int(gui.images_left.get())-1)
+                gui.images_left_and_assigned.set(f"{len(assigned)}/{int(gui.images_left.get())}")
+                gui.images_sorted.set(int(gui.images_sorted.get())+1)
                 return returnstr
             except Exception as e:
                 # Shutil failed. Delete the copy from destination, leaving the original at source.
@@ -111,6 +114,7 @@ class Imagefile:
                 # It is therefore safe to delete the destination copy.
                 if os.path.exists(new_path) and os.path.exists(old_path):
                     os.remove(new_path)
+                    print(e)
                     print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
                     return "Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)"
                 else:
@@ -338,6 +342,8 @@ class SortImages:
                     self.gui.leftpane_width = int(jprefs["leftpane_width"])
                 if "middlepane_width" in jprefs:
                     self.gui.middlepane_width = int(jprefs["middlepane_width"])
+                if "images_sorted" in jprefs:
+                    self.gui.images_sorted.set(jprefs["images_sorted"])
 
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
@@ -442,6 +448,7 @@ class SortImages:
             "destpane_geometry":gui.destpane_geometry,
             "leftpane_width":gui.leftui.winfo_width(),
             "middlepane_width":gui.middlepane_width,
+            "images_sorted":gui.images_sorted.get(),
 
             }
 
@@ -467,16 +474,16 @@ class SortImages:
         reopen = "none"
         if hasattr(self.gui, "second_window"):
             self.gui.save_viewer_geometry()
-            flag = "window"
+            reopen = "window"
         elif hasattr(self.gui, "Image_frame"):
             self.gui.Image_frame.close_window()
             self.gui.after(0, self.gui.Image_frame.destroy)
             del self.gui.Image_frame
-            flag = "dock"
+            reopen = "dock"
         
         for x in temp:
             try:
-                out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
+                out = x.obj.move(x, assigned, moved, self.gui) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
 
                 if isinstance(out, str):
                     loglist.append(out)
@@ -485,9 +492,9 @@ class SortImages:
         temp.clear()
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
-        if flag == "window":
+        if reopen == "window":
             self.gui.displayimage(self.gui.current_selection)
-        elif flag =="dock":
+        elif reopen =="dock":
             self.gui.displayimage(self.gui.current_selection)
 
         try:
@@ -510,7 +517,7 @@ class SortImages:
                 if ext in supported_formats:
                     imgfile = Imagefile(name, os.path.join(root, name))
                     if ext == "gif" or ext == "webp":
-                        imgfile. = True
+                        imgfile.isanimated = True
                     if name in existing:
                         duplicates.append(imgfile)
                         imgfile.dupename=True
@@ -539,7 +546,7 @@ class SortImages:
         if self.gui.show_unassigned.get():
             unassign = self.gui.unassigned_squarelist
             if self.gui.show_animated.get():
-                unassigned_animated = [item for item in unassign if item.obj.]
+                unassigned_animated = [item for item in unassign if item.obj.isanimated]
                 return unassigned_animated
             else:
                 return unassign
@@ -703,6 +710,7 @@ class SortImages:
 
         #Updates main and destination windows.
         self.gui.refresh_rendered_list()
+        self.gui.images_left_and_assigned.set(f"{len(self.gui.assigned_squarelist)}/{int(self.gui.images_left.get())}")
         if hasattr(self.gui, 'destwindow'): #only refresh dest list if destwindow active.
             self.gui.refresh_destinations()
         if index_before_move >= 0 and index_before_move+1 <= len(self.gui.displayedlist):
@@ -754,7 +762,7 @@ class SortImages:
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
-                if hasattr(obj, ''):
+                if hasattr(obj, 'isanimated'):
                     if obj.isanimated:
                         isanimated = True
                     else:
@@ -816,6 +824,8 @@ class SortImages:
             listmax = min(gui.squaresperpage.get(), len(self.imagelist))
             self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(gui.squaresperpage.get(),listmax)))
+            self.gui.images_left.set(len(self.imagelist))
+            self.gui.images_left_and_assigned.set(f"{len(self.gui.assigned_squarelist)}/{self.gui.images_left.get()}")
             gui.guisetup(self.destinations)
         else:
             logger.warning("No Last Session!")
@@ -841,6 +851,9 @@ class SortImages:
             self.generatethumbnails(sublist)
             self.gui.initial_dock_setup()
             gui.displaygrid(self.imagelist, range(0, min(len(self.imagelist), gui.squaresperpage.get())))
+            self.gui.images_left.set(len(self.imagelist))
+            self.gui.images_left_and_assigned.set(f"{len(self.gui.assigned_squarelist)}/{self.gui.images_left.get()}")
+
         elif samepath:
             self.gui.sdpEntry.delete(0, tk.END)
             self.gui.ddpEntry.delete(0, tk.END)
