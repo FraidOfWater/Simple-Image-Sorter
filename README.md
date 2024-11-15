@@ -105,6 +105,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
    3. Note
 
             For some reason it won't run standalone from VSC. Something about the environment and failing to load pyvips.
+            For me it works if I cd into the program folder, and then run.
             It should always run using python .\sortimages_multiview.py using cmd from the program folder.
       
 End of file congratz!
