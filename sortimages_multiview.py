@@ -71,24 +71,25 @@ class Imagefile:
 
     def move(self, x, assigned, moved) -> str:
         destpath = self.dest
-        do_not_move_if_exists = True # This flag prevents overwriting of files in destination that have the same name as source.
 
         if destpath != "" and os.path.isdir(destpath):
             file_name = self.name.get()
+
+            # Check for name conflicts (source -> destination)
             exists_already_in_destination = os.path.exists(os.path.join(destpath, file_name))
             if exists_already_in_destination:
-                if do_not_move_if_exists:
-                    logger.warning(f"File {self.name.get()} already exists at destination, file not moved or deleted from source.")
-                    return ("") # Returns if 1. Would overwrite someone
+                print(f"File {self.name.get()[:30]} already exists at destination. Cancelling move.")
+                return ("") # Returns if 1. Would overwrite someone
+            
             try:
                 new_path = os.path.join(destpath, file_name)
-                old_path = os.path.join(self.path, file_name)
+                old_path = self.path
 
-                shutil.move(self.path, new_path) # Try to move, fails if 1. Locked
+                # Throws exception when image is open.
+                shutil.move(self.path, new_path)
 
-                # If above functons and checks fail, these below won't get set. As designed
                 assigned.remove(x)
-                moved.append(x) # Moves from assigned to moved ?
+                moved.append(x)
 
                 self.moved = True
                 self.show = False
@@ -106,15 +107,25 @@ class Imagefile:
                 return returnstr
 
             except Exception as e:
-                logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
-
-                if os.path.exists(new_path) and os.path.exists(old_path): # shuti.move has copied a duplicate to destinations, but image couldn't be moved. This deletes the duplicate from destination.
+                # Shutil failed. Delete the copy from destination, leaving the original at source.
+                # This only runs if shutil fails, meaning the image couldn't be deleted from source.
+                # It is therefore safe to delete the destination copy.
+                if os.path.exists(new_path) and os.path.exists(old_path):
                     os.remove(new_path)
-                    logger.warning("Image was locked and the move was completed partially, deleting image from destination, leaving it in source")
+                    print("Shutil failed. Coudln't delete from source, cancelling move (deleting copy from destination)")
+                    return ""
+                else:
+                    logger.warning(f"Error moving/deleting: %s . File: %s {e} {self.name.get()}")
+                    
+                    #self.guidata["frame"].configure(
+                    #highlightbackground="red", highlightthickness=2)
+                    #return ("Error moving: %s . File: %s", e, self.name.get())
+                    return ""
 
-                self.guidata["frame"].configure(
-                    highlightbackground="red", highlightthickness=2)
-                return ("Error moving: %s . File: %s", e, self.name.get())
+                
+
+
+                
 
     def setid(self, id):
         self.id = id
@@ -233,6 +244,7 @@ class SortImages:
                     self.threads = jprefs['threads']
                 if 'autosave_session' in jprefs:
                     self.autosave = jprefs['autosave_session']
+
                 #Customization
                 if "checkbox_height" in jprefs:
                     self.gui.checkbox_height = int(jprefs["checkbox_height"])
@@ -240,14 +252,12 @@ class SortImages:
                     self.gui.gridsquare_padx = int(jprefs["gridsquare_padx"])
                 if "gridsquare_pady" in jprefs:
                     self.gui.gridsquare_pady = int(jprefs["gridsquare_pady"])
-                if "text_box_thickness" in jprefs:
-                    self.gui.text_box_thickness = int(jprefs["text_box_thickness"])
-                if "image_border_thickness" in jprefs:
-                    self.gui.image_border_thickness = int(jprefs["image_border_thickness"])
+
                 if "text_box_colour" in jprefs:
                     self.gui.text_box_colour = jprefs["text_box_colour"]
                 if "text_box_selection_colour" in jprefs:
                     self.gui.text_box_selection_colour = jprefs["text_box_selection_colour"]
+                    
                 if "imageborder_default_colour" in jprefs:
                     self.gui.imageborder_default_colour = jprefs["imageborder_default_colour"]
                 if "imageborder_selected_colour" in jprefs:
@@ -258,24 +268,52 @@ class SortImages:
                 #Window colours
                 if "main_colour" in jprefs:
                     self.gui.main_colour = jprefs["main_colour"]
-                if "square_colour" in jprefs:
-                    self.gui.square_colour = jprefs["square_colour"]
                 if "grid_background_colour" in jprefs:
                     self.gui.grid_background_colour = jprefs["grid_background_colour"]
                 if "canvasimage_background" in jprefs:
                     self.gui.canvasimage_background = jprefs["canvasimage_background"]
-                if "text_colour" in jprefs:
-                    self.gui.text_colour = jprefs["text_colour"]
-                if "pressed_text_colour" in jprefs:
-                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
+
+                if "whole_box_size" in jprefs:
+                    self.gui.whole_box_size = jprefs["whole_box_size"]
+                if "square_border_size" in jprefs:
+                    self.gui.square_border_size = int(jprefs["square_border_size"])
+                if "square_colour" in jprefs:
+                    self.gui.square_colour = jprefs["square_colour"]
+                if "square_text_colour" in jprefs:
+                    self.gui.square_text_colour = jprefs["square_text_colour"]
+
+                if "square_text_box_colour" in jprefs:
+                    self.gui.square_text_box_colour = jprefs["square_text_box_colour"]
+                if "square_text_box_selection_colour" in jprefs:
+                    self.gui.square_text_box_selection_colour = jprefs["square_text_box_selection_colour"]
+                if "square_text_box_locked_colour" in jprefs:
+                    self.gui.square_text_box_locked_colour = jprefs["square_text_box_locked_colour"]
+
+                if "imagebox_default_colour" in jprefs:
+                    self.gui.imagebox_default_colour = jprefs["imagebox_default_colour"]
+                if "imagebox_selection_colour" in jprefs:
+                    self.gui.imagebox_selection_colour = jprefs["imagebox_selection_colour"]
+                if "imagebox_locked_colour" in jprefs:
+                    self.gui.imagebox_locked_colour = jprefs["imagebox_locked_colour"]
+
                 if "button_colour" in jprefs:
                     self.gui.button_colour = jprefs["button_colour"]
                 if "button_press_colour" in jprefs:
                     self.gui.button_press_colour = jprefs["button_press_colour"]
+                if "text_colour" in jprefs:
+                    self.gui.text_colour = jprefs["text_colour"]
+                if "pressed_text_colour" in jprefs:
+                    self.gui.pressed_text_colour = jprefs["pressed_text_colour"]
+
                 if "text_field_colour" in jprefs:
                     self.gui.text_field_colour = jprefs["text_field_colour"]
                 if "text_field_text_colour" in jprefs:
                     self.gui.text_field_text_colour = jprefs["text_field_text_colour"]
+                if "text_field_activated_colour" in jprefs:
+                    self.gui.text_field_activated_colour = jprefs["text_field_activated_colour"]
+                if "text_field_activated_text_colour" in jprefs:
+                    self.gui.text_field_activated_text_colour = jprefs["text_field_activated_text_colour"]
+
                 if "pane_divider_colour" in jprefs:
                     self.gui.pane_divider_colour = jprefs["pane_divider_colour"]
                 #GUI CONTROLLED PREFRENECES
@@ -295,6 +333,7 @@ class SortImages:
                     self.gui.dock_view.set(jprefs["dock_view"])
                 if "dock_side" in jprefs:
                     self.gui.dock_side.set(jprefs["dock_side"])
+
                 #Window positions
                 if "main_geometry" in jprefs:
                     self.gui.main_geometry = jprefs["main_geometry"]
@@ -353,9 +392,6 @@ class SortImages:
             "gridsquare_padx":gui.gridsquare_padx,
             "gridsquare_pady":gui.gridsquare_pady,
 
-            "text_box_thickness":gui.text_box_thickness,
-            "image_border_thickness":gui.image_border_thickness,
-
             "text_box_colour":gui.text_box_colour,
             "text_box_selection_colour":gui.text_box_selection_colour,
 
@@ -365,19 +401,33 @@ class SortImages:
 
             #Window colours
             "--#--#--#--#--#--#--#---#--#--#--#--#--#--#--#--#--CUSTOMIZATION FOR WINDOWS": "--#--",
+
             "main_colour":gui.main_colour,
-            "square_colour":gui.square_colour,
             "grid_background_colour":gui.grid_background_colour,
             "canvasimage_background":gui.canvasimage_background,
 
-            "text_colour":gui.text_colour,
-            "pressed_text_colour":gui.pressed_text_colour,
+            "whole_box_size":gui.whole_box_size,
+            "square_border_size":gui.square_border_size,
+            "square_colour":gui.square_colour,
+            "square_text_colour":gui.square_text_colour,
+
+            "square_text_box_colour":gui.square_text_box_colour,
+            "square_text_box_selection_colour":gui.square_text_box_selection_colour,
+            "square_text_box_locked_colour":gui.square_text_box_locked_colour,
+
+            "imagebox_default_colour":gui.imagebox_default_colour,
+            "imagebox_selection_colour":gui.imagebox_selection_colour,
+            "imagebox_locked_colour":gui.imagebox_locked_colour,
 
             "button_colour":gui.button_colour,
             "button_press_colour":gui.button_press_colour,
+            "text_colour":gui.text_colour,
+            "pressed_text_colour":gui.pressed_text_colour,
 
             "text_field_colour":gui.text_field_colour,
             "text_field_text_colour":gui.text_field_text_colour,
+            "text_field_activated_colour":gui.text_field_activated_colour,
+            "text_field_activated_text_colour":gui.text_field_activated_text_colour,
 
             "pane_divider_colour":gui.pane_divider_colour,
 
@@ -420,15 +470,32 @@ class SortImages:
 
         assigned = self.gui.assigned_squarelist
         moved = self.gui.moved_squarelist
+        temp = self.gui.assigned_squarelist.copy()
+        reopen = "none"
+        if hasattr(self.gui, "second_window"):
+            self.gui.save_viewer_geometry()
+            flag = "window"
+        elif hasattr(self.gui, "Image_frame"):
+            self.gui.Image_frame.close_window()
+            self.gui.after(0, self.gui.Image_frame.destroy)
+            del self.gui.Image_frame
+            flag = "dock"
+        
+        for x in temp:
+            try:
+                out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
 
-        for x in self.gui.assigned_squarelist:
-            out = x.obj.move(x, assigned, moved) # Pass functionality to happen in move so it can fail removing from the sorted lists when shutil.move fails.
-
-            if isinstance(out, str):
-                loglist.append(out)
-
+                if isinstance(out, str):
+                    loglist.append(out)
+            except Exception as e:
+                print("Carry on")
+        temp.clear()
         self.gui.refresh_rendered_list()
         self.gui.refresh_destinations()
+        if flag == "window":
+            self.gui.displayimage(self.gui.current_selection)
+        elif flag =="dock":
+            self.gui.displayimage(self.gui.current_selection)
 
         try:
             if len(loglist) > 0:
@@ -499,12 +566,16 @@ class SortImages:
         elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
             self.last_call_time = current_time
         else:
-            print("Victim of throttling")
+            #print("Victim of throttling")
             return
         index_before_move = -1
         # cant find displayedimag at index. remove frame colours.
         if self.gui.current_selection in self.gui.displayedlist:
             if self.gui.displayedlist.index(self.gui.current_selection) != self.gui.current_selection and not self.gui.show_next.get():
+                self.gui.current_selection.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+                self.gui.current_selection.c.configure(style="Theme_square.TCheckbutton")
+                self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_colour)
+
                 self.gui.current_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
             else:
                 # If we have something selected, and if that someting is not the same picture as the one displayed
@@ -650,28 +721,51 @@ class SortImages:
         if self.gui.show_next.get() and self.gui.displayedlist[index_before_move] != self.gui.current_selection:
 
             previous_selection = self.gui.current_selection # Restore old frame's frame.
-            previous_selection.canvas.configure(highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.canvas.configure(bg = self.gui.imagebox_default_colour, highlightcolor=self.gui.imageborder_default_colour, highlightbackground = self.gui.imageborder_default_colour)
+            previous_selection.cf.configure(bg=self.gui.square_text_box_colour)
+            previous_selection.c.configure(style="Theme_square.TCheckbutton")
+
+            #previous_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #previous_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_default_colour)
+
 
             self.gui.current_selection = self.gui.displayedlist[index_before_move] # Change new frame's frame
-            self.gui.current_selection.canvas.configure(highlightbackground = "blue", highlightcolor = "blue")
+            self.gui.current_selection.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.canvas.configure(bg = self.gui.imagebox_selection_colour, highlightbackground = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+            self.gui.current_selection.cf.configure(bg=self.gui.square_text_box_selection_colour)
+            self.gui.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            #self.gui.current_selection.bar.configure(bg = self.gui.imageborder_selected_colour, highlightcolor = self.gui.imageborder_selected_colour)
+
+            #self.gui.current_selection.canvas.itemconfig(self.gui.current_selection.sqr, fill=self.gui.imageborder_selected_colour)
+
 
             self.gui.last_selection = self.gui.current_selection
             self.gui.displayimage(self.gui.current_selection, False) # The flag solves a performance issue when auto loading images very very fast. I do not know why.
 
     def savesession(self,asksavelocation):
+
         print("Saving session, Goodbye!")
         if asksavelocation:
             filet=[("Javascript Object Notation","*.json")]
             savelocation=tkFileDialog.asksaveasfilename(confirmoverwrite=True,defaultextension=filet,filetypes=filet,initialdir=os.getcwd(),initialfile=self.gui.sessionpathvar.get())
         else:
             savelocation = self.gui.sessionpathvar.get()
+
         if len(self.imagelist) > 0:
             imagesavedata = []
+
             for obj in self.imagelist:
                 if hasattr(obj, 'thumbnail'):
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
+                if hasattr(obj, 'isanimated'):
+                    if obj.isanimated:
+                        isanimated = True
+                    else:
+                        isanimated = False
                 imagesavedata.append({
                     "name": obj.name.get(),
                     "file_size": obj.file_size,
@@ -682,9 +776,9 @@ class SortImages:
                     "moved": obj.moved,
                     "thumbnail": thumb,
                     "dupename": obj.dupename,
+                    "isanimated": isanimated,
                     })
-                if obj.isanimated:
-                    imagesavedata.append({"isanimated": obj.isanimated,})
+    
             save = {"dest": self.ddp, "source": self.sdp,
                     "imagelist": imagesavedata,"thumbnailsize":self.gui.thumbnailsize,'existingnames':list(self.existingnames)}
             with open(savelocation, "w+") as savef:
@@ -814,7 +908,10 @@ class SortImages:
                 gridsquare.obj.framecount = img.n_frames
 
                 if gridsquare.obj.framecount == 1: #Only one frame, cannot animate
-                    raise Exception(f"Found static: {gridsquare.obj.name.get()[:30]}")
+                    print(f"Found static gif/webp: {gridsquare.obj.name.get()[:30]}")
+                    gridsquare.obj.isanimated = False
+                    print(gridsquare.obj.isanimated, gridsquare.obj.framecount)
+                    return
                 frame_frametime = img.info.get('duration',gridsquare.obj.delay)
                 if frame_frametime == 0:
                     gridsquare.obj.delay = gridsquare.obj.delay
@@ -827,7 +924,7 @@ class SortImages:
                     frame = img.copy()
                     frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
                     if frame_frametime == 0:
-                        print("Bugged animation frametimes. Using default_delay.")
+                        print(f"Bugged animation frametimes. Using default_delay. {gridsquare.obj.name.get()[:30]}")
                         frame_frametime = gridsquare.obj.delay # Replace with default_delay
                     gridsquare.obj.frametimes.append(frame_frametime)
                     frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
