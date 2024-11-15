@@ -50,8 +50,8 @@ class CanvasImage:
         self.viewer_colour = viewer_colour
 
 
-        print("")
-        print(f"{self.obj.name.get()[:30]}.")
+        #print("")
+        #print(f"{self.obj.name.get()[:30]}.")
 
         """ Initialize core attributes and lists"""
         self.path = path  # path to the image, should be public for outer classes
@@ -231,7 +231,6 @@ class CanvasImage:
             logger.error(f"Error in destroy displayimage: {e}")
     
     def on_spacebar(self, event):
-        print("test")
         if self.gui.current_selection.obj.checked.get():
             self.gui.current_selection.obj.checked.set(False)
         else:
@@ -406,8 +405,8 @@ class CanvasImage:
 
                 b = round(self.obj.file_size/1.048576/1000000,2) #file size in MB
 
-                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
-                print(f"F:  {elapsed_time}")
+                #print(f"Size: {b} MB. Frames: {self.obj.framecount}")
+                #print(f"F:  {elapsed_time}")
                 del end_time2
                 self.first = False # Flags that the first has been created
 
@@ -468,7 +467,7 @@ class CanvasImage:
     def timeit(self): # Returns how fast the image was loaded to canvas.
         time_it_time = time.time()
         elapsed_time = time_it_time - self.creation_time
-        print(f"L:  {elapsed_time}")
+        #print(f"L:  {elapsed_time}")
         del time_it_time
 
     def lazy_load(self): # Lazily loads the frames
@@ -639,10 +638,10 @@ class CanvasImage:
                             image = self.__pyramid[(max(0, self.__curr_img))]
 
                             if b < c: # if small render high quality
-                                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
+                                #print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                                 imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__filter))
                             else:
-                                print(f"Size: {b} MB. Frames: {self.obj.framecount}")
+                                #print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                                 imagetk = ImageTk.PhotoImage(image.resize((int(x2 - x1), int(y2 - y1)), self.__first_filter))
                             self.imageid = self.canvas.create_image(max(box_canvas[0], box_img_int[0]),
                                                        max(box_canvas[1], box_img_int[1]),
@@ -650,7 +649,7 @@ class CanvasImage:
                             end_time = time.time()
                             elapsed_time = end_time - self.creation_time
                             del end_time
-                            print(f"F:  {elapsed_time}")
+                            #print(f"F:  {elapsed_time}")
                             self.canvas.lower(self.imageid)  # set image into background
                             self.canvas.imagetk = imagetk  # keep an extra reference to prevent garbage-collection
                             self.pyramid_ready.set() #tell threading that second picture is allowed to render.
@@ -668,7 +667,7 @@ class CanvasImage:
                             elapsed_time = end_time - self.creation_time
                             #del self.creation_time
                             del end_time
-                            print(f"B:  {elapsed_time}")
+                            #print(f"B:  {elapsed_time}")
                             self.canvas.lower(self.imageid)  # set image into background
                             self.canvas.imagetk = imagetk
 
@@ -753,12 +752,12 @@ class CanvasImage:
         cropped_height = False
 
         # Check if the image overflows horizontally
-        print(floor(img_bbox[0]), canvas_bbox[0], floor(img_bbox[2]), floor(canvas_bbox[2]))
+        #print(floor(img_bbox[0]), canvas_bbox[0], floor(img_bbox[2]), floor(canvas_bbox[2]))
         if floor(img_bbox[0]) < canvas_bbox[0] or floor(img_bbox[2]) > canvas_bbox[2]:
             cropped_width = True
 
         # Check if the image overflows vertically
-        print(floor(img_bbox[1]), floor(canvas_bbox[1]), floor(img_bbox[3]), floor(canvas_bbox[3]))
+        #print(floor(img_bbox[1]), floor(canvas_bbox[1]), floor(img_bbox[3]), floor(canvas_bbox[3]))
         if floor(img_bbox[1]) < canvas_bbox[1] or floor(img_bbox[3]) > canvas_bbox[3]:
             cropped_height = True
 
@@ -885,14 +884,14 @@ class CanvasImage:
         for x in check:
             if x in self.gui.hotkeys: # If hotkey and navigation key should conflict, disable wasd.
                 if event.keysym == x:
-                    print("disabled, reject wasd press")
+                    #print("disabled, reject wasd press")
                     return
             else:
                 
                 break
         
         if self.exit_lock:
-            print("exit locked iinlopcked")
+            #print("exit locked iinlopcked")
             self.exit_lock = False
         #viewport debug prints
         #print(self.is_image_inside_viewport())
