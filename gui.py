@@ -97,49 +97,48 @@ class GUIManager(tk.Tk):
         #threads # Exlusively for fileManager
         #autosave # Exlusively for fileManager
 
-        #Customization
+        #Customization (MISC) (PADDING AND COLOR FOR IMAGE CONTAINER)
         self.checkbox_height = 25
         self.gridsquare_padx = 2
         self.gridsquare_pady = 2
-        self.text_box_thickness = 0
-        self.image_border_thickness = 1
         self.text_box_colour =                  "white"
         self.text_box_selection_colour  =       "blue"
-        self.imageborder_default_colour =       "white"
+        self.imageborder_default_colour =       "#303276"
         self.imageborder_selected_colour =      "blue"
         self.imageborder_locked_colour =        "yellow"
 
-        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.image_border_thickness + self.text_box_thickness
-        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
-
-        #Window colours
+        #DEFAULT Customizations
         # Dark Mode
-        """
-        self.main_colour =              'black'
-        self.square_colour =            'black'
-        self.grid_background_colour =   'black'
-        self.canvasimage_background =   'black'
-        self.text_colour =              'white'
-        self.button_press_colour =      'white'
-        self.pressed_text_colour =      'black'
-        self.button_colour =            'black'
-        self.text_field_colour =        'white'
-        self.text_field_text_colour =   'black'
-        self.pane_divider_colour =      'grey'
-        """
-        # Midnight Blue
+
+        # Midnight Blue (BRIGHT SELECTION)
         self.main_colour =              '#202041'
-        self.square_colour =            '#888BF8'
         self.grid_background_colour =   '#303276'
         self.canvasimage_background =   '#141433'
+
+        self.whole_box_size =               0 #Selection border on or off
+        self.square_border_size =           0
+
+        self.square_colour =            '#303276'
+        self.square_text_colour =       'white'
+        self.square_text_box_colour =   '#303276'
+        self.square_text_box_selection_colour = "#888BF8"
+        self.square_text_box_locked_colour =    "#202041"
+
+        self.imagebox_default_colour =      "#303276"
+        self.imagebox_selection_colour =    "#888BF8"
+        self.imagebox_locked_colour =       "#202041"
+        
+        self.button_colour =            '#24255C'
+        self.button_press_colour =      '#303276'
         self.text_colour =              'white'
         self.pressed_text_colour =      'white'
-        self.button_press_colour =      '#303276'
-        self.button_colour =            '#24255C'
-        self.text_field_colour =        'white'
-        self.text_field_text_colour =   'black'
-        self.pane_divider_colour =      'grey'
 
+        self.text_field_colour =        '#303276'
+        self.text_field_text_colour =   'white'
+        self.text_field_activated_colour =      '#888BF8'
+        self.text_field_activated_text_colour = 'black'
+
+        self.pane_divider_colour =      'grey'
 
         #GUI CONTROLLED PREFRENECES
         self.squaresperpage = tk.IntVar()
@@ -211,6 +210,9 @@ class GUIManager(tk.Tk):
         #Buttons list
         self.buttons = []
 
+        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.square_border_size + self.square_border_size
+        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
+
     def initialize(self): #Initializating GUI
         global throttle_time
         throttle_time = self.throttle_time
@@ -222,11 +224,11 @@ class GUIManager(tk.Tk):
         style = ttk.Style()
         self.style = style
         style.configure('Theme_dividers.TPanedwindow', background=self.pane_divider_colour)  # Panedwindow, the divider colour.
-        style.configure("Theme_square.TCheckbutton", background=self.grid_background_colour, foreground=self.text_colour) # Theme for Square
+        style.configure("Theme_square.TCheckbutton", background=self.square_text_box_colour, foreground=self.square_text_colour) # Theme for Square
+        style.configure("Theme_square2.TCheckbutton", background=self.square_text_box_selection_colour, foreground=self.square_text_colour) # Theme for Square (selected)
+        style.configure("Theme_square3.TCheckbutton", background=self.square_text_box_locked_colour, foreground=self.square_text_colour) # Theme for Square (locked)
+
         style.configure("Theme_checkbox.TCheckbutton", background=self.main_colour, foreground=self.text_colour, highlightthickness = 0) # Theme for checkbox
-
-        #style.configure("textc.TCheckbutton", foreground=self.text_colour, background=self.main_colour)
-
 
         # Paned window that holds the almost top level stuff.
         self.toppane = Panedwindow(self, orient="horizontal")
@@ -244,7 +246,7 @@ class GUIManager(tk.Tk):
         # Start the grid setup
         self.middlepane_frame = tk.Frame(self.toppane, bg=self.canvasimage_background, width = self.middlepane_width)
 
-        imagegridframe = tk.Frame(self.toppane,bg=self.main_colour)
+        imagegridframe = tk.Frame(self.toppane,bg=self.grid_background_colour)
         imagegridframe.grid(row=0, column=2, sticky="NSEW") #this is in second so content frame inside this.
         self.imagegridframe = imagegridframe
 
@@ -271,7 +273,7 @@ class GUIManager(tk.Tk):
         if self.force_scrollbar:
             self.vbar.grid(row=0, column=1, sticky='ns')
             self.imagegrid.configure(yscrollcommand=self.vbar.set)
-        self.imagegrid.grid(row=0, column=0, sticky="NSEW")
+        self.imagegrid.grid(row=0, column=0, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
         self.imagegridframe.rowconfigure(1, weight=0)
         self.imagegridframe.rowconfigure(0, weight=1)
         self.imagegridframe.columnconfigure(1, weight=0)
@@ -351,7 +353,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         self.excludebutton.grid(row=0, column=2)
 
         self.sdpEntry = tk.Entry(self.entryframe, takefocus=False,
-                                 background=self.grid_background_colour, foreground=self.text_colour)  # scandirpathEntry
+                                 background=self.text_field_colour, foreground=self.text_field_text_colour)  # scandirpathEntry
         self.sdpEntry.grid(row=0, column=1, sticky="ew", padx=2)
         self.sdpEntry.insert(0, self.source_folder)
 
@@ -360,7 +362,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         self.sdplabel.grid(row=0, column=0, sticky="e")
 
         self.ddpEntry = tk.Entry(self.entryframe, takefocus=False,
-                                 background=self.grid_background_colour, foreground=self.text_colour)  # dest dir path entry
+                                 background=self.text_field_colour, foreground=self.text_field_text_colour)  # dest dir path entry
         self.ddpEntry.grid(row=1, column=1, sticky="ew", padx=2)
         self.ddpEntry.insert(0, self.destination_folder)
 
@@ -374,7 +376,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         self.activebutton.grid(row=1, column=2, sticky="ew")
 
         self.loadpathentry = tk.Entry(self.entryframe, takefocus=False, textvariable=self.sessionpathvar,
-                                      background=self.grid_background_colour, foreground=self.text_colour)
+                                      background=self.text_field_colour, foreground=self.text_field_text_colour)
         self.loadpathentry.grid(row=3, column=1, sticky='ew', padx=2)
 
         self.loadbutton = tk.Button(self.entryframe, text="Load Session", command=self.fileManager.loadsession,
@@ -396,16 +398,16 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         if self.interactive_buttons:
             #Option for making the buttons change color on hover
             self.excludebutton.bind("<Enter>", lambda e: self.excludebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
-
             self.excludebutton.bind("<Leave>", lambda e: self.excludebutton.config(bg=self.button_colour, fg=self.text_colour))
+        
             self.activebutton.bind("<Enter>", lambda e: self.activebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
             self.activebutton.bind("<Leave>", lambda e: self.activebutton.config(bg=self.button_colour, fg=self.text_colour))
 
-            self.sdpEntry.bind("<FocusIn>", lambda e: self.sdpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
-            self.sdpEntry.bind("<FocusOut>", lambda e: self.sdpEntry.config(bg=self.grid_background_colour, fg=self.text_colour))
+            self.sdpEntry.bind("<FocusIn>", lambda e: self.sdpEntry.config(bg=self.text_field_activated_colour, fg=self.text_field_activated_text_colour))
+            self.sdpEntry.bind("<FocusOut>", lambda e: self.sdpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
 
-            self.ddpEntry.bind("<FocusIn>", lambda e: self.ddpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
-            self.ddpEntry.bind("<FocusOut>", lambda e: self.ddpEntry.config(bg=self.grid_background_colour, fg=self.text_colour))
+            self.ddpEntry.bind("<FocusIn>", lambda e: self.ddpEntry.config(bg=self.text_field_activated_colour, fg=self.text_field_activated_text_colour))
+            self.ddpEntry.bind("<FocusOut>", lambda e: self.ddpEntry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
 
             self.sdplabel.bind("<Enter>", lambda e: self.sdplabel.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
             self.sdplabel.bind("<Leave>", lambda e: self.sdplabel.config(bg=self.button_colour, fg=self.text_colour))
@@ -419,8 +421,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.loadfolderbutton.bind("<Enter>", lambda e: self.loadfolderbutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
             self.loadfolderbutton.bind("<Leave>", lambda e: self.loadfolderbutton.config(bg=self.button_colour, fg=self.text_colour))
 
-            self.loadpathentry.bind("<FocusIn>", lambda e: self.loadpathentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
-            self.loadpathentry.bind("<FocusOut>", lambda e: self.loadpathentry.config(bg=self.grid_background_colour, fg=self.text_colour))
+            self.loadpathentry.bind("<FocusIn>", lambda e: self.loadpathentry.config(bg=self.text_field_activated_colour, fg=self.text_field_activated_text_colour))
+            self.loadpathentry.bind("<FocusOut>", lambda e: self.loadpathentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
 
     def initial_dock_setup(self):
         #Left
@@ -429,7 +431,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=1, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
-            self.imagegrid.grid(row=0, column=0, sticky="NSEW")
+            self.imagegrid.grid(row=0, column=0, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
             self.imagegridframe.rowconfigure(1, weight=0)
             self.imagegridframe.rowconfigure(0, weight=1)
             self.imagegridframe.columnconfigure(1, weight=0)
@@ -441,7 +443,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=0, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
-            self.imagegrid.grid(row=0, column=1, sticky="NSEW")
+            self.imagegrid.grid(row=0, column=1, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
             self.imagegridframe.rowconfigure(1, weight=0)
             self.imagegridframe.rowconfigure(0, weight=1)
             self.imagegridframe.columnconfigure(0, weight=0)
@@ -453,7 +455,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             if self.force_scrollbar:
                 self.vbar.grid(row=0, column=1, sticky='ns')
                 self.imagegrid.configure(yscrollcommand=self.vbar.set)
-            self.imagegrid.grid(row=0, column=0, sticky="NSEW")
+            self.imagegrid.grid(row=0, column=0, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
             self.imagegridframe.rowconfigure(1, weight=0)
             self.imagegridframe.rowconfigure(0, weight=1)
             self.imagegridframe.columnconfigure(1, weight=0)
@@ -521,8 +523,10 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         return text
 
     def makegridsquare(self, parent, imageobj, setguidata, dest):
-        frame = tk.Frame(parent, borderwidth=0, bg=self.square_colour,
-                         highlightthickness = 0, highlightcolor=self.imageborder_selected_colour, padx = 0, pady = 0) #unclear if width and height needed
+        #CHANGE1
+        frame = tk.Frame(parent, borderwidth=0,
+                         highlightthickness = self.whole_box_size, highlightcolor=self.imageborder_default_colour,highlightbackground=self.imageborder_default_colour, padx = 0, pady = 0) 
+
         frame.obj = imageobj
         truncated_filename = self.truncate_text(imageobj)
         truncated_name_var = tk.StringVar(frame, value=truncated_filename)
@@ -545,7 +549,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 img = imageobj.guidata['img']
 
             canvas = tk.Canvas(frame, width=self.thumbnailsize,
-                               height=self.thumbnailsize,bg=self.square_colour, highlightthickness=self.image_border_thickness, highlightcolor=self.imageborder_selected_colour, highlightbackground = self.imageborder_default_colour) #The gridbox color.
+                               height=self.thumbnailsize,bg=self.square_colour, highlightthickness=self.square_border_size, highlightcolor=self.imageborder_default_colour, highlightbackground = self.imageborder_default_colour) #The gridbox color.
             canvas.grid(column=0, row=0, sticky="NSEW")
             #tooltiptext=tk.StringVar(frame,self.tooltiptext(imageobj)) #CHECK PROFILE
             #ToolTip(canvas,msg=tooltiptext.get,delay=1) #CHECK PROFILE
@@ -558,13 +562,24 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
 
             #Added reference for animation support. We use this to refresh the frame 1/20, 2/20..
             canvas_image_id = canvas.create_image(
-                self.thumbnailsize/2+self.image_border_thickness, self.thumbnailsize/2+self.image_border_thickness, anchor="center", image=img) #If you use gridboxes, you must +1 to thumbnailsize/2, so it counteracts the highlighthickness.
+                self.thumbnailsize/2+self.square_border_size, self.thumbnailsize/2+self.square_border_size, anchor="center", image=img) #If you use gridboxes, you must +1 to thumbnailsize/2, so it counteracts the highlighthickness.
             frame.canvas_image_id = canvas_image_id
 
             # Create a frame for the Checkbutton to control its height
-            check_frame = tk.Frame(frame, height=self.checkbox_height,bg=self.grid_background_colour, highlightthickness=self.text_box_thickness, highlightcolor=self.text_box_selection_colour, highlightbackground=self.text_box_colour)
-            check_frame.grid(column=0, row=1, sticky="NSEW")  # Place the frame in the grid
+            #sqr = canvas.create_rectangle((0, 0, self.thumbnailsize, 3), width=0)
+            #frame.sqr = sqr
+
+            check_frame = tk.Frame(frame, height=self.checkbox_height, padx= 2, bg=self.square_text_box_colour)
             check_frame.grid_propagate(False)
+            check_frame.grid(column=0, row=1, sticky="EW")  # Place the frame in the grid
+            
+            frame.cf = check_frame
+            #bar = tk.Frame(frame, width=self.thumbnailsize, height = 3, bg=self.grid_background_colour)
+            #bar.grid_propagate(False)
+            #bar.grid(column=0, row=1, sticky="EW")
+            #frame.bar = bar
+
+            
 
             #Create different dest for destinations to control view better. These also call a command to cancel the viewer image from being moved by keypresses, if we interact with other gridsquares first.
             if not dest:
@@ -576,7 +591,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             if(setguidata):  # save the data to the image obj to both store a reference and for later manipulation
                 imageobj.setguidata(
                     {"img": img, "frame": frame, "canvas": canvas, "check": check, "show": True}) #"tooltip":tooltiptext
-
+            frame.c = check
             # anything other than rightclicking toggles the checkbox, as we want.
             canvas.bind("<Button-1>", partial(bindhandler, check, "invoke"))
             canvas.bind(
@@ -606,9 +621,9 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                         self.fileManager.destinationsraw,os.path.dirname(imageobj.path))]['color']
                     frame['background'] = color
                     canvas['background'] = color
-            if imageobj.dupename:
-                frame.configure(
-                    highlightbackground="brown", highlightthickness=2)
+            #if imageobj.dupename:
+            #    frame.configure(
+            #        highlightbackground="brown", highlightthickness=2)
         except Exception as e:
             logger.error(e)
         return frame
@@ -622,7 +637,14 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.enter_toggle = not self.enter_toggle
         if self.enter_toggle:
             self.Image_frame.focus_canvasimage()
+            self.current_selection.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour)
             self.current_selection.canvas.configure(highlightbackground = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
+            self.current_selection.c.configure(style="Theme_square3.TCheckbutton")
+            self.current_selection.cf.configure(bg=self.square_text_box_locked_colour)
+            #self.current_selection.bar.configure(bg = self.imageborder_locked_colour, highlightcolor = self.imageborder_locked_colour) # Change new frame's frame
+
+            #self.current_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_locked_colour)
+
         # Independent from the language of the keyboard, CapsLock, <Ctrl>+<key>, etc.
         """Throttling"""
         if not self.show_next.get():
@@ -633,7 +655,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         elif current_time - self.last_call_time >= self.throttle_delay: #and key pressed down... so you can tap as fast as you like.
             self.last_call_time = current_time
         else:
-            print("Victim of throttler")
+            #print("Victim of throttler")
             return
         """Throttling"""
 
@@ -644,9 +666,13 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.__previous_state = event.state    # remember the last keystroke state
             items_per_row = int(max(1, self.imagegrid.winfo_width() / self.actual_gridsquare_width))
             items_per_rowy = int(max(1, self.imagegrid.winfo_height() / self.actual_gridsquare_height))
-            current_index = self.displayedlist.index(self.current_selection)
+            if self.current_selection in self.displayedlist:
+                current_index = self.displayedlist.index(self.current_selection)
+            else:
+                return
             last_row = max(0,floor((current_index) / items_per_row))
             list_length = len(self.displayedlist)
+
             check = ["w","a","s","d"]
             #wasd = 87,65,83,68
             #updownleftright = 38,40,37,39
@@ -657,6 +683,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 else:
                     disable_wasd = False
                     break
+
             if not event.keycode in [37,38,39,40] or (event.keycode in [65,68,83,87] and not disable_wasd):
                 return
             if event.keycode == 68 and not disable_wasd or event.keycode == 39:    # scroll right, keys 'd' or 'Right' [D,RIGHT]
@@ -675,16 +702,19 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                 if not list_length > current_index+items_per_row:
                     return
                 self.current_selection = self.displayedlist[current_index+items_per_row]
+            
             if not self.page_mode:
                 self.show_next_method(self.current_selection)
             self.displayimage(self.current_selection)
             current_index = self.displayedlist.index(self.current_selection)
             current_row = max(0,floor((current_index) / items_per_row))
             total_rows = list_length / items_per_row
+
             # Calculate the index for the first and last visible items in the current bounding box
             first_visible_index = self.imagegrid.yview()[0] * total_rows  # Index of the first visible item
             last_visible_index = self.imagegrid.yview()[1] * total_rows  # Index of the last visible item
             # Check if we're at the top or bottom of the visible area and scroll accordingly
+            
             if self.page_mode:
 
                 if (event.keycode in [87, 38] or last_row < current_row) or current_row == 0:  # Up (W, Up)
@@ -717,7 +747,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                         self.imagegrid.yview_moveto(0)
                         return
 
-                if current_row < floor(first_visible_index):
+                if current_row < floor(first_visible_index)+1:
                     #self.imagegrid.yview_scroll(-1, "units")
                     target_scroll = (current_row) / total_rows
                     self.imagegrid.yview_moveto(target_scroll)
@@ -726,10 +756,11 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                     if current_row >= list_length-items_per_rowy:
                         self.imagegrid.yview_moveto(1)
                         return
-
+                    #print(current_row+1, last_visible_index)
                     if current_row > floor(last_visible_index):
+                        #print("act") #current row +1
                         #self.imagegrid.yview_scroll(1, "units")  # Scroll down one unit # non page
-                        target_scroll = (current_row-3) / total_rows
+                        target_scroll = (current_row-items_per_rowy) / total_rows
                         self.imagegrid.yview_moveto(target_scroll)
 
     def uncheck_show_next(self):
@@ -845,10 +876,21 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
     def show_next_method(self, frame): # Record current and last gridsquares that have been "selected". Change their colours.
         self.current_selection = frame # Update current_selection
         self.current_displayed = frame
-        if self.last_selection and self.last_selection != self.current_selection: # Restore old frame's frame.
-            self.last_selection.canvas.configure(highlightcolor=self.imageborder_default_colour, highlightbackground = self.imageborder_default_colour)
-        self.current_selection.canvas.configure(highlightbackground = self.imageborder_selected_colour, highlightcolor = self.imageborder_selected_colour) # Change new frame's frame
-        self.last_selection = self.current_selection # Update last_selection
+        if self.last_selection and self.last_selection != self.current_selection and not hasattr(self, 'destwindow'): # Restore old frame's frame.
+            self.last_selection.configure(highlightcolor = self.imageborder_default_colour,  highlightbackground = self.imageborder_default_colour)
+            self.last_selection.canvas.configure(bg=self.imagebox_default_colour, highlightcolor=self.imageborder_default_colour, highlightbackground = self.imageborder_default_colour)
+            self.last_selection.c.configure(style="Theme_square.TCheckbutton")
+            self.last_selection.cf.configure(bg=self.square_text_box_colour)
+            #self.last_selection.bar.configure(bg = self.imagebox_default_colour, highlightcolor = self.imagebox_default_colour)
+            #self.last_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_default_colour)
+        if not hasattr(self, 'destwindow'):
+            self.current_selection.configure(highlightcolor = self.imageborder_selected_colour, highlightbackground = self.imageborder_selected_colour)
+            self.current_selection.canvas.configure(bg=self.imagebox_selection_colour, highlightbackground = self.imageborder_selected_colour, highlightcolor = self.imageborder_selected_colour) # Change new frame's frame
+            self.current_selection.c.configure(style="Theme_square2.TCheckbutton")
+            self.current_selection.cf.configure(bg=self.square_text_box_selection_colour)
+            #self.current_selection.bar.configure(bg = self.imageborder_selected_colour, highlightcolor = self.imageborder_selected_colour)
+            #self.current_selection.canvas.itemconfig(self.current_selection.sqr, fill=self.imageborder_selected_colour)
+            self.last_selection = self.current_selection # Update last_selection
 
     def save_viewer_geometry(self, event=None):
         if hasattr(self, 'second_window') and self.second_window and self.second_window.winfo_exists():
@@ -962,7 +1004,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
         optionsframe.grid(row=0, column=0, sticky="ew")
 
         self.squaresperpageentry = tk.Entry(
-            optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.grid_background_colour, foreground=self.text_colour)
+            optionsframe, textvariable=self.squaresperpage, takefocus=False, background=self.text_field_colour, foreground=self.text_field_text_colour)
         if self.squaresperpage.get() < 0: #this wont let you save -1
             self.squaresperpage.set(1)
         ToolTip(self.squaresperpageentry,delay=1,msg="How many more images to add when Load Images is clicked")
@@ -1006,8 +1048,8 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
             self.savebutton.bind("<Enter>", lambda e: self.savebutton.config(bg=self.button_press_colour, fg=self.pressed_text_colour))
             self.savebutton.bind("<Leave>", lambda e: self.savebutton.config(bg=self.button_colour, fg=self.text_colour))
 
-            self.squaresperpageentry.bind("<FocusIn>", lambda e: self.squaresperpageentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
-            self.squaresperpageentry.bind("<FocusOut>", lambda e: self.squaresperpageentry.config(bg=self.grid_background_colour, fg=self.text_colour))
+            self.squaresperpageentry.bind("<FocusIn>", lambda e: self.squaresperpageentry.config(bg=self.text_field_activated_colour, fg=self.text_field_activated_text_colour))
+            self.squaresperpageentry.bind("<FocusOut>", lambda e: self.squaresperpageentry.config(bg=self.text_field_colour, fg=self.text_field_text_colour))
 
         custom_buttons_frame  = tk.Frame(self.leftui,bg=self.main_colour)
         custom_buttons_frame.grid(row = 1, column = 0, sticky = "ew")
@@ -1144,7 +1186,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
 
                     self.vbar.grid(row=0, column=1, sticky='ns')
                     self.imagegrid.configure(yscrollcommand=self.vbar.set)
-                    self.imagegrid.grid(row=0, column=0, sticky="NSEW")
+                    self.imagegrid.grid(row=0, column=0, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
 
                     self.imagegridframe.columnconfigure(1, weight=0)
                     self.imagegridframe.columnconfigure(0, weight=1)
@@ -1156,7 +1198,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
 
                     self.vbar.grid(row=0, column=0, sticky='ns')
                     self.imagegrid.configure(yscrollcommand=self.vbar.set)
-                    self.imagegrid.grid(row=0, column=1, sticky="NSEW")
+                    self.imagegrid.grid(row=0, column=1, padx = max(0, self.gridsquare_padx-1), sticky="NSEW")
 
                     self.imagegridframe.columnconfigure(0, weight=0)
                     self.imagegridframe.columnconfigure(1, weight=1)
@@ -1526,10 +1568,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                         if color:
                             new_frame['background'] = color
                             new_frame.children['!canvas']['background'] = color  # Assuming the canvas is the first child
-                            #if luminance(color) == 'light':
-                            #    self.style5.configure("textc.TCheckbutton", foreground="black", background=color, selectcolor="grey")
-                            #else:
-                             #   self.style5.configure("textc.TCheckbutton", foreground="white", background=color, selectcolor="grey")
+
                         canvas_window_id = self.destgrid.window_create("1.0", window=new_frame)
                         new_frame.canvas_id = canvas_window_id
                         self.dest_squarelist.append(new_frame)
@@ -1541,10 +1580,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                     if color:
                         new_frame['background'] = color
                         new_frame.children['!canvas']['background'] = color  # Assuming the canvas is the first child
-                        #if luminance(color) == 'light':
-                        #    self.style.configure("textc.TCheckbutton", foreground="black", background=color, selectcolor="grey")
-                        #else:
-                         #   self.style.configure("textc.TCheckbutton", foreground="white", background=color, selectcolor="grey")
+
                     canvas_window_id = self.destgrid.window_create("1.0", window=new_frame)
                     new_frame.canvas_id = canvas_window_id
                     self.dest_squarelist.append(new_frame)
@@ -1636,7 +1672,7 @@ def throttled_yview(widget, page_mode, *args):
     #    else:
     #        print("GET THROTTLED IDIOT!!!!!")
     #        return
-    print(len(flag1))
+    #print(len(flag1))
 
 
     if len(flag1) > flag_len:
