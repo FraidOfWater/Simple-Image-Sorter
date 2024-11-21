@@ -8,7 +8,7 @@ from PIL import Image, ImageTk
 import threading
 import time
 import logging
-from math import floor
+from math import floor, ceil
 
 logger = logging.getLogger("Canvasimage")
 logger.setLevel(logging.ERROR)  # Set to the lowest level you want to handle
@@ -39,9 +39,11 @@ class AutoScrollbar(ttk.Scrollbar):
 class CanvasImage:
     """ Display and zoom image """
     def __init__(self, master, imagewindowgeometry, viewer_colour, imageobj, gui):
-
         self.obj = imageobj
-        path = self.obj.path
+        if hasattr(self.obj, 'video_thumb_path'):
+            self.path = self.obj.video_thumb_path
+        else:
+            self.path = self.obj.path
         self.gui = gui
 
         viewer_x_centering = gui.viewer_x_centering
@@ -54,7 +56,7 @@ class CanvasImage:
         #print(f"{self.obj.name.get()[:30]}.")
 
         """ Initialize core attributes and lists"""
-        self.path = path  # path to the image, should be public for outer classes
+        
 
         geometry_width, geometry_height = imagewindowgeometry.split('x',1)
 
@@ -101,10 +103,10 @@ class CanvasImage:
 
         """Opening the image"""
         try:
-            self.image = Image.open(path) #redundant
+            self.image = Image.open(self.path) #redundant
 
         except FileNotFoundError:
-            logger.error(f"File not found: {path}")
+            logger.error(f"File not found: {self.path}")
             return
         except Exception as e:
             logger.error(f"An error occurred: {e}")
@@ -976,6 +978,7 @@ class CanvasImage:
             self.imscale=scale
 
             self.canvas.scale('all', self.canvas_width, 0, scale, scale)  # rescale all objects
+            #self.canvas.update_idletasks()
 
     def center_image(self): # Centers the iamge in the image viewer
         """ Center the image on the canvas """
@@ -989,7 +992,7 @@ class CanvasImage:
 
             # Calculate offsets to center the image
             if self.viewer_x_centering:
-                x_offset = (canvas_width - scaled_image_width)-int((canvas_width - scaled_image_width)/2)
+                x_offset = (canvas_width - scaled_image_width)-(canvas_width - scaled_image_width)/2
             else:
                 x_offset = 0
             if self.viewer_y_centering:
@@ -998,4 +1001,6 @@ class CanvasImage:
                 y_offset = 0
 
             # Update the position of the image container
-            self.canvas.coords(self.container, x_offset, y_offset, x_offset + scaled_image_width, y_offset + scaled_image_height)
+            print(x_offset, y_offset, scaled_image_width, scaled_image_height)
+            self.canvas.coords(self.container, (x_offset), (y_offset), (x_offset + scaled_image_width), (y_offset + scaled_image_height))
+            
