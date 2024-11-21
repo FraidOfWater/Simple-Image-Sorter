@@ -161,7 +161,7 @@ class SortImages:
         data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
-            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', 'webp', '.bmp', '.tiff', '.pcx', 'psd'))]
+            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.pcx', '.psd', '.jfif'))]
             if image_files:
                 first_image_path = os.path.join(data_dir, image_files[0])
                 try:
@@ -508,7 +508,7 @@ class SortImages:
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
-        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd"}
+        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif"}
         animation_support = {"gif", "webp"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
