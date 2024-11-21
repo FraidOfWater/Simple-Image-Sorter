@@ -13,6 +13,8 @@ from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
 from PIL import Image, ImageTk
+import subprocess
+
 #interesting borderwidth adds padding but it is friendly.
 logger = logging.getLogger("Sortimages")
 logger.setLevel(logging.WARNING)  # Set to the lowest level you want to handle
@@ -345,6 +347,10 @@ class SortImages:
                 if "images_sorted" in jprefs:
                     self.gui.images_sorted.set(jprefs["images_sorted"])
 
+                self.gui.actual_gridsquare_width = self.gui.thumbnailsize + self.gui.gridsquare_padx + self.gui.square_border_size*2 + self.gui.whole_box_size*2
+                self.gui.actual_gridsquare_height = self.gui.thumbnailsize + self.gui.gridsquare_pady + self.gui.square_border_size*2 + self.gui.whole_box_size*2 + self.gui.checkbox_height
+
+
             if len(hotkeys) > 1:
                 self.gui.hotkeys = hotkeys
         except Exception as e:
@@ -508,7 +514,7 @@ class SortImages:
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
-        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif"}
+        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif", "mp4"}
         animation_support = {"gif", "webp"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
@@ -762,6 +768,10 @@ class SortImages:
                     thumb = obj.thumbnail
                 else:
                     thumb = ""
+                if hasattr(obj, 'video_thumb_path'):
+                    video_thumb_path = obj.video_thumb_path
+                else:
+                    video_thumb_path = ""
                 if hasattr(obj, 'isanimated'):
                     if obj.isanimated:
                         isanimated = True
@@ -776,6 +786,7 @@ class SortImages:
                     "checked": obj.checked.get(),
                     "moved": obj.moved,
                     "thumbnail": thumb,
+                    "video_thumb_path": video_thumb_path,
                     "dupename": obj.dupename,
                     "isanimated": isanimated,
                     })
@@ -807,6 +818,7 @@ class SortImages:
                 if os.path.exists(line['path']):
                     obj = Imagefile(line['name'], line['path'])
                     obj.thumbnail = line['thumbnail']
+                    obj.video_thumb_path = line['video_thumb_path']
                     obj.dest=line['dest']
                     obj.id=line['id']
                     obj.file_size=line['file_size']
@@ -876,6 +888,29 @@ class SortImages:
                         {'name': entry.name, 'path': entry.path, 'color': randomColor()})
                     self.destinationsraw.append(entry.path)
 
+    def extract_video_thumbnail(self, imagefile, thumbpath, time='00:00:00'):
+        command = [
+            'ffmpeg',
+            '-i', imagefile.path,
+            '-ss', time,
+            '-vframes', '1',
+            '-vf', f'scale={self.gui.thumbnailsize}:-1:flags=bicubic',
+            thumbpath
+        ]
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # grid
+        imagefile.thumbnail = thumbpath
+        tempn = thumbpath.rfind(".jpg")
+        temp = thumbpath[:tempn] + '_video_thumb.jpg'
+        command = [
+            'ffmpeg',
+            '-i', imagefile.path,
+            '-ss', time,
+            '-vframes', '1',
+            temp
+        ]
+        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # viewer
+        imagefile.video_thumb_path = temp
+
     def makethumb(self, imagefile):
             file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
             if not imagefile.file_size or not imagefile.mod_time:
@@ -891,11 +926,22 @@ class SortImages:
             imagefile.setid(hash.hexdigest())
 
             thumbpath = os.path.join(self.data_dir, imagefile.id+os.extsep+"jpg")
+            
+
             if(os.path.exists(thumbpath)):
                 imagefile.thumbnail = thumbpath
+                if imagefile.path.lower().endswith(".mp4"):
+                    tempn = thumbpath.rfind(".jpg")
+                    temp = thumbpath[:tempn] + '_video_thumb.jpg'
+                    if(os.path.exists(temp)):
+                        imagefile.video_thumb_path = temp
+
                 return
 
             try:
+                if imagefile.path.lower().endswith(".mp4"):
+                    self.extract_video_thumbnail(imagefile, thumbpath)
+                    return
                 im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
