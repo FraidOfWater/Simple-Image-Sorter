@@ -13,7 +13,7 @@ from hashlib import md5
 import pyvips
 from gui import GUIManager, randomColor
 from PIL import Image, ImageTk
-import subprocess
+import imageio
 
 #interesting borderwidth adds padding but it is friendly.
 logger = logging.getLogger("Sortimages")
@@ -515,14 +515,14 @@ class SortImages:
         duplicates = self.duplicatenames
         existing = self.existingnames
         supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif", "mp4", "webm"}
-        animation_support = {"gif", "webp"} # For clarity
+        animation_support = {"gif", "webp", "mp4", "webm"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
             for name in files:
                 ext = os.path.splitext(name)[1][1:].lower()
                 if ext in supported_formats:
                     imgfile = Imagefile(name, os.path.join(root, name))
-                    if ext == "gif" or ext == "webp":
+                    if ext == "gif" or ext == "webp" or ext == "webm" or ext == "mp4":
                         imgfile.isanimated = True
                     if name in existing:
                         duplicates.append(imgfile)
@@ -889,27 +889,40 @@ class SortImages:
                     self.destinationsraw.append(entry.path)
 
     def extract_video_thumbnail(self, imagefile, thumbpath, time='00:00:00'):
-        command = [
-            'ffmpeg',
-            '-i', imagefile.path,
-            '-ss', time,
-            '-vframes', '1',
-            '-vf', f'scale={self.gui.thumbnailsize}:-1:flags=bicubic',
-            thumbpath
-        ]
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # grid
-        imagefile.thumbnail = thumbpath
+        reader = imageio.get_reader(imagefile.path)
         tempn = thumbpath.rfind(".jpg")
         temp = thumbpath[:tempn] + '_video_thumb.jpg'
-        command = [
-            'ffmpeg',
-            '-i', imagefile.path,
-            '-ss', time,
-            '-vframes', '1',
-            temp
-        ]
-        subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # viewer
-        imagefile.video_thumb_path = temp
+
+        for frame in reader:
+            image = Image.fromarray(frame)
+            image.save(temp)
+            imagefile.video_thumb_path = temp
+            image.thumbnail((self.gui.thumbnailsize,self.gui.thumbnailsize))
+            image.save(thumbpath)
+            imagefile.thumbnail = thumbpath
+            break
+        
+        #command = [
+        #    'ffmpeg',
+        #    '-i', imagefile.path,
+        #    '-ss', time,
+        #    '-vframes', '1',
+        #    '-vf', f'scale={self.gui.thumbnailsize}:-1:flags=bicubic',
+        #    thumbpath
+        #]
+        #subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # grid
+        #imagefile.thumbnail = thumbpath
+        #tempn = thumbpath.rfind(".jpg")
+        #temp = thumbpath[:tempn] + '_video_thumb.jpg'
+        #command = [
+        #    'ffmpeg',
+        #    '-i', imagefile.path,
+        #    '-ss', time,
+        #    '-vframes', '1',
+        #    temp
+        #]
+        #subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) # viewer
+        #imagefile.video_thumb_path = temp
 
     def makethumb(self, imagefile):
             file_name1 = imagefile.path.replace('\\', '/').split('/')[-1]
@@ -930,7 +943,7 @@ class SortImages:
 
             if(os.path.exists(thumbpath)):
                 imagefile.thumbnail = thumbpath
-                if imagefile.path.lower().endswith(".mp4"):
+                if imagefile.path.lower().endswith(".mp4") or imagefile.path.lower().endswith(".webm"):
                     tempn = thumbpath.rfind(".jpg")
                     temp = thumbpath[:tempn] + '_video_thumb.jpg'
                     if(os.path.exists(temp)):
@@ -958,6 +971,21 @@ class SortImages:
             executor.map(self.makethumb, images)
 
     def load_frames(self, gridsquare): # Creates frames and frametimes for gifs and webps
+        if gridsquare.obj.path.lower().endswith(".mp4") or gridsquare.obj.path.lower().endswith(".webm"):
+            reader = imageio.get_reader(gridsquare.obj.path)
+            fps = (reader.get_meta_data().get('fps', 24))
+            gridsquare.obj.delay = int(round((1 / fps)*1000))
+            print(fps, gridsquare.obj.delay)
+            for frame in reader:
+                image = Image.fromarray(frame)
+                image.thumbnail((self.gui.thumbnailsize,self.gui.thumbnailsize))
+                tk_image = ImageTk.PhotoImage(image)
+                gridsquare.obj.frames.append(tk_image)
+                gridsquare.obj.framecount += 1
+                gridsquare.obj.frametimes.append(gridsquare.obj.delay)
+            gridsquare.obj.lazy_loading = False     
+            print(len(gridsquare.obj.frametimes), gridsquare.obj.framecount)
+            return
         try:
             with Image.open(gridsquare.obj.path) as img:
                 gridsquare.obj.framecount = img.n_frames
@@ -967,26 +995,32 @@ class SortImages:
                     gridsquare.obj.isanimated = False
                     print(gridsquare.obj.isanimated, gridsquare.obj.framecount)
                     return
+                
                 frame_frametime = img.info.get('duration',gridsquare.obj.delay)
+
                 if frame_frametime == 0:
-                    gridsquare.obj.delay = gridsquare.obj.delay
+                    pass
                 else:
                     gridsquare.obj.delay = frame_frametime
-
+                
                 logger.debug(f"Found animated: {gridsquare.obj.name.get()[:30]} with {gridsquare.obj.framecount} frames.")
+
                 for i in range(gridsquare.obj.framecount):
                     img.seek(i)  # Move to the ith frame
                     frame = img.copy()
-                    frame_frametime = frame.info.get('duration',gridsquare.obj.delay)
-                    if frame_frametime == 0:
-                        print(f"Bugged animation frametimes. Using default_delay. {gridsquare.obj.name.get()[:30]}")
-                        frame_frametime = gridsquare.obj.delay # Replace with default_delay
+                    frame_frametime = img.info.get('duration',gridsquare.obj.delay)
+
                     gridsquare.obj.frametimes.append(frame_frametime)
+
                     frame.thumbnail((self.gui.thumbnailsize, self.gui.thumbnailsize), Image.Resampling.LANCZOS)
                     tk_image = ImageTk.PhotoImage(frame)
                     gridsquare.obj.frames.append(tk_image)
+                if all(i == 0 for i in gridsquare.obj.frametimes):
+                    for i in range(len(gridsquare.obj.frametimes)):
+                        gridsquare.obj.frametimes[i] = gridsquare.obj.delay
+                    print(f"Bugged animation frametimes. Using default_delay. {gridsquare.obj.name.get()[:30]}")
                 gridsquare.obj.lazy_loading = False
-                logger.debug(f"frametimes {gridsquare.obj.frametimes}")
+                print(f"frametimes {gridsquare.obj.frametimes}")
                 logger.info(f"All frames loaded for: {gridsquare.obj.name.get()[:30]}")
         except Exception as e: #fallback to static.
             logger.error(f"Error in load_frames: {e}")
