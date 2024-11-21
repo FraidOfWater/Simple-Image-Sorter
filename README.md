@@ -56,8 +56,9 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
 2. Install Dependencies: Use pip to install the required dependencies:
 
        pip install pyvips tkinter-tooltip pillow pyinstaller
+         or if you built yourself from the latest source (mp4, webm animation and audio support) "pip install pyvips tkinter-tooltip pillow pyinstaller opencv-python audioop-lts imageio imageio[ffmpeg] pydub pygame simpleaudio"
 
-3. Required DLLs: Obtain the following DLLs from a compiled copy in the _internal folder:
+4. Required DLLs: Obtain the following DLLs from a compiled copy in the _internal folder:
 
        libglib-2.0
        libgobject-2.0
@@ -66,7 +67,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
 
       Place the DLLs in the same folder as the .py and .bat scripts.
 
-4. Run the Batch File: Execute the .bat file.
+5. Run the Batch File: Execute the .bat file.
 
       The finished copy can be found in the dist folder.
 
