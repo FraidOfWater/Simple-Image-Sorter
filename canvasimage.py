@@ -9,6 +9,13 @@ import threading
 import time
 import logging
 from math import floor, ceil
+import imageio
+#import moviepy
+from pydub import AudioSegment
+import simpleaudio
+import pygame
+import os
+import sys
 
 logger = logging.getLogger("Canvasimage")
 logger.setLevel(logging.ERROR)  # Set to the lowest level you want to handle
@@ -101,6 +108,9 @@ class CanvasImage:
         # Misc
         self.__previous_state = 0  # previous state of the keyboard
 
+        #Audio
+        self.playing = False
+
         """Opening the image"""
         try:
             self.image = Image.open(self.path) #redundant
@@ -168,6 +178,7 @@ class CanvasImage:
             threading.Thread(target=lambda:self.lazy_pyramid(w,h), daemon=True).start()
         else:
             try:
+                pygame.mixer.init()
                 self.length = self.obj.framecount
 
                 new_width = self.canvas_width
@@ -384,12 +395,30 @@ class CanvasImage:
 
     def load_frames(self): # This loads the frames for gif and webp lazily
         try:
-            #Happy ending, all frames found, return.
-            if not self.frames:
-                #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
-                # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
-                #centering of frames and rescaling?
+            #threading creates first picture because thats the fastest way? Immediate. Canvas is already there. It should probably use centering logic, though.
+            # The image is created, and lazy_load is going to take over., because frames is no longer empty.canvas_width = self.canvas.winfo_width()
+            #centering of frames and rescaling?
+            if self.obj.path.lower().endswith(".mp4") or self.obj.path.lower().endswith(".webm"):
+                reader = imageio.get_reader(self.obj.path)
+                for frame in reader:
+                    self.image = Image.fromarray(frame)
+                    break
                 frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+                audio = AudioSegment.from_file(self.obj.path)
+
+                if getattr(sys, 'frozen', False):  # Check if running as a bundled executable
+                    script_dir = os.path.dirname(sys.executable)
+                else:
+                    script_dir = os.path.dirname(os.path.abspath(__file__)) # Else if a ran as py script
+                self.audio_dir = os.path.join(script_dir, "audio")
+
+
+                temp_wav_path = os.path.join(self.audio_dir, "temp_audio.wav")
+                # Export the audio to the temporary WAV file
+                audio.export(temp_wav_path, format="wav")
+                self.playing = True
+                pygame.mixer.music.load(temp_wav_path)
+                pygame.mixer.music.play()
 
                 canvas_width = self.canvas_width
                 canvas_height = self.canvas_height
@@ -397,40 +426,70 @@ class CanvasImage:
                 frame_height = frame.height()
                 x_offset = (canvas_width - frame_width) // 2
                 y_offset = (canvas_height - frame_height) // 2
-
-
                 self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
                 self.frames.append(frame)
 
                 end_time2 = time.time()
                 elapsed_time = end_time2 - self.creation_time
-
                 b = round(self.obj.file_size/1.048576/1000000,2) #file size in MB
-
                 #print(f"Size: {b} MB. Frames: {self.obj.framecount}")
                 #print(f"F:  {elapsed_time}")
                 del end_time2
-                self.first = False # Flags that the first has been created
+                self.first = False
 
-                for i in range(1, self.obj.framecount):
-                    self.image.seek(i)
-                    logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
-                    frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
-                    self.frames.append(frame)
+                flag1 = True
+                for frame in reader:
+                    if flag1:
+                        flag1 = False
+                    else:
+                        self.image = Image.fromarray(frame)
+                        logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
+                        frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+                        self.frames.append(frame)
 
-
-
-
-                """All frames have been loaded"""
-                self.lazy_loading = False # Lower the lazy_loading flag so animate can take over.
-                self.timeit()             # Tell time it took to load all.
+                self.lazy_loading = False     
+                self.timeit()
                 return
-
+        
+            frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+            canvas_width = self.canvas_width
+            canvas_height = self.canvas_height
+            frame_width = frame.width()
+            frame_height = frame.height()
+            x_offset = (canvas_width - frame_width) // 2
+            y_offset = (canvas_height - frame_height) // 2
+            self.imageid = self.canvas.create_image(x_offset, y_offset, anchor='nw', image=frame)
+            self.frames.append(frame)
+            end_time2 = time.time()
+            elapsed_time = end_time2 - self.creation_time
+            b = round(self.obj.file_size/1.048576/1000000,2) #file size in MB
+            #print(f"Size: {b} MB. Frames: {self.obj.framecount}")
+            #print(f"F:  {elapsed_time}")
+            del end_time2
+            self.first = False # Flags that the first has been created
+            for i in range(1, self.obj.framecount):
+                self.image.seek(i)
+                logger.debug(f"Load: {self.lazy_index+1}/{self.obj.framecount} ({self.obj.frametimes[self.lazy_index]})")
+                frame = ImageTk.PhotoImage(self.image.resize(self.new_size), Image.Resampling.LANCZOS)
+                self.frames.append(frame)
+            """All frames have been loaded"""
+            self.lazy_loading = False # Lower the lazy_loading flag so animate can take over.
+            self.timeit()             # Tell time it took to load all.
+            return
         except Exception as e:
             if hasattr(self, 'frames'): # This wont let the error display if the window is being closed.
                 logger.error(f"Error loading frames: {e}")
 
     def close_window(self, x=None):
+
+
+        try:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+            #print("stopped audio")
+        except Exception as e:
+            print(f"failed to stop audio {e}")
+
         if self.obj.isanimated:
             self.frames.clear()
             self.original_frames.clear()
@@ -512,11 +571,28 @@ class CanvasImage:
             self.canvas.after(self.obj.frametimes[self.lazy_index], self.run_multiple2)
 
     def run_multiple(self): # Helper function to run lazy_load again #make it handle going over.
-        self.lazy_index += 1
+        if self.lazy_index+1 == self.obj.framecount and self.playing:
+            try:
+                pygame.mixer.music.stop()
+                self.playing = False
+                pygame.mixer.music.play()
+                self.playing = True
+            except Exception as e:
+                print(e)
+        self.lazy_index = (self.lazy_index + 1) % self.obj.framecount
         self.lazy_load()
 
     def run_multiple2(self): # Helper function to run animate_image again
+        if self.lazy_index+1 == self.obj.framecount and self.playing:
+            try:
+                pygame.mixer.music.stop()
+                self.playing = False
+                pygame.mixer.music.play()
+                self.playing = True
+            except Exception as e:
+                print(e)
         self.lazy_index = (self.lazy_index + 1) % len(self.frames)
+        
         self.animate_image()
 
     def smaller(self): # Resize image proportionally and return smaller image
