@@ -214,8 +214,8 @@ class GUIManager(tk.Tk):
         #Buttons list
         self.buttons = []
 
-        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx #+ self.square_border_size + self.square_border_size
-        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.checkbox_height
+        self.actual_gridsquare_width = self.thumbnailsize + self.gridsquare_padx + self.square_border_size*2 + self.whole_box_size*2
+        self.actual_gridsquare_height = self.thumbnailsize + self.gridsquare_pady + self.square_border_size*2 + self.whole_box_size*2 + self.checkbox_height
 
     def initialize(self): #Initializating GUI
         global throttle_time
