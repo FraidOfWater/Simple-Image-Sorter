@@ -1328,21 +1328,21 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                     i.canvas.itemconfig(i.canvas_image_id, image=i.obj.frames[i.obj.index])
 
                     if self.default_delay.get():
-                        logger.debug(f"{i.obj.index+1}/{i.obj.framecount} ({i.obj.delay}): {i.obj.name.get()[:30]}")
+                        #logger.debug(f"{i.obj.index+1}/{i.obj.framecount} ({i.obj.delay}): {i.obj.name.get()[:30]}")
                         i.canvas.after(i.obj.delay, lambda: self.lazy_load_loop(i)) #run again.
                     else:
-                        logger.debug(f"{i.obj.index+1}/{i.obj.framecount} ({i.obj.frametimes[i.obj.index]}): {i.obj.name.get()[:30]}")
+                        #logger.debug(f"{i.obj.index+1}/{i.obj.framecount} ({i.obj.frametimes[i.obj.index]}): {i.obj.name.get()[:30]}")
                         i.canvas.after(i.obj.frametimes[i.obj.index], lambda: self.lazy_load_loop(i)) #or a.obj.delay
 
                 else: #wait for frame to load.
-                    logger.debug(f"Buffering: {i.obj.name.get()[:30]}")
+                    #logger.debug(f"Buffering: {i.obj.name.get()[:30]}")
                     i.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
             else:
                 if not i.obj.lazy_loading and i.obj.frames: #if all loaded
-                    logger.debug(f"Moving to animate_loop method: {i.obj.name.get()[:30]}")
+                    #logger.debug(f"Moving to animate_loop method: {i.obj.name.get()[:30]}")
                     self.gen_id_and_animate(i)
                 else: # 0 frames?
-                    logger.debug(f"0 frames, buffering: {i.obj.name.get()[:30]}")
+                    #logger.debug(f"0 frames, buffering: {i.obj.name.get()[:30]}")
                     i.canvas.after(i.obj.delay, lambda: self.lazy_load(i))
         except Exception as e:
             logger.error(f"Lazy load couldn't process the frame: {e}. Likely because of threading.")
