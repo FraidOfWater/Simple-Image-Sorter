@@ -1413,7 +1413,7 @@ Special thanks to FooBar167 on Stack Overflow for the advanced and memory-effici
                         "insert", window=gridsquare)
                 self.displayedlist.append(gridsquare)
                 gridsquare.obj.isvisible = True
-        print(f'Display: {len(self.displayedlist)}')
+        #print(f'Display: {len(self.displayedlist)}')
 
     def refresh_rendered_list(self):
         current_list = None
