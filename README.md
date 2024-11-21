@@ -16,7 +16,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     Single View Assigning: Assign images directly from the viewer with a hotkey.
     Name Truncation: Prevents overflow and misalignment in the grid / fixed root problem auto resizing gridboxes..
     Transient Windows: Windows spawned by the main GUI now stay on top.
-    File Format Support: Added support for .gif and .webp.
+    File Format Support: Added support for .gif and .webp and .mp4 (thumbnails only).
     Navigator: Use arrow keys or WASD to navigate the grid; lock images for zooming with enter or clicking. Press Spacebar to check images.
     Theme Customization: Main theme is now "Midnight Blue"; customize using hex codes; prefs.json.
     Window Position Saving: Remembers user-adjusted positions and sizes.
