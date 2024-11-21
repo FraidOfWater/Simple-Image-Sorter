@@ -1001,6 +1001,5 @@ class CanvasImage:
                 y_offset = 0
 
             # Update the position of the image container
-            print(x_offset, y_offset, scaled_image_width, scaled_image_height)
             self.canvas.coords(self.container, (x_offset), (y_offset), (x_offset + scaled_image_width), (y_offset + scaled_image_height))
             
