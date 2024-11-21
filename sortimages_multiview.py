@@ -163,7 +163,7 @@ class SortImages:
         data_dir = self.data_dir
         if(os.path.exists(data_dir) and os.path.isdir(data_dir)):
             temp = os.listdir(data_dir)
-            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.pcx', '.psd', '.jfif'))]
+            image_files = [f for f in temp if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.tiff', '.pcx', '.psd', '.jfif', '.webm'))]
             if image_files:
                 first_image_path = os.path.join(data_dir, image_files[0])
                 try:
@@ -482,7 +482,7 @@ class SortImages:
             self.gui.save_viewer_geometry()
             reopen = "window"
         elif hasattr(self.gui, "Image_frame"):
-            self.gui.Image_frame.close_window()
+            #self.gui.Image_frame.close_window()
             self.gui.after(0, self.gui.Image_frame.destroy)
             del self.gui.Image_frame
             reopen = "dock"
@@ -514,7 +514,7 @@ class SortImages:
     def walk(self, src):
         duplicates = self.duplicatenames
         existing = self.existingnames
-        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif", "mp4"}
+        supported_formats = {"png", "gif", "jpg", "jpeg", "bmp", "pcx", "tiff", "webp", "psd", "jfif", "mp4", "webm"}
         animation_support = {"gif", "webp"} # For clarity
         for root, dirs, files in os.walk(src, topdown=True):
             dirs[:] = [d for d in dirs if d not in self.exclude]
@@ -935,13 +935,16 @@ class SortImages:
                     temp = thumbpath[:tempn] + '_video_thumb.jpg'
                     if(os.path.exists(temp)):
                         imagefile.video_thumb_path = temp
-
                 return
 
             try:
                 if imagefile.path.lower().endswith(".mp4"):
                     self.extract_video_thumbnail(imagefile, thumbpath)
                     return
+                elif imagefile.path.lower().endswith(".webm"):
+                    self.extract_video_thumbnail(imagefile, thumbpath)
+                    return
+                    
                 im = pyvips.Image.thumbnail(imagefile.path, self.gui.thumbnailsize)
                 im.write_to_file(thumbpath)
                 imagefile.thumbnail = thumbpath
