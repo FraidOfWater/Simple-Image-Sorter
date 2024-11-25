@@ -1,6 +1,5 @@
 # Simple-Image-Sorter QOL Fork
 This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter. If author reads this, feel free to merge this?
-I have assumed the licence to be GNU AFFERO GENERAL PUBLIC LICENSE Version 3, 19 November 2007, though it is unclear. (Removed from author's source)
 
 # Sorts images into destinations #
 This fork is a hobby, it adds new features and other tweaks, and removes some others. Light experimenting with threading and optimization. Tried to make it very customizable! Now supports animations!
@@ -49,6 +48,7 @@ This fork is a hobby, it adds new features and other tweaks, and removes some ot
     No guarantees of functionality; backup images before use.
     GIFs and WebPs do not support zooming due to implementation complexity.
     Image renaming and dupe checking removed/not supported.
+
 # Requirements For Building #
 ### How to Build ###
 
