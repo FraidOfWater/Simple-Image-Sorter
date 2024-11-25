@@ -1,4 +1,4 @@
-# Simple-Image-Sorter QOL Fork
+# Simple-Image-Sorter Fork
 This is a fork of Simple-Image-Sorter by Legendsmith https://github.com/Legendsmith/Simple-Image-Sorter. If author reads this, feel free to merge this?
 
 # Sorts images into destinations #
